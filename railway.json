@@ -1,0 +1,8 @@
+{
+  "build": {
+    "builder": "RAILPACK"
+  },
+  "deploy": {
+    "startCommand": "pip install -e . && groksito"
+  }
+}
