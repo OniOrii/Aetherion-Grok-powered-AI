@@ -1,4 +1,4 @@
-9"""
+"""
 Centralized, modern audio / TTS (Text-to-Speech) handler for Groksito.
 
 This module is the single source of truth for generating spoken audio from text.
