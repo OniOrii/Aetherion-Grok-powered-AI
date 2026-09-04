@@ -790,7 +790,70 @@ def register_slash_commands(
                 result or "No se pudo generar el audio.",
                 ephemeral=True,
             )
+    @tree.command(
+        name="join",
+        description="Join your current voice channel (silent for now).",
+    )
+    async def join_slash(interaction: discord.Interaction):
+        if interaction.guild and not is_guild_allowed(interaction.guild.id):
+            await interaction.response.send_message(
+                "Aetherion is not available in this server.", ephemeral=True
+            )
+            return
 
+        member = interaction.guild.get_member(interaction.user.id) if interaction.guild else None
+        voice_state = getattr(member or interaction.user, "voice", None)
+        channel = getattr(voice_state, "channel", None)
+        if channel is None:
+            await interaction.response.send_message(
+                "Join a voice channel first, then run /join.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        try:
+            vc = interaction.guild.voice_client if interaction.guild else None
+            if vc and vc.is_connected():
+                await vc.move_to(channel)
+            else:
+                await channel.connect()
+            await interaction.followup.send(
+                f"Joined **{channel.name}**. Talking comes later — use /leave to disconnect.",
+                ephemeral=True,
+            )
+        except Exception as e:
+            await interaction.followup.send(
+                f"Could not join voice: {e}",
+                ephemeral=True,
+            )
+
+    @tree.command(
+        name="leave",
+        description="Leave the voice channel.",
+    )
+    async def leave_slash(interaction: discord.Interaction):
+        if interaction.guild and not is_guild_allowed(interaction.guild.id):
+            await interaction.response.send_message(
+                "Aetherion is not available in this server.", ephemeral=True
+            )
+            return
+
+        vc = interaction.guild.voice_client if interaction.guild else None
+        if not vc or not vc.is_connected():
+            await interaction.response.send_message(
+                "I am not in a voice channel.",
+                ephemeral=True,
+            )
+            return
+
+        name = getattr(vc.channel, "name", "voice")
+        await vc.disconnect()
+        await interaction.response.send_message(
+            f"Left **{name}**.",
+            ephemeral=True,
+        )
+      
     # =============================================================================
     # Message Context Menu: "🔊 Leer en voz alta" (Read Aloud)
     # =============================================================================
@@ -899,7 +962,8 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
     intents.guilds = True
     intents.members = True
     intents.message_content = True  # Required for conversational bot
-
+    intents.voice_states = True
+  
     _discord_client = discord.Client(intents=intents)
 
     logger.info("=== GROKSITO DISCORD BOT (STANDALONE) ===")
