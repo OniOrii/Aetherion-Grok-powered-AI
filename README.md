@@ -221,4 +221,4 @@ Keep changes focused and respect the "maximum nativeness" philosophy.
 **Recent addition (2026-06-22):** New `/topkorea` command for Korean PC bang game rankings (TheLog). Implementation notes + design in `docs/superpowers/`. Updated by Grok following superpowers workflow (brainstorm → design spec → plan → execute).
 
 Made with ❤️ by [@lupintic](https://github.com/lupintic).
-Maintained and rebranded by [@OniOrii] as Aetherion.
+Maintained and rebranded by [@OniOrii](https://github.com/OniOrii). as Aetherion.
