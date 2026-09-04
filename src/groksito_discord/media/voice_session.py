@@ -115,7 +115,7 @@ class VoiceSession:
         self._loop = asyncio.get_event_loop()
 
     def on_pcm(self, user_id: int | None, pcm: bytes) -> None:
-        if self._busy or user_id != self.user_id:
+        if self._busy:
             return
         mono24 = _pcm48_stereo_to_24_mono(pcm)
         if not mono24:
