@@ -482,7 +482,7 @@ def register_slash_commands(
             ephemeral=True,
         )
       
-@tree.command(
+    @tree.command(
         name="ping",
         description="Check if Aetherion is awake",
     )
