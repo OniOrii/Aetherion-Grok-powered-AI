@@ -693,20 +693,20 @@ def register_slash_commands(
     # - Ephemeral confirmation after; the voice bubble itself is delivered publicly in channel.
     @tree.command(
         name="audio",
-        description="Genera audio TTS. Inline: [pause][laugh][sigh]. Elige estilo envolvente. Responde a un mensaje.",
+        description="Generate TTS audio. Inline: [pause][laugh][sigh]. Optional wrapping style. Reply to a message.",
     )
     @discord.app_commands.describe(
-        text="Texto a leer. Inline: [pause], [laugh], [sigh], [breath], [chuckle], [long-pause], etc.",
-        voice="Voz de Grok para el audio (eve recomendada).",
-        estilo="Estilo envolvente opcional: whisper, soft, slow, loud, emphasis, singing, etc.",
+        text="Text to speak. Inline: [pause], [laugh], [sigh], [breath], [chuckle], [long-pause], etc.",
+        voice="Grok voice for the audio (eve recommended).",
+        estilo="Optional wrapping style: whisper, soft, slow, loud, emphasis, singing, etc.",
     )
     @discord.app_commands.choices(
         voice=[
-            discord.app_commands.Choice(name="Eve (energética, recomendada)", value="eve"),
-            discord.app_commands.Choice(name="Ara (cálida)", value="ara"),
-            discord.app_commands.Choice(name="Rex (profesional)", value="rex"),
-            discord.app_commands.Choice(name="Sal (equilibrada)", value="sal"),
-            discord.app_commands.Choice(name="Leo (autoritativa)", value="leo"),
+            discord.app_commands.Choice(name="Eve (energetic, recommended)", value="eve"),
+            discord.app_commands.Choice(name="Ara (warm)", value="ara"),
+            discord.app_commands.Choice(name="Rex (professional)", value="rex"),
+            discord.app_commands.Choice(name="Sal (balanced)", value="sal"),
+            discord.app_commands.Choice(name="Leo (authoritative)", value="leo"),
         ],
         estilo=[
             discord.app_commands.Choice(name=label, value=tag)
