@@ -940,14 +940,16 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
 
         try:
             await _discord_client.change_presence(
-    activity=discord.Activity(
-        type=discord.ActivityType.watching,
-        name="Interstellar",
-    )
+                activity=discord.Activity(
+                    type=discord.ActivityType.watching,
+                    name="Interstellar",
+                )
+            )
             await tree.sync()
-            logger.info("Γ£à Slash commands synchronized")
+            logger.info("Slash commands synchronized")
         except Exception as e:
             logger.error(f"Error syncing slash commands: {e}")
+            
 
         _discord_ready.set()
 
