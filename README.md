@@ -1,4 +1,4 @@
-# Groksito Discord Bot
+# Aetherion Discord Bot
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)
 ![Discord](https://img.shields.io/badge/Discord-Bot-7289da.svg)
@@ -7,7 +7,7 @@
 [![Release](https://img.shields.io/github/v/release/lupintic/groksito-discord-bot?include_prereleases&sort=semver)](https://github.com/lupintic/groksito-discord-bot/releases)
 [![GHCR](https://img.shields.io/badge/GHCR-ghcr.io%2Flupintic%2Fgroksito--discord--bot-blue?logo=docker)](https://github.com/lupintic/groksito-discord-bot/pkgs/container/groksito-discord-bot)
 
-**Groksito** is a standalone Discord bot that brings Grok (xAI) natively into Discord servers. It is a fully conversational experience powered directly by Grok models, with vision, tool use, and direct image/video/audio generation.
+**Aetherion** is a standalone Discord bot that brings Grok (xAI) natively into Discord servers. It is a fully conversational experience powered directly by Grok models, with vision, tool use, and direct image/video/audio generation.
 
 The bot is designed around "maximum nativeness": minimal custom memory or context injection, trusting Grok's long context window, native web_search / x_search, vision, and reasoning. It adds just enough Discord integration to be useful in real servers.
 
@@ -75,8 +75,8 @@ The bot is designed around "maximum nativeness": minimal custom memory or contex
 
 ```bash
 # 1. Clone
-git clone https://github.com/lupintic/groksito-discord-bot.git
-cd groksito-discord-bot
+git clone https://github.com/OniOrii/Aetherion-Grok-powered-AI.git
+cd Aetherion-Grok-powered-AI
 
 # 2. Create .env (or use scripts/configure_env.py for guided setup)
 cp .env.example .env
@@ -141,7 +141,7 @@ To run pre-built images with compose, uncomment the `image:` lines in `docker-co
 
 ## 📖 Usage
 
-- Mention `@Groksito` or reply directly to the bot → it activates.
+- Mention `@Aetherion` or reply directly to the bot → it activates.
 - Strong signals (e.g. "qué es eso de arriba", "genera una imagen de...", "lee esto en voz alta") in replies to other users can also wake it (conservative policy).
 - Use `/audio` or right-click message → Apps → "🔊 Leer en voz alta" for TTS.
 - Steam: `/stmchr`, `/steamchart`, `/topgames`.
@@ -221,3 +221,4 @@ Keep changes focused and respect the "maximum nativeness" philosophy.
 **Recent addition (2026-06-22):** New `/topkorea` command for Korean PC bang game rankings (TheLog). Implementation notes + design in `docs/superpowers/`. Updated by Grok following superpowers workflow (brainstorm → design spec → plan → execute).
 
 Made with ❤️ by [@lupintic](https://github.com/lupintic).
+Maintained and rebranded by OniOrii as Aetherion.
