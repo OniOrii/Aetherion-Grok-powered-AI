@@ -77,10 +77,12 @@ class _PcmFifoSource(discord.AudioSource):
         return b"\x00" * self.FRAME
 
 
-class _UserSink:
+class _UserSink(voice_recv.AudioSink if voice_recv else object):
     """Minimal sink compatible with discord-ext-voice-recv."""
 
     def __init__(self, session: "VoiceSession") -> None:
+        if voice_recv:
+            super().__init__()
         self.session = session
 
     def wants_opus(self) -> bool:
