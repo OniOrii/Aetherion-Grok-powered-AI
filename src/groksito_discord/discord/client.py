@@ -620,32 +620,6 @@ def register_slash_commands(
         embed = _build_topkorea_embed(ranking)
         await interaction.followup.send(embed=embed)
 
-    # /korea50 — weekly top 50 from Gamemeca 인기 게임 순위 (main ranking page).
-    # Uses HTML table parsing (no clean JSON feed available, see plan).
-    # English display consistent with /topkorea. Added 2026-06-22.
-    @tree.command(
-        name="korea50",
-        description="Top 50 weekly popularity ranking from Gamemeca (인기 게임 순위)"
-    )
-    async def korea50(interaction: discord.Interaction):
-        if interaction.guild and not is_guild_allowed(interaction.guild.id):
-            await interaction.response.send_message(
-                "Groksito is not available in this server.", ephemeral=True
-            )
-            return
-
-        await interaction.response.defer(thinking=True, ephemeral=False)
-
-        ranking = await gamemeca.get_korea_weekly_ranking(50)
-        if not ranking:
-            await interaction.followup.send(
-                "Could not fetch the Gamemeca ranking right now."
-            )
-            return
-
-        embed = _build_korea50_embed(ranking)
-        await interaction.followup.send(embed=embed)
-
     # /versus — compare two games with live Steam player counts + Twitch viewers.
     @tree.command(
         name="versus",
