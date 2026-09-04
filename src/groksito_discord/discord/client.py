@@ -481,7 +481,19 @@ def register_slash_commands(
             f"**{interaction.user.display_name}**, te quedan **{remaining}/6** requests en este minuto.",
             ephemeral=True,
         )
-
+      
+@tree.command(
+        name="ping",
+        description="Check if Aetherion is awake",
+    )
+    async def ping(interaction: discord.Interaction):
+        if interaction.guild and not is_guild_allowed(interaction.guild.id):
+            await interaction.response.send_message(
+                "Aetherion is not available on this server.", ephemeral=True
+            )
+            return
+        await interaction.response.send_message("Still here.", ephemeral=True)
+      
     # /steamchart ΓÇö optional juegos (comma-separated). Falls back to a sensible default list.
     # Now renders exactly like /stmchr: one rich embed per game (name + current players,
     # game-themed color when known, clickable title to Steam store, and thumbnail image).
