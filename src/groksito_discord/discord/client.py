@@ -90,7 +90,7 @@ from ..media.audio_handler import (
     build_audio_speech_tags_embed,
     prepare_text_from_interaction,
 )
-
+from ..media.voice_session import get_recv_cls, start_session, stop_session
 logger = logging.getLogger("groksito.client")
 
 
@@ -813,13 +813,21 @@ def register_slash_commands(
 
         await interaction.response.defer(ephemeral=True)
         try:
+            recv_cls = get_recv_cls()
             vc = interaction.guild.voice_client if interaction.guild else None
             if vc and vc.is_connected():
-                await vc.move_to(channel)
-            else:
+                await vc.disconnect()
+            if recv_cls is None:
                 await channel.connect()
+                await interaction.followup.send(
+                    f"Joined **{channel.name}**, but listening is not installed.",
+                    ephemeral=True,
+                )
+                return
+            vc = await channel.connect(cls=recv_cls)
+            note = await start_session(interaction.guild, vc, interaction.user.id)
             await interaction.followup.send(
-                f"Joined **{channel.name}**. Talking comes later — use /leave to disconnect.",
+                f"Joined **{channel.name}**. {note}",
                 ephemeral=True,
             )
         except Exception as e:
@@ -827,7 +835,6 @@ def register_slash_commands(
                 f"Could not join voice: {e}",
                 ephemeral=True,
             )
-
     @tree.command(
         name="leave",
         description="Leave the voice channel.",
@@ -848,6 +855,8 @@ def register_slash_commands(
             return
 
         name = getattr(vc.channel, "name", "voice")
+        if interaction.guild:
+            stop_session(interaction.guild.id)
         await vc.disconnect()
         await interaction.response.send_message(
             f"Left **{name}**.",
