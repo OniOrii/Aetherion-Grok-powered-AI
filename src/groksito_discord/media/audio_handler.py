@@ -1,4 +1,4 @@
-"""
+9"""
 Centralized, modern audio / TTS (Text-to-Speech) handler for Groksito.
 
 This module is the single source of truth for generating spoken audio from text.
@@ -700,19 +700,19 @@ XAI_TTS_DOCS_URL = "https://docs.x.ai/developers/model-capabilities/audio/text-t
 
 # xAI wrapping speech tags exposed as the optional /audio `estilo` slash parameter.
 AUDIO_WRAPPING_TAGS: tuple[tuple[str, str], ...] = (
-    ("Susurro (whisper)", "whisper"),
-    ("Suave (soft)", "soft"),
-    ("Alto (loud)", "loud"),
-    ("Más intensidad", "build-intensity"),
-    ("Menos intensidad", "decrease-intensity"),
-    ("Tono alto", "higher-pitch"),
-    ("Tono bajo", "lower-pitch"),
-    ("Lento (slow)", "slow"),
-    ("Rápido (fast)", "fast"),
-    ("Cantar (singing)", "singing"),
-    ("Entonado (sing-song)", "sing-song"),
-    ("Risa al hablar", "laugh-speak"),
-    ("Énfasis", "emphasis"),
+    ("Whisper", "whisper"),
+("Soft", "soft"),
+("Loud", "loud"),
+("More intensity", "build-intensity"),
+("Less intensity", "decrease-intensity"),
+("Higher pitch", "higher-pitch"),
+("Lower pitch", "lower-pitch"),
+("Slow", "slow"),
+("Fast", "fast"),
+("Singing", "singing"),
+("Sing-song", "sing-song"),
+("Laugh while speaking", "laugh-speak"),
+("Emphasis", "emphasis"),
 )
 
 
