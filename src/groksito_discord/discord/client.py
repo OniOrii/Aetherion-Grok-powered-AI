@@ -1167,9 +1167,11 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
             if message.guild and not is_guild_allowed(message.guild.id):
                 logger.info(f"{cid_p}[SECURITY] Ignoring message from unauthorized guild {message.guild.id}")
                 return
-        from ..media.voice_reply import maybe_handle_voice_note
+              
+            from ..media.voice_reply import maybe_handle_voice_note
             if await maybe_handle_voice_note(message):
                 return
+              
             # Bootstrap live emotes for *this* server so top-used list and normalize are always current.
             try:
                 from ..utils import emoji_registry
