@@ -1135,7 +1135,17 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
             logger.info(f"[Emoji] on_guild_join: registered live emotes for guild {getattr(guild, 'id', '?')}")
         except Exception as emoji_join_err:
             logger.debug(f"[Emoji] on_guild_join ensure skipped (non-fatal): {emoji_join_err}")
+          
+    @_discord_client.event
+    async def on_member_join(member):
+        from .welcome import on_member_join as _welcome_join
+        await _welcome_join(member)
 
+    @_discord_client.event
+    async def on_member_update(before, after):
+        from .welcome import on_member_update as _welcome_update
+        await _welcome_update(before, after)
+      
     # on_message - thin orchestrator (most logic lives in conversation.py)
     #
     # Invariants maintained here:
