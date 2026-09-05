@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import logging
-from urllib.parse import quote
 
 import discord
 import httpx
@@ -55,36 +54,117 @@ def _fill(template: str, member: discord.Member) -> str:
         .replace("{server}", member.guild.name)
     )
 
+
+def _avatar_url(member: discord.Member) -> str:
+    return str(member.display_avatar.replace(size=512).url)
+
+
+def _imagine_prompt(member: discord.Member, scene: str | None = None) -> str:
+    scene_bit = (scene or "").strip()
+    extra = f" Scene cues from this member's profile picture: {scene_bit}." if scene_bit else ""
+    return (
+        "Wide cinematic 16:9 welcome banner environment only. "
+        "Expand the attached profile picture into a brand-new matching background: "
+        "same colors, lighting, objects, and mood, but as a room or landscape, "
+        "not a close-up portrait. Keep the center relatively uncluttered so a "
+        "circular avatar can sit on top. No readable text, no watermark, no UI, "
+        "do not copy the face into the background. Unique composition for this "
+        f"user ({member.id}).{extra}"
+    )
+
+
+async def _describe_avatar(client: httpx.AsyncClient, headers: dict, avatar_url: str) -> str | None:
+    """Ask Grok what the PFP looks like so the banner prompt is unique per user."""
+    model = getattr(settings, "model", None) or "grok-4-fast-non-reasoning"
+    try:
+        r = await client.post(
+            "https://api.x.ai/v1/chat/completions",
+            headers=headers,
+            json={
+                "model": model,
+                "temperature": 0.4,
+                "max_tokens": 180,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": avatar_url, "detail": "low"},
+                            },
+                            {
+                                "type": "text",
+                                "text": (
+                                    "Describe this Discord profile picture in one short sentence "
+                                    "for an image prompt: subject, colors, objects, setting, mood. "
+                                    "No names. No quotes."
+                                ),
+                            },
+                        ],
+                    }
+                ],
+            },
+        )
+        if r.status_code >= 400:
+            logger.warning("welcome vision failed: %s %s", r.status_code, r.text[:240])
+            return None
+        choices = r.json().get("choices") or []
+        if not choices:
+            return None
+        text = ((choices[0].get("message") or {}).get("content") or "").strip()
+        return text[:280] or None
+    except Exception:
+        logger.exception("welcome vision error")
+        return None
+
+
+async def _post_image(
+    client: httpx.AsyncClient,
+    headers: dict,
+    path: str,
+    payload: dict,
+) -> str | None:
+    r = await client.post(f"https://api.x.ai/v1{path}", headers=headers, json=payload)
+    if r.status_code >= 400:
+        logger.warning("welcome %s failed: %s %s", path, r.status_code, r.text[:240])
+        return None
+    rows = (r.json().get("data") or [])
+    if rows and isinstance(rows[0], dict):
+        return rows[0].get("url")
+    return None
+
+
 async def _imagine_background(member: discord.Member) -> str | None:
     key = settings.xai_api_key
     if not key:
         logger.warning("welcome imagine: no xai_api_key")
         return None
-    prompt = (
-        "Wide cinematic 16:9 welcome banner. Brand new scene, not a portrait. "
-        "Use a soft purple, lilac, and gray color palette like a pale cat photo. "
-        "Moody lighting, fabric and shadow atmosphere. No readable text, "
-        "no watermark, no UI, no copied face."
-    )
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    avatar_url = _avatar_url(member)
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            r = await client.post(
-                "https://api.x.ai/v1/images/generations",
-                headers=headers,
-                json={
-                    "model": "grok-imagine-image-quality",
-                    "prompt": prompt,
-                    "response_format": "url",
-                    "aspect_ratio": "16:9",
-                },
-            )
-            if r.status_code >= 400:
-                logger.warning("welcome generate failed: %s %s", r.status_code, r.text[:240])
-                return None
-            rows = (r.json().get("data") or [])
-            if rows and isinstance(rows[0], dict):
-                return rows[0].get("url")
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            scene = await _describe_avatar(client, headers, avatar_url)
+            prompt = _imagine_prompt(member, scene)
+            payload = {
+                "model": "grok-imagine-image-quality",
+                "prompt": prompt,
+                "response_format": "url",
+                "aspect_ratio": "16:9",
+                "image": {"url": avatar_url, "type": "image_url"},
+            }
+            url = await _post_image(client, headers, "/images/edits", payload)
+            if url:
+                return url
+            url = await _post_image(client, headers, "/images/generations", payload)
+            if url:
+                return url
+            gen_only = {
+                "model": "grok-imagine-image-quality",
+                "prompt": prompt,
+                "response_format": "url",
+                "aspect_ratio": "16:9",
+            }
+            return await _post_image(client, headers, "/images/generations", gen_only)
     except Exception:
         logger.exception("welcome imagine error")
     return None
@@ -98,8 +178,7 @@ async def _banner(member: discord.Member) -> discord.File | None:
         s = unicodedata.normalize("NFKC", s or "")
         return "".join(ch if ord(ch) < 128 else " " for ch in s).strip()
 
-    count = member.guild.member_count or 0
-    avatar_url = member.display_avatar.replace(size=256).url
+    avatar_url = _avatar_url(member)
     bg_url = await _imagine_background(member)
     if not bg_url:
         return None
@@ -114,7 +193,6 @@ async def _banner(member: discord.Member) -> discord.File | None:
         size = 280
         ring = 10
         av = Image.open(io.BytesIO(av_r.content)).convert("RGBA").resize((size, size))
-        # white ring
         ring_img = Image.new("RGBA", (size + ring * 2, size + ring * 2), (0, 0, 0, 0))
         ImageDraw.Draw(ring_img).ellipse(
             (0, 0, size + ring * 2 - 1, size + ring * 2 - 1),
@@ -138,7 +216,7 @@ async def _banner(member: discord.Member) -> discord.File | None:
             ("Welcome", title_font, 348),
             (plain(member.display_name)[:24], name_font, 420),
         ]
-        
+
         for text, font, y in lines:
             draw.text(
                 (600, y),
