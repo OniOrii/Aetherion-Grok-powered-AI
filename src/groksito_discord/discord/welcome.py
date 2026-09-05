@@ -129,20 +129,16 @@ async def _banner(member: discord.Member) -> discord.File | None:
         draw = ImageDraw.Draw(bg)
         try:
             title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 64)
-            small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30)
+            name_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 44)
         except Exception:
             title_font = ImageFont.load_default()
-            small_font = title_font
+            name_font = title_font
 
         lines = [
-            ("Welcome", title_font, 340),
-            (plain(member.display_name)[:24], small_font, 410),
-            (
-                f"to {plain(member.guild.name)}  ·  {_ordinal(count)} member",
-                small_font,
-                452,
-            ),
+            ("Welcome", title_font, 348),
+            (plain(member.display_name)[:24], name_font, 420),
         ]
+        
         for text, font, y in lines:
             draw.text(
                 (600, y),
