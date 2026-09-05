@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import io
+import json
 import logging
+from pathlib import Path
 
 import discord
 import httpx
@@ -18,6 +20,49 @@ DEFAULT_BG = (
 )
 
 
+def _store_path() -> Path:
+    base = Path(getattr(settings, "data_dir", Path("./data")))
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "welcome_channels.json"
+
+
+def _load_store() -> dict:
+    path = _store_path()
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        logger.exception("welcome store read failed")
+        return {}
+
+
+def _save_store(data: dict) -> None:
+    path = _store_path()
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def get_guild_welcome_channel_id(guild_id: int) -> int:
+    store = _load_store()
+    raw = store.get(str(guild_id)) or store.get(guild_id)
+    try:
+        return int(raw or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def set_guild_welcome_channel(guild_id: int, channel_id: int) -> None:
+    store = _load_store()
+    store[str(guild_id)] = int(channel_id)
+    _save_store(store)
+    try:
+        settings.welcome_channel_id = int(channel_id)
+        settings.welcome_enabled = True
+    except Exception:
+        pass
+
+
 def _ordinal(n: int) -> str:
     if 10 <= (n % 100) <= 20:
         suf = "th"
@@ -27,7 +72,9 @@ def _ordinal(n: int) -> str:
 
 
 def _channel(guild: discord.Guild):
-    cid = int(getattr(settings, "welcome_channel_id", 0) or 0)
+    cid = get_guild_welcome_channel_id(guild.id)
+    if not cid:
+        cid = int(getattr(settings, "welcome_channel_id", 0) or 0)
     if cid:
         ch = guild.get_channel(cid)
         if ch is not None:
@@ -74,7 +121,6 @@ def _imagine_prompt(member: discord.Member, scene: str | None = None) -> str:
 
 
 async def _describe_avatar(client: httpx.AsyncClient, headers: dict, avatar_url: str) -> str | None:
-    """Ask Grok what the PFP looks like so the banner prompt is unique per user."""
     model = getattr(settings, "model", None) or "grok-4-fast-non-reasoning"
     try:
         r = await client.post(
@@ -237,7 +283,7 @@ async def _banner(member: discord.Member) -> discord.File | None:
 
 
 async def send_welcome(member: discord.Member) -> None:
-    if not getattr(settings, "welcome_enabled", False):
+    if not getattr(settings, "welcome_enabled", False) and not get_guild_welcome_channel_id(member.guild.id):
         return
     if member.bot:
         return
