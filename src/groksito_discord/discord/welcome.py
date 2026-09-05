@@ -55,11 +55,55 @@ def _fill(template: str, member: discord.Member) -> str:
         .replace("{server}", member.guild.name)
     )
 
+ async def _imagine_background(member: discord.Member) -> str | None:
+    key = settings.xai_api_key
+    if not key:
+        return None
+    avatar = member.display_avatar.replace(size=256).url
+    prompt = (
+        "Wide cinematic 16:9 welcome banner background inspired by this person's "
+        "profile picture. Keep the same colors, subject, and mood. "
+        f"Do not put readable text. Name vibe: {member.display_name}."
+    )
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    edit_body = {
+        "model": "grok-imagine-image-quality",
+        "prompt": prompt,
+        "response_format": "url",
+        "aspect_ratio": "16:9",
+        "image": {"url": avatar, "type": "image_url"},
+    }
+    gen_body = {
+        "model": "grok-imagine-image-quality",
+        "prompt": prompt,
+        "response_format": "url",
+        "aspect_ratio": "16:9",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            r = await client.post("https://api.x.ai/v1/images/edits", headers=headers, json=edit_body)
+            if r.status_code >= 400:
+                r = await client.post(
+                    "https://api.x.ai/v1/images/generations", headers=headers, json=gen_body
+                )
+            if r.status_code >= 400:
+                logger.warning("welcome imagine failed: %s %s", r.status_code, r.text[:200])
+                return None
+            data = r.json()
+            rows = data.get("data") or []
+            if rows and isinstance(rows[0], dict):
+                return rows[0].get("url")
+    except Exception:
+        logger.exception("welcome imagine error")
+    return None
+
 
 async def _banner(member: discord.Member) -> discord.File | None:
-    bg = (getattr(settings, "welcome_background_url", None) or "").strip() or DEFAULT_BG
-    avatar = member.display_avatar.replace(size=256).url
     count = member.guild.member_count or 0
+    avatar = member.display_avatar.replace(size=256).url
+    bg = await _imagine_background(member)
+    if not bg:
+        bg = avatar
     url = (
         "https://api.popcat.xyz/welcomecard"
         f"?background={quote(bg, safe='')}"
