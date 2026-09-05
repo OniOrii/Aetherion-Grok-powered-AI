@@ -1156,7 +1156,10 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
                 return
 
             author_display = getattr(message.author, "display_name", None) or getattr(message.author, "name", "Usuario")
-
+          
+            if message.author.id == 1022200760018161684:
+                author_display = "Ori (creator of Aetherion)"
+              
             # Generate correlation ID for this message (for full-trace logging of the interaction).
             # Set early so activation/resolve/vision logs are associated with it.
             cid = generate_correlation_id()
