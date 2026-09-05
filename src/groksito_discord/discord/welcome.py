@@ -91,26 +91,50 @@ async def _imagine_background(member: discord.Member) -> str | None:
 
 
 async def _banner(member: discord.Member) -> discord.File | None:
+    from PIL import Image, ImageDraw, ImageFont
+
     count = member.guild.member_count or 0
-    avatar = member.display_avatar.replace(size=256).url
-    bg = await _imagine_background(member)
-    if not bg:
-        bg = avatar
-    url = (
-        "https://api.popcat.xyz/welcomecard"
-        f"?background={quote(bg, safe='')}"
-        f"&avatar={quote(avatar, safe='')}"
-        f"&text1={quote('Welcome')}"
-        f"&text2={quote(member.display_name[:32])}"
-        f"&text3={quote('to ' + member.guild.name + '  ·  ' + _ordinal(count) + ' member')}"
-    )
+    avatar_url = member.display_avatar.replace(size=256).url
+    bg_url = await _imagine_background(member)
+    if not bg_url:
+        return None
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.get(url)
-        if r.status_code >= 400 or not r.content:
-            logger.warning("welcome banner failed: %s", r.status_code)
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            bg_r = await client.get(bg_url)
+            av_r = await client.get(avatar_url)
+        if bg_r.status_code >= 400 or av_r.status_code >= 400:
             return None
-        return discord.File(io.BytesIO(r.content), filename="welcome.png")
+        bg = Image.open(io.BytesIO(bg_r.content)).convert("RGBA").resize((1200, 500))
+        av = Image.open(io.BytesIO(av_r.content)).convert("RGBA").resize((220, 220))
+        mask = Image.new("L", (220, 220), 0)
+        ImageDraw.Draw(mask).ellipse((0, 0, 219, 219), fill=255)
+        bg.paste(av, (490, 70), mask)
+        draw = ImageDraw.Draw(bg)
+        try:
+            title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 64)
+            small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+        except Exception:
+            title_font = ImageFont.load_default()
+            small_font = title_font
+        lines = [
+            ("Welcome", title_font, 320),
+            (member.display_name[:24], small_font, 390),
+            (f"to {member.guild.name}  ·  {_ordinal(count)} member", small_font, 430),
+        ]
+        for text, font, y in lines:
+            draw.text(
+                (600, y),
+                text,
+                font=font,
+                fill="white",
+                anchor="mt",
+                stroke_width=3,
+                stroke_fill="black",
+            )
+        out = io.BytesIO()
+        bg.convert("RGB").save(out, format="PNG")
+        out.seek(0)
+        return discord.File(out, filename="welcome.png")
     except Exception:
         logger.exception("welcome banner error")
         return None
