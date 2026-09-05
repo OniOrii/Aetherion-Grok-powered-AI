@@ -528,7 +528,7 @@ def register_slash_commands(
             ephemeral=True,
         )
       
-      @tree.command(
+    @tree.command(
         name="datechannel",
         description="Set the voice channel that shows today's date (Manage Server required)",
     )
