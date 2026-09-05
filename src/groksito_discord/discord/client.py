@@ -494,7 +494,7 @@ def register_slash_commands(
             return
         await interaction.response.send_message("Still here.", ephemeral=True)
       
-      @tree.command(
+    @tree.command(
         name="welcome",
         description="Set the channel for welcome banners (Manage Server required)",
     )
