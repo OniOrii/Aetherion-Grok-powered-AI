@@ -152,6 +152,7 @@ class GroksitoSettings(BaseSettings):
         default="Welcome {{User.Mention}} to **{{Guild.Name}}**.",
         description="Welcome text.",
     )
+    welcome_background_url: str | None = Field(default=None, description="Image URL for the welcome banner background.")
     
     # -------------------------------------------------------------------------
     # Context & Conversation (tuned for maximum Grok nativeness)
