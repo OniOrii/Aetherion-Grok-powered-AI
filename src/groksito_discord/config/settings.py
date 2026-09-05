@@ -144,7 +144,15 @@ class GroksitoSettings(BaseSettings):
         default="es",
         description="Default language code (BCP-47) for TTS (e.g. 'es', 'es-ES', 'es-MX', 'en', 'auto'). Language is REQUIRED by the xAI TTS API. 'es' works well for Spanish; use 'auto' for mixed or detection.",
     )
-
+    
+    welcome_enabled: bool = Field(default=False, description="Post when a member joins.")
+    welcome_channel_id: int = Field(default=0, description="Welcome channel ID. 0 = use name.")
+    welcome_channel_name: str = Field(default="welcome", description="Channel name if no ID.")
+    welcome_message: str = Field(
+        default="Welcome {{User.Mention}} to **{{Guild.Name}}**.",
+        description="Welcome text.",
+    )
+    
     # -------------------------------------------------------------------------
     # Context & Conversation (tuned for maximum Grok nativeness)
     # -------------------------------------------------------------------------
