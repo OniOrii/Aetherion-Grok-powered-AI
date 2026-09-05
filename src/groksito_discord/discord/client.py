@@ -494,6 +494,40 @@ def register_slash_commands(
             return
         await interaction.response.send_message("Still here.", ephemeral=True)
       
+      @tree.command(
+        name="welcome",
+        description="Set the channel for welcome banners (Manage Server required)",
+    )
+    @discord.app_commands.describe(channel="Channel where new-member welcomes should post")
+    async def welcome_slash(
+        interaction: discord.Interaction,
+        channel: discord.TextChannel,
+    ):
+        if interaction.guild and not is_guild_allowed(interaction.guild.id):
+            await interaction.response.send_message(
+                "Aetherion is not available on this server.", ephemeral=True
+            )
+            return
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Use this command in a server.", ephemeral=True
+            )
+            return
+        member = interaction.user
+        perms = getattr(member, "guild_permissions", None)
+        if not perms or not (perms.manage_guild or perms.administrator):
+            await interaction.response.send_message(
+                "You need **Manage Server** to set the welcome channel.",
+                ephemeral=True,
+            )
+            return
+        from .welcome import set_guild_welcome_channel
+        set_guild_welcome_channel(interaction.guild.id, channel.id)
+        await interaction.response.send_message(
+            f"Welcome banners will now post in {channel.mention}.",
+            ephemeral=True,
+        )
+      
     # /steamchart ΓÇö optional juegos (comma-separated). Falls back to a sensible default list.
     # Now renders exactly like /stmchr: one rich embed per game (name + current players,
     # game-themed color when known, clickable title to Steam store, and thumbnail image).
