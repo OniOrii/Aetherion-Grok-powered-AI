@@ -91,7 +91,12 @@ async def _imagine_background(member: discord.Member) -> str | None:
 
 
 async def _banner(member: discord.Member) -> discord.File | None:
+    import unicodedata
     from PIL import Image, ImageDraw, ImageFont
+
+    def plain(s: str) -> str:
+        s = unicodedata.normalize("NFKC", s or "")
+        return "".join(ch if ord(ch) < 128 else " " for ch in s).strip()
 
     count = member.guild.member_count or 0
     avatar_url = member.display_avatar.replace(size=256).url
@@ -104,22 +109,39 @@ async def _banner(member: discord.Member) -> discord.File | None:
             av_r = await client.get(avatar_url)
         if bg_r.status_code >= 400 or av_r.status_code >= 400:
             return None
+
         bg = Image.open(io.BytesIO(bg_r.content)).convert("RGBA").resize((1200, 500))
-        av = Image.open(io.BytesIO(av_r.content)).convert("RGBA").resize((220, 220))
-        mask = Image.new("L", (220, 220), 0)
-        ImageDraw.Draw(mask).ellipse((0, 0, 219, 219), fill=255)
-        bg.paste(av, (490, 70), mask)
+        size = 280
+        ring = 10
+        av = Image.open(io.BytesIO(av_r.content)).convert("RGBA").resize((size, size))
+        # white ring
+        ring_img = Image.new("RGBA", (size + ring * 2, size + ring * 2), (0, 0, 0, 0))
+        ImageDraw.Draw(ring_img).ellipse(
+            (0, 0, size + ring * 2 - 1, size + ring * 2 - 1),
+            fill="white",
+        )
+        mask = Image.new("L", (size, size), 0)
+        ImageDraw.Draw(mask).ellipse((0, 0, size - 1, size - 1), fill=255)
+        ring_img.paste(av, (ring, ring), mask)
+        x = (1200 - (size + ring * 2)) // 2
+        bg.paste(ring_img, (x, 40), ring_img)
+
         draw = ImageDraw.Draw(bg)
         try:
             title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 64)
-            small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+            small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30)
         except Exception:
             title_font = ImageFont.load_default()
             small_font = title_font
+
         lines = [
-            ("Welcome", title_font, 320),
-            (member.display_name[:24], small_font, 390),
-            (f"to {member.guild.name}  ·  {_ordinal(count)} member", small_font, 430),
+            ("Welcome", title_font, 340),
+            (plain(member.display_name)[:24], small_font, 410),
+            (
+                f"to {plain(member.guild.name)}  ·  {_ordinal(count)} member",
+                small_font,
+                452,
+            ),
         ]
         for text, font, y in lines:
             draw.text(
