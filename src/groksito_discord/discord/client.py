@@ -1134,7 +1134,13 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
             logger.info("[Gamemeca] Background weekly ranking JSON updater launched (daily check)")
         except Exception as gm_err:
             logger.debug(f"[Gamemeca] Could not start ranking updater (non-fatal): {gm_err}")
-
+        try:
+            from .date_dock import date_dock_loop
+            asyncio.create_task(date_dock_loop(_discord_client))
+            logger.info("[DateDock] Daily ET midnight date-channel updater launched")
+        except Exception as date_err:
+            logger.debug(f"[DateDock] Could not start date dock loop (non-fatal): {date_err}")
+          
         # Write initial heartbeat + supporting snapshots so the web dashboard has good data immediately.
         try:
             from ..core.health import (
