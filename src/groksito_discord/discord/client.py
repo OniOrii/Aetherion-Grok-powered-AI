@@ -528,6 +528,55 @@ def register_slash_commands(
             ephemeral=True,
         )
       
+      @tree.command(
+        name="datechannel",
+        description="Set the voice channel that shows today's date (Manage Server required)",
+    )
+    @discord.app_commands.describe(
+        channel="Voice channel to rename each night at midnight Eastern"
+    )
+    async def datechannel_slash(
+        interaction: discord.Interaction,
+        channel: discord.VoiceChannel,
+    ):
+        if interaction.guild and not is_guild_allowed(interaction.guild.id):
+            await interaction.response.send_message(
+                "Aetherion is not available on this server.", ephemeral=True
+            )
+            return
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Use this command in a server.", ephemeral=True
+            )
+            return
+        member = interaction.user
+        perms = getattr(member, "guild_permissions", None)
+        if not perms or not (perms.manage_guild or perms.administrator):
+            await interaction.response.send_message(
+                "You need **Manage Server** to set the date channel.",
+                ephemeral=True,
+            )
+            return
+        from .date_dock import set_guild_date_channel, format_date_channel_name
+        set_guild_date_channel(interaction.guild.id, channel.id)
+        preview = format_date_channel_name()
+        await interaction.response.send_message(
+            f"Date dock set to {channel.mention}. It will show `{preview}` "
+            f"and update at 12:00 AM Eastern.",
+            ephemeral=True,
+        )
+        try:
+            if channel.name != preview:
+                await channel.edit(name=preview, reason="Aetherion date dock setup")
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "Saved, but I could not rename it. Give me **Manage Channels** "
+                "on that voice channel.",
+                ephemeral=True,
+            )
+        except Exception:
+            logger.exception("date dock immediate rename failed")
+          
     # /steamchart ΓÇö optional juegos (comma-separated). Falls back to a sensible default list.
     # Now renders exactly like /stmchr: one rich embed per game (name + current players,
     # game-themed color when known, clickable title to Steam store, and thumbnail image).
