@@ -58,39 +58,31 @@ def _fill(template: str, member: discord.Member) -> str:
 async def _imagine_background(member: discord.Member) -> str | None:
     key = settings.xai_api_key
     if not key:
+        logger.warning("welcome imagine: no xai_api_key")
         return None
-    avatar = member.display_avatar.replace(size=256).url
     prompt = (
-        "Wide cinematic 16:9 welcome banner background inspired by this person's "
-        "profile picture. Keep the same colors, subject, and mood. "
-        f"Do not put readable text. Name vibe: {member.display_name}."
+        "Wide cinematic 16:9 welcome banner. Brand new scene, not a portrait. "
+        "Use a soft purple, lilac, and gray color palette like a pale cat photo. "
+        "Moody lighting, fabric and shadow atmosphere. No readable text, "
+        "no watermark, no UI, no copied face."
     )
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-    edit_body = {
-        "model": "grok-imagine-image-quality",
-        "prompt": prompt,
-        "response_format": "url",
-        "aspect_ratio": "16:9",
-        "image": {"url": avatar, "type": "image_url"},
-    }
-    gen_body = {
-        "model": "grok-imagine-image-quality",
-        "prompt": prompt,
-        "response_format": "url",
-        "aspect_ratio": "16:9",
-    }
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            r = await client.post("https://api.x.ai/v1/images/edits", headers=headers, json=edit_body)
+            r = await client.post(
+                "https://api.x.ai/v1/images/generations",
+                headers=headers,
+                json={
+                    "model": "grok-imagine-image-quality",
+                    "prompt": prompt,
+                    "response_format": "url",
+                    "aspect_ratio": "16:9",
+                },
+            )
             if r.status_code >= 400:
-                r = await client.post(
-                    "https://api.x.ai/v1/images/generations", headers=headers, json=gen_body
-                )
-            if r.status_code >= 400:
-                logger.warning("welcome imagine failed: %s %s", r.status_code, r.text[:200])
+                logger.warning("welcome generate failed: %s %s", r.status_code, r.text[:240])
                 return None
-            data = r.json()
-            rows = data.get("data") or []
+            rows = (r.json().get("data") or [])
             if rows and isinstance(rows[0], dict):
                 return rows[0].get("url")
     except Exception:
