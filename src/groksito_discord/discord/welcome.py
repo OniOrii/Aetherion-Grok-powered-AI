@@ -98,7 +98,7 @@ def _fill(template: str, member: discord.Member) -> str:
     return None
 
 
-async def _banner(member: discord.Member) -> discord.File | None:
+ async def _banner(member: discord.Member) -> discord.File | None:
     count = member.guild.member_count or 0
     avatar = member.display_avatar.replace(size=256).url
     bg = await _imagine_background(member)
