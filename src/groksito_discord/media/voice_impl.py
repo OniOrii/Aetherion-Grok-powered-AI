@@ -14,7 +14,7 @@ MIN_SPEECH_S = 0.25
 MAX_SPEECH_S = 8.0
 RMS_THRESHOLD = 120
 DEFAULT_VOICE = 'ara'
-_WAKE_RE = re.compile(r'\b(aetherion|aetherian|atherion|atheerion|etherion|ethereon|aetherium|aethereon|aetheron|atheron|atheon|atheorian|atheorion|theorion|athena|thea|iryan)\b|a\s+theory(?:\s+on)?', re.IGNORECASE)
+_WAKE_RE = re.compile(r'\b(aetherion|aetherian|atherion|atherian|atheerion|etherion|ethereon|aetherium|aethereon|aetheron|atheron|atheon|atheorian|atheorion|theorion|athena|thea|iryan)\b|a\s+theory(?:\s+on)?', re.IGNORECASE)
 _CITE_RE = re.compile(r'https?://\S+|www\.\S+|\[\s*\d+\s*\]\s*\([^)]*\)|\[\s*\d+\s*\]', re.IGNORECASE)
 
 def _wake_and_prompt(text: str):
