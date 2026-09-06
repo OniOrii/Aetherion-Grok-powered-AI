@@ -35,10 +35,10 @@ logger = logging.getLogger("groksito.voice_session")
 
 DISCORD_RATE = 48000
 STT_RATE = 16000
-SILENCE_S = 0.85
-MIN_SPEECH_S = 0.4
-MAX_SPEECH_S = 18.0
-RMS_THRESHOLD = 180
+SILENCE_S = 0.35
+MIN_SPEECH_S = 0.25
+MAX_SPEECH_S = 8.0
+RMS_THRESHOLD = 120
 
 try:
     import nacl.secret
@@ -210,12 +210,14 @@ class DaveVoiceReceiver:
                 self._flush()
 
     def _flush(self) -> None:
+        if self._busy:
+            return
         held = bytes(self._buf)
+        dur = (len(held) / 2) / STT_RATE
+        if dur < MIN_SPEECH_S:
+            return
         self._buf.clear()
         self._speeching = False
-        dur = (len(held) / 2) / STT_RATE
-        if dur < MIN_SPEECH_S or self._busy:
-            return
         if self.on_utterance is None:
             return
         self._busy = True
