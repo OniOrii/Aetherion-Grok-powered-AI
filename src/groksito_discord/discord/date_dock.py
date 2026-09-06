@@ -17,9 +17,6 @@ logger = logging.getLogger("groksito.date_dock")
 
 TZ = ZoneInfo("America/New_York")
 NAME_PREFIX = "\U0001F4C5\uFE0F |"
-# Safety net: if a long midnight sleep is interrupted (restart, host freeze),
-# re-check at least this often so a stale date never sits all day.
-CHECK_INTERVAL_SECONDS = 10 * 60
 
 
 def _store_path() -> Path:
@@ -92,8 +89,8 @@ def seconds_until_next_midnight_et() -> float:
 
 
 def seconds_until_next_tick() -> float:
-    """Sleep until 12:00:05 AM ET, or 10 minutes, whichever comes first."""
-    return min(float(CHECK_INTERVAL_SECONDS), seconds_until_next_midnight_et())
+    """Sleep until 12:00:05 AM Eastern."""
+    return seconds_until_next_midnight_et()
 
 
 def _looks_like_date_channel(channel: discord.abc.GuildChannel) -> bool:
@@ -174,10 +171,9 @@ async def date_dock_loop(client: discord.Client) -> None:
         wait = seconds_until_next_tick()
         now = datetime.now(TZ)
         logger.info(
-            "date dock next check in %.0fs (now %s ET, target name %s)",
+            "date dock sleeping until midnight ET (%.0fs, now %s ET)",
             wait,
             now.strftime("%Y-%m-%d %H:%M:%S"),
-            format_date_channel_name(now),
         )
         await asyncio.sleep(wait)
         await update_all_guilds(client)
