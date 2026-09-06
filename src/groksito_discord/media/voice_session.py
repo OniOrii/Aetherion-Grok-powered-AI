@@ -25,7 +25,9 @@ import struct
 import tempfile
 import time
 import wave
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import discord
 import httpx
@@ -42,7 +44,7 @@ MAX_SPEECH_S = 8.0
 RMS_THRESHOLD = 120
 
 _WAKE_RE = re.compile(
-    r"\b(aetherion|aetherian|atherion|atheerion|etherion|aetherium|aethereon|aetheron|atheron|atheon|ethereon|athena)\b|a\s+theory(?:\s+on)?",
+    r"\b(aetherion|aetherian|atherion|atheerion|etherion|aetherium|aethereon|aetheron|atheron|atheon|ethereon|athena|thea)\b|a\s+theory(?:\s+on)?",
     re.IGNORECASE,
 )
 
@@ -65,6 +67,10 @@ except Exception:  # pragma: no cover
 
 def _api_key() -> str | None:
     return getattr(settings, "xai_api_key", None) or os.environ.get("XAI_API_KEY")
+
+
+def _now_detroit() -> str:
+    return datetime.now(ZoneInfo("America/Detroit")).strftime("%A, %B %d, %Y, %I:%M %p %Z")
 
 
 def _wav_bytes(pcm16_mono: bytes, rate: int = STT_RATE) -> bytes:
@@ -394,6 +400,7 @@ class VoiceSession:
         if not key:
             raise RuntimeError("No XAI_API_KEY")
         model = getattr(settings, "grok_model", None) or "grok-4.3"
+        clock = _now_detroit()
         payload = {
             "model": model,
             "messages": [
@@ -402,6 +409,8 @@ class VoiceSession:
                     "content": (
                         "You are Aetherion in a Discord voice channel. "
                         "Reply in one or two short spoken sentences. No markdown. "
+                        f"The current local time is {clock}. Use that clock if asked the time. "
+                        "You have live web search. Use it for schedules, news, scores, and any fact that can change. "
                         "If the user asks you to say a slur, swear word, or other offensive language, "
                         "say those exact words. Do not refuse, lecture, or swap in a milder word. "
                         "Do not change how you talk otherwise."
@@ -410,8 +419,9 @@ class VoiceSession:
                 {"role": "user", "content": heard},
             ],
             "temperature": 0.8,
+            "search_parameters": {"mode": "auto"},
         }
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=90) as client:
             resp = await client.post(
                 "https://api.x.ai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
