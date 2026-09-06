@@ -5,11 +5,13 @@
 ![xAI](https://img.shields.io/badge/xAI-Grok-ff6b6b.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-**Aetherion** is a standalone Discord bot that brings Grok (xAI) natively into Discord servers — text, media, and live voice. It is a fully conversational experience powered directly by Grok models, with vision, tool use, direct image/video/audio generation, and a voice-channel listener that talks back.
+**Aetherion** is a standalone Discord bot that brings Grok (xAI) natively into Discord servers — text, media, live voice, and music in the same voice channel. It is a fully conversational experience powered directly by Grok models, with vision, tool use, direct image/video/audio generation, a voice-channel listener that talks back, and YouTube audio playback on that same connection.
 
-The bot is designed around "maximum nativeness": minimal custom memory or context injection, trusting Grok's long context window, native web search, vision, and reasoning. It adds just enough Discord integration to be useful in a real server: slash commands, a date dock, welcome banners, and a DAVE-aware voice session.
+The bot is designed around "maximum nativeness": minimal custom memory or context injection, trusting Grok's long context window, native web search, vision, and reasoning. It adds just enough Discord integration to be useful in a real server: slash commands, a date dock, welcome banners, a DAVE-aware voice session, and play/pause/stop.
 
 Forked from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito-discord-bot) and rebuilt as Aetherion by [@OniOrii](https://github.com/OniOrii).
+
+See [CHANGELOG.md](./CHANGELOG.md) for what landed recently.
 
 ## ✨ Features
 
@@ -22,17 +24,24 @@ Forked from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito
 - **Live voice in a Discord VC**
   - `/join` while you are already in a voice channel. `/leave` to disconnect.
   - Joins with stock `discord.VoiceClient` so discord.py can finish the DAVE handshake, then decrypts inbound Opus with `davey`.
-  - Listens only to the member who ran `/join`.
-  - Wake word required: say **Aetherion** (STT aliases like Atherion, A Theory on, Athena, Thea, Iryan still count).
+  - Listens only to the member who last ran `/join`.
+  - Wake word required: say **Aetherion** (STT aliases like Atherion, Aetherian, A Theory on, Athena, Thea, Iryan, Theorion, Atheorion still count).
   - Pipeline: silence-gated PCM → xAI STT → Grok (`/v1/responses` + `web_search`) → Ara TTS back into the channel.
   - Ignores new speech until the current reply finishes playing.
   - Strips URLs and `[[1]](...)` citations so it does not read links out loud.
   - Clock is injected as America/Detroit so "what time is it" is not a guess.
 
+- **Music in the same VC (no Lavalink)**
+  - Voice: **Aetherion play Astronaut in the Ocean**, **Aetherion stop**, **Aetherion pause**.
+  - Slash: `/play query:...`, `/pause` (run again to resume), `/stop`.
+  - Resolves the first YouTube match (song, podcast episode, or a watch URL) and streams audio with ffmpeg on the existing VoiceClient.
+  - `/play` will join your current voice channel if the bot is not already there.
+  - Best results: paste a clean `https://youtu.be/VIDEOID` into `/play`. Long titles can miss. YouTube may block some datacenter IPs (Railway) on niche videos.
+
 - **Date dock**
   - `/datechannel` (Manage Server) pins a locked voice channel that shows today's date.
-  - Renames it every night at 12:00 AM Eastern to `📅️ | Saturday, Sep 6th` (example).
-  - Re-checks every 10 minutes so a restart cannot leave yesterday sitting all day.
+  - Renames it at 12:00 AM Eastern to `📅️ | Saturday, Sep 6th` (example).
+  - After startup it sleeps until the next midnight instead of polling every 10 minutes.
   - Saved per guild in `data/date_channels.json`.
 
 - **Welcome banners**
@@ -52,6 +61,7 @@ Forked from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito
 
 - **Slash commands**
   - `/join` / `/leave` — voice session.
+  - `/play` / `/pause` / `/stop` — music on that session.
   - `/datechannel` — daily date dock (Manage Server).
   - `/welcome` — welcome banner channel (Manage Server).
   - `/audio` — generate TTS in the current text channel.
@@ -78,7 +88,7 @@ Forked from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito
 - **Docker, Railway & self-hosting**
   - Multi-stage Dockerfile (bot image + slim web dashboard image).
   - `docker-compose.yml` with separate services and volume mounts for `data/` and `oauth/`.
-  - Railway-friendly: one service, env vars, `davey` in requirements so DAVE decrypt works in production.
+  - Railway-friendly: one service, env vars, `davey` and `yt-dlp` in requirements.
   - `--check`, `--status`, `--auth-status`, `--test-auth` CLI commands for safe validation.
 
 ## 🚀 Installation & Running
@@ -88,7 +98,8 @@ Forked from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito
 - Discord Bot token (https://discord.com/developers/applications)
 - xAI authentication: an `XAI_API_KEY` (console.x.ai) **or** a SuperGrok / X Premium+ account for OAuth
 - `davey` for encrypted voice (`pip install davey` — already in project requirements)
-- ffmpeg for VC playback and video (bundled in the Docker image)
+- `yt-dlp` for `/play` (already in project requirements)
+- ffmpeg for VC playback, music streams, and video (bundled in the Docker image)
 - (Optional) Docker or Railway for 24/7
 
 ### Quick Start (Local)
@@ -130,12 +141,13 @@ Dashboard: http://localhost:8010
 
 ### Railway
 
-Point the service at this repo, set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`, keep `davey` in the install. After each GitHub push, wait until the deployment is **Active** before testing `/join` — an old build will not have the latest voice code.
+Point the service at this repo, set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`, keep `davey` and `yt-dlp` in the install. After each GitHub push, wait until the deployment is **Active** before testing `/join` or `/play` — an old build will not have the latest voice or music code.
 
 ## 📖 Usage
 
 - Mention `@Aetherion` or reply directly to the bot → it activates in text.
-- Voice: join a VC, run `/join`, say **Aetherion** then the question, pause. `/leave` when done.
+- Voice chat: join a VC, run `/join`, say **Aetherion** then the question, pause. `/leave` when done.
+- Music: `/play query: song or youtube url` while you are in a VC, or say **Aetherion play …**. `/pause` / `/stop` or say **Aetherion stop**.
 - `/datechannel` on a voice channel → that channel becomes the daily date dock (Eastern midnight).
 - `/welcome` on a text channel → new-member banners land there.
 - `/audio` or right-click a message → Apps → "🔊 Leer en voz alta" for TTS in-channel.
@@ -148,15 +160,17 @@ Example interactions are natural English/Spanish conversation. The bot is intent
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for component breakdown, data flow, the hybrid tool system, media stack, OAuth handling, and extension points.
 
 High-level pieces live under `src/groksito_discord/`:
-- `main.py` — CLI entry (`groksito` console script).
+- `main.py` — CLI entry (`groksito` / `aetherion` console scripts).
 - `discord/client.py` — Gateway connection, slash command wiring, heartbeats, rate limits.
 - `discord/slash_commands.py` — `/join`, `/leave`, `/datechannel`, `/welcome`, `/audio`, `/ping`.
+- `discord/slash_music.py` — `/play`, `/pause`, `/stop`.
 - `discord/date_dock.py` — Eastern-midnight voice-channel rename loop.
 - `discord/welcome.py` — new-member banners.
 - `core/conversation.py` — activation policy, vision harvest, referenced-message context.
 - `llm/client.py` + `llm/llm_input.py` — Responses API orchestration and input building.
 - `llm/tools.py` + `llm/media_tools.py` — tiered custom tools and media intent gates.
-- `media/voice_session.py` — DAVE decrypt, wake word, STT, web search, Ara TTS, playback lock.
+- `media/voice_session.py` / `media/voice_impl.py` — DAVE decrypt, wake word, STT, web search, Ara TTS, playback lock.
+- `media/voice_music.py` — YouTube resolve + ffmpeg play on the same VoiceClient.
 - `media/*_handler.py` + `media/delivery.py` — image/video/audio generation and direct delivery.
 - `discord/integrations/gamemeca.py` — optional ranking cache used internally.
 - `core/grok_oauth.py` — OAuth PKCE + token management.
@@ -168,6 +182,7 @@ High-level pieces live under `src/groksito_discord/`:
 - All runtime configuration is in `.env` (Pydantic settings).
 - Key flags: `GROK_AUTH_MODE`, `ALLOWED_GUILD_IDS`, `ENABLE_VIDEO_GENERATION`, TTS voice/language.
 - Voice needs `davey` installed in the running environment or DAVE decrypt never starts.
+- Music needs `yt-dlp` and ffmpeg in the running environment.
 - The web `/config` page edits only whitelisted safe keys and creates timestamped backups on every save.
 - Add new custom tools by extending the schemas/handlers in `llm/tools.py`.
 - Tests live in `tests/`. Run with `pytest`.
@@ -177,7 +192,7 @@ Never commit `.env` or `oauth/xai_oauth_tokens.json`.
 
 ### Repository layout
 
-Committed project roots: `src/`, `tests/`, `web/`, `data/.gitkeep`, Docker files, and root docs (`README.md`, `ARCHITECTURE.md`, `GROK_OAUTH.md`).
+Committed project roots: `src/`, `tests/`, `web/`, `data/.gitkeep`, Docker files, and root docs (`README.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, `GROK_OAUTH.md`).
 
 - `data/` — runtime state (heartbeats, context, `date_channels.json`, welcome channel ids). Gitignored except `data/.gitkeep`.
 - `oauth/` — OAuth tokens from `--login-oauth` (gitignored).
@@ -186,11 +201,7 @@ Committed project roots: `src/`, `tests/`, `web/`, `data/.gitkeep`, Docker files
 
 MIT License — see [LICENSE](./LICENSE).
 
-## 🤝 Contributing
-
-Contributions, bug reports, and feature ideas are welcome. Keep changes focused and respect the "maximum nativeness" philosophy.
-
-## 🙏 Credits
+## 👍 Credits
 
 - Built and maintained by [@OniOrii](https://github.com/OniOrii) as **Aetherion**.
 - Started from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito-discord-bot).
@@ -198,4 +209,4 @@ Contributions, bug reports, and feature ideas are welcome. Keep changes focused 
 
 ---
 
-**Status**: Active. Self-hostable with Docker or Railway. Focused on a clean Grok-in-Discord experience that also talks in voice.
+**Status**: Active. Self-hostable with Docker or Railway. Talks in voice and can play YouTube audio on the same connection.
