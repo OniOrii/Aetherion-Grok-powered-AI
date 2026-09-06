@@ -316,5 +316,5 @@ def stop_session(guild_id: int) -> None:
     session = _sessions.pop(guild_id, None)
     if session:
         session.stop()
-}
+
 
