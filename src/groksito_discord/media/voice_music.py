@@ -25,13 +25,15 @@ _SKIP_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Last yt-dlp failure for slash + voice error text. Never holds cookie contents.
 last_error: str | None = None
 _cookies_logged = False
 
-# Cookies make yt-dlp prefer tv_downgraded, which currently returns
-# "The page needs to be reloaded." Try clients that still return audio.
-_PLAYER_CLIENT_TRIES: tuple[tuple[str, ...], ...] = (
+# Anonymous clients first. Cookies often force SABR / tv_downgraded with no URL.
+_ANON_CLIENTS: tuple[tuple[str, ...], ...] = (
+    ("tv", "android_vr"),
+    ("ios", "android"),
+)
+_COOKIE_CLIENTS: tuple[tuple[str, ...], ...] = (
     ("web_embedded", "android"),
     ("tv", "web_safari"),
 )
@@ -58,7 +60,6 @@ def parse_music_command(prompt: str) -> tuple[str, str] | None:
 
 
 def _normalize_netscape(text: str) -> str:
-    """Keep Netscape cookies.txt valid if Railway turned tabs into spaces."""
     out: list[str] = []
     for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         if not line.strip() or line.lstrip().startswith("#") or "\t" in line:
@@ -73,7 +74,6 @@ def _normalize_netscape(text: str) -> str:
 
 
 def cookiefile_path() -> str | None:
-    """Resolve a Netscape cookies.txt path if the operator configured one."""
     try:
         from ..config.settings import settings
     except Exception:
@@ -106,25 +106,27 @@ def cookiefile_path() -> str | None:
     return None
 
 
-def _ydl_opts(player_clients: tuple[str, ...] | None = None) -> dict[str, Any]:
+def _ydl_opts(
+    player_clients: tuple[str, ...] | None = None,
+    use_cookies: bool = True,
+) -> dict[str, Any]:
     global _cookies_logged
-    clients = list(player_clients or _PLAYER_CLIENT_TRIES[0])
+    clients = list(player_clients or _ANON_CLIENTS[0])
     opts: dict[str, Any] = {
-        "format": "bestaudio/best",
-        "quiet": True,
         "noplaylist": True,
         "default_search": "ytsearch1",
         "skip_download": True,
+        "quiet": True,
         "no_warnings": True,
         "extractor_args": {"youtube": {"player_client": clients}},
     }
-    cookiefile = cookiefile_path()
+    cookiefile = cookiefile_path() if use_cookies else None
     if cookiefile:
         opts["cookiefile"] = cookiefile
         if not _cookies_logged:
             logger.info("youtube cookies enabled")
             _cookies_logged = True
-    elif not _cookies_logged:
+    elif not _cookies_logged and use_cookies:
         logger.info("youtube cookies not set; Railway IPs may get a bot check")
         _cookies_logged = True
     return opts
@@ -136,7 +138,43 @@ def _classify_extract_error(exc: BaseException) -> str:
         return "bot_check"
     if "page needs to be reloaded" in msg:
         return "reload_needed"
+    if "requested format is not available" in msg:
+        return "no_format"
     return "extract_failed"
+
+
+def _pick_stream(info: dict[str, Any]) -> str:
+    if info.get("url"):
+        return str(info["url"])
+    best = ""
+    best_score = -1.0
+    for fmt in info.get("formats") or []:
+        url = fmt.get("url") or ""
+        if not url:
+            continue
+        proto = str(fmt.get("protocol") or "")
+        if "dash" in proto or "sabr" in proto or proto == "m3u8_native":
+            continue
+        if (fmt.get("acodec") or "none") == "none":
+            continue
+        score = float(fmt.get("abr") or fmt.get("tbr") or 0)
+        if score >= best_score:
+            best_score = score
+            best = str(url)
+    if best:
+        return best
+    for fmt in info.get("formats") or []:
+        url = fmt.get("url") or ""
+        if url:
+            return str(url)
+    return ""
+
+
+def _attempts() -> list[tuple[bool, tuple[str, ...]]]:
+    rows: list[tuple[bool, tuple[str, ...]]] = [(False, clients) for clients in _ANON_CLIENTS]
+    if cookiefile_path():
+        rows.extend((True, clients) for clients in _COOKIE_CLIENTS)
+    return rows
 
 
 def _extract_track(query: str) -> dict[str, str] | None:
@@ -149,40 +187,49 @@ def _extract_track(query: str) -> dict[str, str] | None:
         last_error = "yt_dlp_missing"
         return None
 
-    info = None
     last_exc: BaseException | None = None
-    for clients in _PLAYER_CLIENT_TRIES:
+    for use_cookies, clients in _attempts():
         try:
-            with yt_dlp.YoutubeDL(_ydl_opts(clients)) as ydl:
+            with yt_dlp.YoutubeDL(_ydl_opts(clients, use_cookies=use_cookies)) as ydl:
                 info = ydl.extract_info(query, download=False)
-            last_exc = None
-            logger.info("youtube extract ok clients=%s", ",".join(clients))
-            break
         except Exception as e:
             last_exc = e
-            kind = _classify_extract_error(e)
             logger.warning(
-                "yt-dlp %s clients=%s query=%s",
-                kind,
+                "yt-dlp %s cookies=%s clients=%s query=%s",
+                _classify_extract_error(e),
+                use_cookies,
                 ",".join(clients),
                 query[:80],
             )
             continue
-    if last_exc is not None:
+        if not info:
+            continue
+        if "entries" in info:
+            entries = [e for e in (info.get("entries") or []) if e]
+            info = entries[0] if entries else None
+        if not info:
+            continue
+        url = _pick_stream(info)
+        title = (info.get("title") or query).strip()
+        if not url:
+            last_error = "no_format"
+            logger.warning(
+                "youtube had no stream url cookies=%s clients=%s title=%s",
+                use_cookies,
+                ",".join(clients),
+                title[:80],
+            )
+            continue
+        logger.info(
+            "youtube extract ok cookies=%s clients=%s title=%s",
+            use_cookies,
+            ",".join(clients),
+            title[:80],
+        )
+        return {"url": url, "title": title[:120]}
+    if last_exc is not None and last_error is None:
         last_error = _classify_extract_error(last_exc)
-        return None
-    if not info:
-        return None
-    if "entries" in info:
-        entries = [e for e in (info.get("entries") or []) if e]
-        info = entries[0] if entries else None
-    if not info:
-        return None
-    url = info.get("url") or ""
-    title = (info.get("title") or query).strip()
-    if not url:
-        return None
-    return {"url": url, "title": title[:120]}
+    return None
 
 
 async def resolve_track(query: str) -> dict[str, str] | None:
@@ -208,7 +255,7 @@ def _play_fail_speech() -> str:
         if cookiefile_path():
             return "YouTube still blocked that video."
         return "YouTube blocked this server. Add YouTube cookies and restart."
-    if last_error == "reload_needed":
+    if last_error in ("reload_needed", "no_format"):
         return "YouTube would not start that video. Try another link."
     return "I could not find that song."
 
