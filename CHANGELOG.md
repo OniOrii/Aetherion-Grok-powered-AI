@@ -8,14 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- GHCR release publishing: version, `latest` (stable only), and `sha-<short>` tags for bot and web images; OCI image labels; README and compose docs for pre-built images (#99)
-- `RELEASE.md` documenting the release and pre-release process; linked from CONTRIBUTING.md and README (#100)
+- Live Discord voice session: `/join` / `/leave`, DAVE decrypt, wake word, Ara TTS, Agent Tools web search
+- `/datechannel` Eastern-midnight date dock and `/welcome` banners
+- `aetherion` console script (Railway still accepts `groksito`)
 
 ### Changed
+- Project metadata, dashboard, and user-facing strings rebranded from Groksito to Aetherion
+- Package import path remains `groksito_discord` so existing deploys keep starting
 
 ### Fixed
 
 ### Removed
+- Upstream `CONTRIBUTING.md`
 
 ## [0.2.0] - 2026-06-17
 
