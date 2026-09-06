@@ -1,9 +1,10 @@
 """Play/stop music on the same VoiceClient Aetherion already uses for TTS."""
 from __future__ import annotations
 
-import asyncio
+import base64
 import logging
 import re
+from pathlib import Path
 from typing import Any
 
 import discord
@@ -22,6 +23,10 @@ _SKIP_RE = re.compile(
     r"\b(?:skip|next)(?:\s+(?:the\s+)?(?:song|track|music))?\b",
     re.IGNORECASE,
 )
+
+# Last yt-dlp failure for slash + voice error text. Never holds cookie contents.
+last_error: str | None = None
+_cookies_logged = False
 
 
 def parse_music_command(prompt: str) -> tuple[str, str] | None:
@@ -44,13 +49,39 @@ def parse_music_command(prompt: str) -> tuple[str, str] | None:
     return None
 
 
-def _extract_track(query: str) -> dict[str, str] | None:
+def cookiefile_path() -> str | None:
+    """Resolve a Netscape cookies.txt path if the operator configured one."""
     try:
-        import yt_dlp
+        from ..config.settings import settings
     except Exception:
-        logger.warning("yt-dlp is not installed")
         return None
-    opts = {
+    dest = Path(getattr(settings, "data_dir", Path("./data"))) / "youtube_cookies.txt"
+    raw = (getattr(settings, "youtube_cookies", None) or "").strip()
+    b64 = (getattr(settings, "youtube_cookies_b64", None) or "").strip()
+    try:
+        if raw:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(raw if raw.endswith("\n") else raw + "\n", encoding="utf-8")
+            return str(dest)
+        if b64:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(base64.b64decode(b64))
+            return str(dest)
+    except Exception:
+        logger.exception("failed to materialize YouTube cookies")
+        return None
+    path = getattr(settings, "youtube_cookies_file", None)
+    if path:
+        p = Path(path)
+        if p.is_file():
+            return str(p)
+        logger.warning("YOUTUBE_COOKIES_FILE is set but missing: %s", p)
+    return None
+
+
+def _ydl_opts() -> dict[str, Any]:
+    global _cookies_logged
+    opts: dict[str, Any] = {
         "format": "bestaudio/best",
         "quiet": True,
         "noplaylist": True,
@@ -58,10 +89,39 @@ def _extract_track(query: str) -> dict[str, str] | None:
         "skip_download": True,
         "no_warnings": True,
     }
+    cookiefile = cookiefile_path()
+    if cookiefile:
+        opts["cookiefile"] = cookiefile
+        if not _cookies_logged:
+            logger.info("youtube cookies enabled")
+            _cookies_logged = True
+    elif not _cookies_logged:
+        logger.info("youtube cookies not set; Railway IPs may get a bot check")
+        _cookies_logged = True
+    return opts
+
+
+def _classify_extract_error(exc: BaseException) -> str:
+    msg = str(exc).lower()
+    if "sign in to confirm" in msg or "not a bot" in msg:
+        return "bot_check"
+    return "extract_failed"
+
+
+def _extract_track(query: str) -> dict[str, str] | None:
+    global last_error
+    last_error = None
     try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(query, download=False)
+        import yt_dlp
     except Exception:
+        logger.warning("yt-dlp is not installed")
+        last_error = "yt_dlp_missing"
+        return None
+    try:
+        with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
+            info = ydl.extract_info(query, download=False)
+    except Exception as e:
+        last_error = _classify_extract_error(e)
         logger.exception("yt-dlp extract failed for %s", query[:80])
         return None
     if not info:
@@ -79,7 +139,7 @@ def _extract_track(query: str) -> dict[str, str] | None:
 
 
 async def resolve_track(query: str) -> dict[str, str] | None:
-    loop = asyncio.get_running_loop()
+    loop = __import__("asyncio").get_running_loop()
     return await loop.run_in_executor(None, _extract_track, query)
 
 
@@ -96,6 +156,14 @@ def start_playback(vc: discord.VoiceClient, url: str) -> None:
     logger.info("ffmpeg started music stream")
 
 
+def _play_fail_speech() -> str:
+    if last_error == "bot_check":
+        if cookiefile_path():
+            return "YouTube still blocked that video."
+        return "YouTube blocked this server. Add YouTube cookies and restart."
+    return "I could not find that song."
+
+
 async def handle_music(vc: discord.VoiceClient | None, prompt: str) -> dict[str, Any] | None:
     parsed = parse_music_command(prompt)
     if parsed is None:
@@ -110,7 +178,7 @@ async def handle_music(vc: discord.VoiceClient | None, prompt: str) -> dict[str,
         return {"speak": "Nothing is playing."}
     track = await resolve_track(query)
     if not track:
-        return {"speak": "I could not find that song."}
+        return {"speak": _play_fail_speech()}
     return {
         "speak": f"Playing {track['title']}.",
         "url": track["url"],

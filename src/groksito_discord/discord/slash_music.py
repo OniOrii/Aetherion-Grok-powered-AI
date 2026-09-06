@@ -5,7 +5,7 @@ import logging
 
 import discord
 
-from ..media.voice_music import resolve_track, start_playback
+from ..media.voice_music import _play_fail_speech, resolve_track, start_playback
 from ..media.voice_session import get_recv_cls, start_session
 
 logger = logging.getLogger("aetherion.slash_music")
@@ -59,7 +59,7 @@ def register_music(tree, is_guild_allowed) -> None:
             return
         track = await resolve_track(q)
         if not track:
-            await interaction.followup.send("I could not find that song.", ephemeral=True)
+            await interaction.followup.send(_play_fail_speech(), ephemeral=True)
             return
         try:
             start_playback(vc, track["url"])
