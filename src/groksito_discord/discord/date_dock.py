@@ -16,7 +16,7 @@ from ..config import settings
 logger = logging.getLogger("groksito.date_dock")
 
 TZ = ZoneInfo("America/New_York")
-NAME_PREFIX = "\U0001f4c5 |"
+NAME_PREFIX = "\U0001F4C5\uFE0F |"
 # Safety net: if a long midnight sleep is interrupted (restart, host freeze),
 # re-check at least this often so a stale date never sits all day.
 CHECK_INTERVAL_SECONDS = 10 * 60
@@ -78,7 +78,6 @@ def _ordinal(n: int) -> str:
 
 def format_date_channel_name(now: datetime | None = None) -> str:
     now = now or datetime.now(TZ)
-    # "Friday, Sep 4th" — matches The Great Indoors screenshot
     day = now.strftime("%A")
     month = now.strftime("%b")
     return f"{NAME_PREFIX} {day}, {month} {_ordinal(now.day)}"
@@ -101,7 +100,7 @@ def _looks_like_date_channel(channel: discord.abc.GuildChannel) -> bool:
     if not isinstance(channel, discord.VoiceChannel):
         return False
     name = channel.name or ""
-    return name.startswith(NAME_PREFIX) or name.startswith("\u2784 |") or "\U0001f4c5" in name[:4]
+    return name.startswith(NAME_PREFIX) or name.startswith("\U0001F4C5")
 
 
 async def resolve_date_channel(guild: discord.Guild) -> discord.VoiceChannel | None:
