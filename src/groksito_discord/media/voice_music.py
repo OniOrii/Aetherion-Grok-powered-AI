@@ -78,11 +78,15 @@ async def resolve_track(query: str) -> dict[str, str] | None:
     return await loop.run_in_executor(None, _extract_track, query)
 
 
-def _ffmpeg_source(url: str) -> discord.FFmpegPCMAudio:
-    return discord.FFmpegPCMAudio(
-        url,
-        before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-        options="-vn",
+def start_playback(vc: discord.VoiceClient, url: str) -> None:
+    if vc.is_playing() or vc.is_paused():
+        vc.stop()
+    vc.play(
+        discord.FFmpegPCMAudio(
+            url,
+            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            options="-vn",
+        )
     )
 
 
@@ -101,12 +105,8 @@ async def handle_music(vc: discord.VoiceClient | None, prompt: str) -> dict[str,
     track = await resolve_track(query)
     if not track:
         return {"speak": "I could not find that song."}
-    try:
-        if vc.is_playing() or vc.is_paused():
-            vc.stop()
-        vc.play(_ffmpeg_source(track["url"]))
-        logger.info("playing %s", track["title"])
-        return {"speak": f"Playing {track['title']}.", "playing": track["title"]}
-    except Exception:
-        logger.exception("music play failed")
-        return {"speak": "I found it but could not play it."}
+    return {
+        "speak": f"Playing {track['title']}.",
+        "url": track["url"],
+        "title": track["title"],
+    }
