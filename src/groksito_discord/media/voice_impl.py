@@ -155,15 +155,7 @@ class DaveVoiceReceiver:
     def _resolve_user(self, ssrc: int):
         uid = self._ssrc_to_user.get(ssrc)
         if uid: return uid
-        dave = getattr(self._connection, 'dave_session', None)
-        getter = getattr(dave, 'get_user_ids', None) if dave else None
-        if not getter: return None
-        try: ids = getter()
-        except Exception: return None
-        for raw in ids or []:
-            try: return int(raw)
-            except Exception: continue
-        return None
+        return self.listen_user_id
     def _decrypt_and_decode(self, data: bytes):
         has_pad = bool(data[0] & 0x20); has_extension = bool(data[0] & 0x10); cc = data[0] & 0x0F
         ssrc = struct.unpack_from('>I', data, 8)[0]
@@ -207,6 +199,7 @@ class VoiceSession:
         recv = DaveVoiceReceiver(vc, self.user_id, loop)
         recv.on_utterance = self._reply
         self._recv = recv
+        logger.info('voice session listening for user %s', self.user_id)
         return recv.start()
     async def _reply(self, pcm16: bytes) -> None:
         try:
