@@ -1,11 +1,16 @@
-"""Live Discord voice listen + Grok reply.
+"""Discord VC listen that decrypts DAVE, then talks back with Grok.
 
-Does NOT forward Discord UDP/Opus packets to Grok.
-Each speaker's PCM is decoded, buffered until ~0.8s of silence, then sent
-as one audio clip to xAI STT. Grok replies in text, TTS plays back in VC.
+Do not use discord-ext-voice-recv for decode. That library Opus-decodes
+DAVE ciphertext and you get OpusError: corrupted stream.
 
-Only the member who ran /join is listened to (avoids the whole channel
-being mashed into one request).
+This path:
+  1. Join with stock discord.VoiceClient so discord.py runs the DAVE MLS handshake
+  2. Hook SPEAKING (op 5) for SSRC -> user id
+  3. add_socket_listener on the voice UDP socket
+  4. Transport decrypt (aead_xchacha20_poly1305_rtpsize)
+  5. Strip RTP padding + extension values
+  6. dave_session.decrypt(user_id, audio, frame)
+  7. Opus -> PCM, buffer until silence, STT -> Grok -> TTS -> play
 """
 
 from __future__ import annotations
@@ -15,7 +20,9 @@ import asyncio
 import io
 import logging
 import os
+import struct
 import tempfile
+import time
 import wave
 from typing import Any
 
@@ -28,28 +35,24 @@ logger = logging.getLogger("groksito.voice_session")
 
 DISCORD_RATE = 48000
 STT_RATE = 16000
-SILENCE_MS = 800
-MIN_SPEECH_MS = 350
-MAX_SPEECH_MS = 20_000
-RMS_THRESHOLD = 250
+SILENCE_S = 0.85
+MIN_SPEECH_S = 0.4
+MAX_SPEECH_S = 18.0
+RMS_THRESHOLD = 180
 
 try:
-    from discord.ext import voice_recv
+    import nacl.secret
 except Exception:  # pragma: no cover
-    voice_recv = None  # type: ignore
+    nacl = None  # type: ignore
+
+try:
+    import davey
+except Exception:  # pragma: no cover
+    davey = None  # type: ignore
 
 
-def _pcm48_to_16_mono(pcm: bytes) -> bytes:
-    if not pcm:
-        return b""
-    sample_width = 2
-    # discord-ext-voice-recv typically gives 48k stereo s16le
-    if len(pcm) % 4 == 0:
-        mono, _ = audioop.tomono(pcm, sample_width, 1, 1)
-    else:
-        mono = pcm
-    down, _ = audioop.ratecv(mono, sample_width, 1, DISCORD_RATE, STT_RATE, None)
-    return down
+def _api_key() -> str | None:
+    return getattr(settings, "xai_api_key", None) or os.environ.get("XAI_API_KEY")
 
 
 def _wav_bytes(pcm16_mono: bytes, rate: int = STT_RATE) -> bytes:
@@ -62,57 +65,257 @@ def _wav_bytes(pcm16_mono: bytes, rate: int = STT_RATE) -> bytes:
     return buf.getvalue()
 
 
-def _api_key() -> str | None:
-    return getattr(settings, "xai_api_key", None) or os.environ.get("XAI_API_KEY")
+def _pcm48_stereo_to_16_mono(pcm: bytes) -> bytes:
+    if not pcm:
+        return b""
+    if len(pcm) % 4 == 0 and len(pcm) >= 3840:
+        mono, _ = audioop.tomono(pcm, 2, 1, 1)
+    elif len(pcm) % 2 == 0:
+        mono = pcm
+    else:
+        return b""
+    down, _ = audioop.ratecv(mono, 2, 1, DISCORD_RATE, STT_RATE, None)
+    return down
 
 
-class _PcmFifoSource(discord.AudioSource):
-    FRAME = 3840  # 20ms 48k stereo s16le
+class DaveVoiceReceiver:
+    """Inbound UDP -> transport decrypt -> DAVE decrypt -> Opus PCM."""
 
-    def __init__(self) -> None:
+    def __init__(self, vc: discord.VoiceClient, listen_user_id: int, loop: asyncio.AbstractEventLoop) -> None:
+        self.vc = vc
+        self.listen_user_id = listen_user_id
+        self._loop = loop
+        self._connection = vc._connection
+        self._decoder = discord.opus.Decoder()
+        self._ssrc_to_user: dict[int, int] = {}
         self._buf = bytearray()
-        self._closed = False
+        self._speeching = False
+        self._last_voice = time.monotonic()
+        self._busy = False
+        self._listening = False
+        self._ok = 0
+        self._fail = 0
+        self._orig_hook = None
+        self.on_utterance = None  # async callable(pcm16_mono)
 
-    def feed(self, pcm48_stereo: bytes) -> None:
-        if pcm48_stereo:
-            self._buf.extend(pcm48_stereo)
+        key = getattr(self._connection, "secret_key", None)
+        if nacl is None or key is None or key is discord.utils.MISSING:
+            self._aead = None
+        else:
+            self._aead = nacl.secret.Aead(bytes(key))
 
-    def close_source(self) -> None:
-        self._closed = True
+    def start(self) -> str:
+        conn = self._connection
+        add = getattr(conn, "add_socket_listener", None)
+        if add is None:
+            return "This discord.py build has no add_socket_listener."
+        self._hook_speaking()
+        add(self._on_packet)
+        self._listening = True
+        dave = getattr(conn, "dave_session", None)
+        logger.info(
+            "DAVE receiver on (dave_session=%s can_encrypt=%s davey=%s)",
+            bool(dave),
+            getattr(conn, "can_encrypt", None),
+            davey is not None,
+        )
+        if dave is None:
+            return (
+                "Joined, but discord.py has no dave_session yet. "
+                "Install davey (`pip install davey`) and restart. "
+                "If davey is present, leave and /join again after you are already talking."
+            )
+        return (
+            "Listening with DAVE decrypt. Say one sentence, then pause. "
+            "I only answer the person who ran /join."
+        )
 
-    def is_opus(self) -> bool:
-        return False
+    def stop(self) -> None:
+        self._listening = False
+        conn = self._connection
+        rem = getattr(conn, "remove_socket_listener", None)
+        if rem:
+            try:
+                rem(self._on_packet)
+            except Exception:
+                pass
+        ws = getattr(conn, "ws", None)
+        if ws is not None and self._orig_hook is not None:
+            try:
+                ws._hook = self._orig_hook
+            except Exception:
+                pass
+        logger.info("DAVE receiver off ok=%s fail=%s", self._ok, self._fail)
 
-    def read(self) -> bytes:
-        if len(self._buf) >= self.FRAME:
-            chunk = bytes(self._buf[: self.FRAME])
-            del self._buf[: self.FRAME]
-            return chunk
-        if self._closed:
-            return b""
-        return b"\x00" * self.FRAME
+    def _hook_speaking(self) -> None:
+        ws = getattr(self._connection, "ws", None)
+        if ws is None:
+            return
+        self._orig_hook = getattr(ws, "_hook", None)
 
+        async def hook(ws_obj, msg):
+            try:
+                if isinstance(msg, dict) and msg.get("op") == 5:
+                    d = msg.get("d") or {}
+                    ssrc = d.get("ssrc")
+                    uid = d.get("user_id")
+                    if ssrc and uid:
+                        self._ssrc_to_user[int(ssrc)] = int(uid)
+                        logger.info("speaking map ssrc=%s user=%s", ssrc, uid)
+            except Exception:
+                logger.debug("speaking hook failed", exc_info=True)
+            if self._orig_hook:
+                await self._orig_hook(ws_obj, msg)
 
-class _UserSink(voice_recv.AudioSink if voice_recv else object):
-    def __init__(self, session: "VoiceSession") -> None:
-        if voice_recv:
-            super().__init__()
-        self.session = session
+        try:
+            ws._hook = hook
+            self._connection.hook = hook
+        except Exception:
+            logger.warning("could not hook SPEAKING events")
 
-    def wants_opus(self) -> bool:
-        return False
-
-    def write(self, user: discord.abc.User | None, data: Any) -> None:
-        pcm = getattr(data, "pcm", None)
+    def _on_packet(self, data: bytes) -> None:
+        if not self._listening or len(data) < 12:
+            return
+        if (data[0] & 0xC0) >> 6 != 2:
+            return
+        pt = data[1] & 0x7F
+        if 72 <= pt <= 76:
+            return
+        try:
+            pcm, user_id = self._decrypt_and_decode(data)
+        except Exception:
+            self._fail += 1
+            if self._fail <= 8:
+                logger.warning("packet decrypt/decode failed", exc_info=True)
+            return
         if not pcm:
             return
-        uid = getattr(user, "id", None)
-        if uid is None:
-            uid = getattr(getattr(data, "user", None), "id", None)
-        self.session.on_pcm(uid, pcm)
+        if user_id is not None and user_id != self.listen_user_id:
+            return
+        self._ok += 1
+        if self._ok == 1 or self._ok % 200 == 0:
+            logger.info("decoded pcm frames=%s fails=%s", self._ok, self._fail)
+        mono = _pcm48_stereo_to_16_mono(pcm)
+        if not mono:
+            return
+        rms = audioop.rms(mono, 2)
+        now = time.monotonic()
+        if rms >= RMS_THRESHOLD:
+            self._speeching = True
+            self._last_voice = now
+            self._buf.extend(mono)
+            if len(self._buf) > int(STT_RATE * 2 * MAX_SPEECH_S):
+                self._flush()
+        elif self._speeching:
+            self._buf.extend(mono)
+            if now - self._last_voice >= SILENCE_S:
+                self._flush()
 
-    def cleanup(self) -> None:
-        return
+    def _flush(self) -> None:
+        held = bytes(self._buf)
+        self._buf.clear()
+        self._speeching = False
+        dur = (len(held) / 2) / STT_RATE
+        if dur < MIN_SPEECH_S or self._busy:
+            return
+        if self.on_utterance is None:
+            return
+        self._busy = True
+        fut = asyncio.run_coroutine_threadsafe(self._run_utterance(held), self._loop)
+
+        def _done(_f):
+            self._busy = False
+
+        fut.add_done_callback(_done)
+
+    async def _run_utterance(self, pcm16: bytes) -> None:
+        try:
+            await self.on_utterance(pcm16)
+        finally:
+            self._busy = False
+
+    def _resolve_user(self, ssrc: int) -> int | None:
+        uid = self._ssrc_to_user.get(ssrc)
+        if uid:
+            return uid
+        dave = getattr(self._connection, "dave_session", None)
+        if dave is None:
+            return None
+        getter = getattr(dave, "get_user_ids", None)
+        if not getter:
+            return None
+        try:
+            ids = getter()
+        except Exception:
+            return None
+        for raw in ids or []:
+            try:
+                return int(raw)
+            except Exception:
+                continue
+        return None
+
+    def _decrypt_and_decode(self, data: bytes) -> tuple[bytes, int | None]:
+        has_pad = bool(data[0] & 0x20)
+        has_extension = bool(data[0] & 0x10)
+        cc = data[0] & 0x0F
+        ssrc = struct.unpack_from(">I", data, 8)[0]
+        if ssrc == getattr(self._connection, "ssrc", None):
+            return b"", None
+
+        header_len = 12 + cc * 4
+        after = data[header_len:]
+        if len(after) < 5:
+            return b"", None
+
+        if has_pad:
+            pad_len = after[-1]
+            if 0 < pad_len < len(after):
+                after = after[:-pad_len]
+
+        if self._aead is None:
+            return b"", None
+
+        nonce = bytearray(24)
+        nonce[:4] = after[-4:]
+        if has_extension and len(after) > 8:
+            aad = data[:header_len] + after[:4]
+            ciphertext = bytes(after[4:-4])
+        else:
+            aad = data[:header_len]
+            ciphertext = bytes(after[:-4])
+        if len(ciphertext) < 16:
+            return b"", None
+
+        decrypted = self._aead.decrypt(ciphertext, bytes(aad), bytes(nonce))
+
+        opus_data = decrypted
+        if has_extension and len(aad) > header_len:
+            ext_length = struct.unpack_from(">H", aad, header_len + 2)[0]
+            ext_values_size = ext_length * 4
+            if ext_values_size <= len(decrypted):
+                opus_data = decrypted[ext_values_size:]
+            else:
+                return b"", None
+        if not opus_data:
+            return b"", None
+
+        user_id = self._resolve_user(ssrc)
+        dave = getattr(self._connection, "dave_session", None)
+        if dave is not None and getattr(self._connection, "can_encrypt", False) and davey is not None:
+            if user_id is None:
+                self._fail += 1
+                return b"", None
+            try:
+                result = dave.decrypt(user_id, davey.MediaType.audio, bytes(opus_data))
+            except Exception:
+                return b"", user_id
+            if not result:
+                return b"", user_id
+            opus_data = result
+
+        pcm = self._decoder.decode(opus_data)
+        return pcm or b"", user_id
 
 
 class VoiceSession:
@@ -120,53 +323,22 @@ class VoiceSession:
         self.guild_id = guild_id
         self.user_id = user_id
         self.voice_name = voice_name
-        self._buf = bytearray()
-        self._last_voice_ms = 0.0
-        self._speeching = False
-        self._busy = False
-        self._stop = asyncio.Event()
         self._vc: discord.VoiceProtocol | None = None
-        self._loop = asyncio.get_event_loop()
+        self._recv: DaveVoiceReceiver | None = None
 
-    def on_pcm(self, user_id: int | None, pcm: bytes) -> None:
-        if self._busy or self._stop.is_set():
-            return
-        if user_id is not None and user_id != self.user_id:
-            return
-        mono16 = _pcm48_to_16_mono(pcm)
-        if not mono16:
-            return
-        rms = audioop.rms(mono16, 2)
-        now = self._loop.time() * 1000
-        if rms >= RMS_THRESHOLD:
-            self._speeching = True
-            self._last_voice_ms = now
-            self._buf.extend(mono16)
-            max_bytes = int(STT_RATE * 2 * (MAX_SPEECH_MS / 1000))
-            if len(self._buf) > max_bytes:
-                held = bytes(self._buf)
-                self._buf.clear()
-                self._speeching = False
-                self._busy = True
-                self._loop.create_task(self._reply(held))
-        elif self._speeching:
-            self._buf.extend(mono16)
-            if now - self._last_voice_ms >= SILENCE_MS and not self._busy:
-                held = bytes(self._buf)
-                self._buf.clear()
-                self._speeching = False
-                duration_ms = (len(held) / 2) / STT_RATE * 1000
-                if duration_ms >= MIN_SPEECH_MS:
-                    self._busy = True
-                    self._loop.create_task(self._reply(held))
-                else:
-                    self._buf.clear()
+    async def attach(self, vc: discord.VoiceClient, loop: asyncio.AbstractEventLoop) -> str:
+        self._vc = vc
+        recv = DaveVoiceReceiver(vc, self.user_id, loop)
+        recv.on_utterance = self._reply
+        note = recv.start()
+        self._recv = recv
+        return note
 
     async def _reply(self, pcm16: bytes) -> None:
         try:
             text = await self._transcribe(pcm16)
             if not text:
-                logger.info("empty transcript, skipping")
+                logger.info("empty transcript")
                 return
             logger.info("heard (%s): %s", self.user_id, text[:200])
             reply = await self._grok_text(text)
@@ -178,8 +350,6 @@ class VoiceSession:
                 await self._play_mp3(audio)
         except Exception:
             logger.exception("voice reply failed")
-        finally:
-            self._busy = False
 
     async def _transcribe(self, pcm16: bytes) -> str:
         key = _api_key()
@@ -188,18 +358,16 @@ class VoiceSession:
         wav = _wav_bytes(pcm16)
         async with httpx.AsyncClient(timeout=60) as client:
             for url in ("https://api.x.ai/v1/stt", "https://api.x.ai/v1/audio/transcriptions"):
-                files = {"file": ("speech.wav", wav, "audio/wav")}
-                data = {"model": "grok-stt"}
                 resp = await client.post(
                     url,
                     headers={"Authorization": f"Bearer {key}"},
-                    files=files,
-                    data=data,
+                    files={"file": ("speech.wav", wav, "audio/wav")},
+                    data={"model": "grok-stt"},
                 )
                 if resp.status_code >= 400:
                     logger.warning("STT %s %s %s", url, resp.status_code, resp.text[:300])
                     continue
-                payload = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+                payload = resp.json() if "json" in (resp.headers.get("content-type") or "") else {}
                 text = (payload.get("text") or payload.get("transcript") or "").strip()
                 if text:
                     return text
@@ -271,17 +439,17 @@ class VoiceSession:
             logger.exception("VC playback failed")
 
     def stop(self) -> None:
-        self._stop.set()
-        self._buf.clear()
+        if self._recv:
+            self._recv.stop()
+            self._recv = None
 
 
 _sessions: dict[int, VoiceSession] = {}
 
 
 def get_recv_cls():
-    if voice_recv is None:
-        return None
-    return getattr(voice_recv, "VoiceRecvClient", None)
+    # Stock VoiceClient so discord.py owns DAVE. Not VoiceRecvClient.
+    return discord.VoiceClient
 
 
 async def start_session(
@@ -290,31 +458,18 @@ async def start_session(
     user_id: int,
     voice_name: str = "eve",
 ) -> str:
-    if voice_recv is None:
-        return "Voice receive package is not installed (discord-ext-voice-recv)."
     old = _sessions.pop(guild.id, None)
     if old:
         old.stop()
     session = VoiceSession(guild.id, user_id, voice_name=voice_name)
-    session._vc = voice_client
     _sessions[guild.id] = session
-    sink = _UserSink(session)
-    listen = getattr(voice_client, "listen", None)
-    if listen is None:
-        return "This voice connection cannot hear users. /leave then /join again."
-    try:
-        listen(sink)
-    except Exception as e:
-        return f"Could not start listening: {e}"
-    return (
-        "Listening only to you. Talk, pause about a second, and I will answer out loud. "
-        "Use /leave when done."
-    )
+    loop = asyncio.get_running_loop()
+    if not isinstance(voice_client, discord.VoiceClient):
+        return "Need a normal VoiceClient for DAVE decrypt."
+    return await session.attach(voice_client, loop)
 
 
 def stop_session(guild_id: int) -> None:
     session = _sessions.pop(guild_id, None)
     if session:
         session.stop()
-
-
