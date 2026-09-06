@@ -1,13 +1,5 @@
-"""
-External service integrations for Groksito.
+"""External service integrations for Aetherion."""
 
-Currently contains:
-- steam: Steam player count + image integration (powers /steamchart, /stmchr, /topgames).
-- twitch: Twitch Helix viewer/stream stats (powers /versus).
+from . import gamemeca
 
-Third-party data fetchers kept out of discord/client.py for clarity.
-"""
-
-from . import gamemeca, steam, thelog, twitch
-
-__all__ = ["gamemeca", "steam", "thelog", "twitch"]
+__all__ = ["gamemeca"]
