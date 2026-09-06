@@ -3,16 +3,16 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "groksito-discord-bot"
+name = "aetherion-discord-bot"
 version = "0.2.0"
-description = "Standalone Groksito Discord Bot (extracted from pantsu-connector)"
+description = "Aetherion — Grok-powered Discord bot"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-  {name = "Pantsu Team"}
+  {name = "OniOrii"}
 ]
-keywords = ["discord", "bot", "grok", "xai", "ai", "llm", "chat"]
+keywords = ["discord", "bot", "grok", "xai", "aetherion", "ai", "llm", "chat"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3",
@@ -25,7 +25,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "discord.py>=2.7.0,<3.0",  # Targeting recent discord.py for full voice message support + modern features (Components V2, better flags, etc.)
+    "discord.py>=2.7.0,<3.0",
     "httpx>=0.27.0",
     "rapidfuzz>=3.0.0",
     "openai>=1.30.0",
@@ -34,7 +34,6 @@ dependencies = [
     "pydub>=0.25.1",
     "structlog>=24.4.0",
     "rich>=13.7.0",
-    # Web dashboard dependencies (for the independent web/ FastAPI app)
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "jinja2>=3.1.4",
@@ -45,10 +44,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/lupintic/groksito-discord-bot"
-Repository = "https://github.com/lupintic/groksito-discord-bot"
-Issues = "https://github.com/lupintic/groksito-discord-bot/issues"
-Documentation = "https://github.com/lupintic/groksito-discord-bot#readme"
+Homepage = "https://github.com/OniOrii/Aetherion-Grok-powered-AI"
+Repository = "https://github.com/OniOrii/Aetherion-Grok-powered-AI"
+Issues = "https://github.com/OniOrii/Aetherion-Grok-powered-AI/issues"
+Documentation = "https://github.com/OniOrii/Aetherion-Grok-powered-AI#readme"
 
 [project.optional-dependencies]
 dev = [
@@ -61,6 +60,7 @@ where = ["src"]
 
 [project.scripts]
 groksito = "groksito_discord.main:run"
+aetherion = "groksito_discord.main:run"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

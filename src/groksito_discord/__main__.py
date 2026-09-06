@@ -1,9 +1,10 @@
 """
-Entry point for running Groksito as a module.
+Entry point for running Aetherion as a module.
 
 Usage:
     python -m groksito_discord
-    groksito   (console script after pip install -e .)
+    aetherion
+    groksito
 """
 
 from .main import run
