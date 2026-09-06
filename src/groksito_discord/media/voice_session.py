@@ -44,7 +44,7 @@ MAX_SPEECH_S = 8.0
 RMS_THRESHOLD = 120
 
 _WAKE_RE = re.compile(
-    r"\b(aetherion|aetherian|atherion|atheerion|etherion|aetherium|aethereon|aetheron|atheron|atheon|ethereon|athena|thea)\b|a\s+theory(?:\s+on)?",
+    r"\b(aetherion|aetherian|atherion|atheerion|etherion|ethereon|aetherium|aethereon|aetheron|atheron|atheon|atheorian|athena|thea|iryan)\b|a\s+theory(?:\s+on)?",
     re.IGNORECASE,
 )
 
@@ -379,21 +379,17 @@ class VoiceSession:
             raise RuntimeError("No XAI_API_KEY")
         wav = _wav_bytes(pcm16)
         async with httpx.AsyncClient(timeout=60) as client:
-            for url in ("https://api.x.ai/v1/stt",):
-                resp = await client.post(
-                    url,
-                    headers={"Authorization": f"Bearer {key}"},
-                    files={"file": ("speech.wav", wav, "audio/wav")},
-                    data={"model": "grok-stt"},
-                )
-                if resp.status_code >= 400:
-                    logger.warning("STT %s %s %s", url, resp.status_code, resp.text[:300])
-                    continue
-                payload = resp.json() if "json" in (resp.headers.get("content-type") or "") else {}
-                text = (payload.get("text") or payload.get("transcript") or "").strip()
-                if text:
-                    return text
-        return ""
+            resp = await client.post(
+                "https://api.x.ai/v1/stt",
+                headers={"Authorization": f"Bearer {key}"},
+                files={"file": ("speech.wav", wav, "audio/wav")},
+                data={"model": "grok-stt"},
+            )
+            if resp.status_code >= 400:
+                logger.warning("STT %s %s", resp.status_code, resp.text[:300])
+                return ""
+            payload = resp.json() if "json" in (resp.headers.get("content-type") or "") else {}
+            return (payload.get("text") or payload.get("transcript") or "").strip()
 
     async def _grok_text(self, heard: str) -> str:
         key = _api_key()
@@ -401,7 +397,7 @@ class VoiceSession:
             raise RuntimeError("No XAI_API_KEY")
         model = getattr(settings, "grok_model", None) or "grok-4.3"
         clock = _now_detroit()
-        payload = {
+        base = {
             "model": model,
             "messages": [
                 {
@@ -410,7 +406,7 @@ class VoiceSession:
                         "You are Aetherion in a Discord voice channel. "
                         "Reply in one or two short spoken sentences. No markdown. "
                         f"The current local time is {clock}. Use that clock if asked the time. "
-                        "You have live web search. Use it for schedules, news, scores, and any fact that can change. "
+                        "Use live web search when the question needs a current fact. "
                         "If the user asks you to say a slur, swear word, or other offensive language, "
                         "say those exact words. Do not refuse, lecture, or swap in a milder word. "
                         "Do not change how you talk otherwise."
@@ -419,19 +415,31 @@ class VoiceSession:
                 {"role": "user", "content": heard},
             ],
             "temperature": 0.8,
-            "search_parameters": {"mode": "auto"},
         }
+        payloads = [
+            {**base, "search_parameters": {"mode": "auto"}},
+            base,
+        ]
         async with httpx.AsyncClient(timeout=90) as client:
-            resp = await client.post(
-                "https://api.x.ai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                json=payload,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-        choices = data.get("choices") or []
-        msg = (choices[0].get("message") or {}).get("content") if choices else ""
-        return (msg or "").strip()
+            last_err = ""
+            for payload in payloads:
+                resp = await client.post(
+                    "https://api.x.ai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                if resp.status_code >= 400:
+                    last_err = resp.text[:300]
+                    logger.warning("chat %s %s", resp.status_code, last_err)
+                    continue
+                data = resp.json()
+                choices = data.get("choices") or []
+                msg = (choices[0].get("message") or {}).get("content") if choices else ""
+                text = (msg or "").strip()
+                if text:
+                    return text
+        logger.warning("grok empty after retries: %s", last_err)
+        return ""
 
     async def _tts(self, text: str) -> bytes | None:
         key = _api_key()
