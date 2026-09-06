@@ -11,30 +11,35 @@ import discord
 logger = logging.getLogger("groksito.voice_music")
 
 _PLAY_RE = re.compile(
-    r"^(?:please\s+)?(?:can\s+you\s+|could\s+you\s+)?(?:play|put\s+on|queue)\s+(.+)$",
+    r"(?:^|[\s\-]+|(?:please|can you|could you)\s+)(?:play|put on|queue)\s+(.+)$",
     re.IGNORECASE,
 )
 _STOP_RE = re.compile(
-    r"^(?:please\s+)?(?:stop|pause|halt)(?:\s+(?:the\s+)?(?:music|song|track))?$",
+    r"\b(?:stop|pause|halt)(?:\s+(?:the\s+)?(?:music|song|track))?\b",
     re.IGNORECASE,
 )
 _SKIP_RE = re.compile(
-    r"^(?:please\s+)?(?:skip|next)(?:\s+(?:the\s+)?(?:song|track|music))?$",
+    r"\b(?:skip|next)(?:\s+(?:the\s+)?(?:song|track|music))?\b",
     re.IGNORECASE,
 )
 
 
 def parse_music_command(prompt: str) -> tuple[str, str] | None:
     text = (prompt or "").strip().strip(".!?")
+    text = re.sub(r"^[\s\-\u2013\u2014:]+", "", text).strip()
     if not text:
         return None
-    if _STOP_RE.match(text) or _SKIP_RE.match(text):
+    low = text.lower()
+    if _STOP_RE.search(text) and "play" not in low:
         return ("stop", "")
-    m = _PLAY_RE.match(text)
+    if _SKIP_RE.search(text) and "play" not in low:
+        return ("stop", "")
+    m = _PLAY_RE.search(text)
     if m:
         query = m.group(1).strip().strip(".!?")
         query = re.sub(r"^(the\s+song\s+)", "", query, flags=re.IGNORECASE).strip()
         if query:
+            logger.info("music play query: %s", query[:120])
             return ("play", query)
     return None
 
@@ -88,6 +93,7 @@ def start_playback(vc: discord.VoiceClient, url: str) -> None:
             options="-vn",
         )
     )
+    logger.info("ffmpeg started music stream")
 
 
 async def handle_music(vc: discord.VoiceClient | None, prompt: str) -> dict[str, Any] | None:
