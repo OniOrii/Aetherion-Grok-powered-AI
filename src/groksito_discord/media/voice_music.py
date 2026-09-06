@@ -1,6 +1,7 @@
 """Play/stop music on the same VoiceClient Aetherion already uses for TTS."""
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 import re
@@ -28,6 +29,13 @@ _SKIP_RE = re.compile(
 last_error: str | None = None
 _cookies_logged = False
 
+# Cookies make yt-dlp prefer tv_downgraded, which currently returns
+# "The page needs to be reloaded." Try clients that still return audio.
+_PLAYER_CLIENT_TRIES: tuple[tuple[str, ...], ...] = (
+    ("web_embedded", "android"),
+    ("tv", "web_safari"),
+)
+
 
 def parse_music_command(prompt: str) -> tuple[str, str] | None:
     text = (prompt or "").strip().strip(".!?")
@@ -49,6 +57,21 @@ def parse_music_command(prompt: str) -> tuple[str, str] | None:
     return None
 
 
+def _normalize_netscape(text: str) -> str:
+    """Keep Netscape cookies.txt valid if Railway turned tabs into spaces."""
+    out: list[str] = []
+    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        if not line.strip() or line.lstrip().startswith("#") or "\t" in line:
+            out.append(line)
+            continue
+        parts = re.split(r" {2,}", line.strip())
+        if len(parts) >= 7:
+            out.append("\t".join(parts))
+        else:
+            out.append(line)
+    return "\n".join(out).rstrip() + "\n"
+
+
 def cookiefile_path() -> str | None:
     """Resolve a Netscape cookies.txt path if the operator configured one."""
     try:
@@ -61,11 +84,15 @@ def cookiefile_path() -> str | None:
     try:
         if raw:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(raw if raw.endswith("\n") else raw + "\n", encoding="utf-8")
+            dest.write_text(_normalize_netscape(raw), encoding="utf-8")
             return str(dest)
         if b64:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(base64.b64decode(b64))
+            decoded = base64.b64decode(b64)
+            try:
+                dest.write_text(_normalize_netscape(decoded.decode("utf-8")), encoding="utf-8")
+            except UnicodeDecodeError:
+                dest.write_bytes(decoded)
             return str(dest)
     except Exception:
         logger.exception("failed to materialize YouTube cookies")
@@ -79,8 +106,9 @@ def cookiefile_path() -> str | None:
     return None
 
 
-def _ydl_opts() -> dict[str, Any]:
+def _ydl_opts(player_clients: tuple[str, ...] | None = None) -> dict[str, Any]:
     global _cookies_logged
+    clients = list(player_clients or _PLAYER_CLIENT_TRIES[0])
     opts: dict[str, Any] = {
         "format": "bestaudio/best",
         "quiet": True,
@@ -88,6 +116,7 @@ def _ydl_opts() -> dict[str, Any]:
         "default_search": "ytsearch1",
         "skip_download": True,
         "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": clients}},
     }
     cookiefile = cookiefile_path()
     if cookiefile:
@@ -105,6 +134,8 @@ def _classify_extract_error(exc: BaseException) -> str:
     msg = str(exc).lower()
     if "sign in to confirm" in msg or "not a bot" in msg:
         return "bot_check"
+    if "page needs to be reloaded" in msg:
+        return "reload_needed"
     return "extract_failed"
 
 
@@ -117,12 +148,28 @@ def _extract_track(query: str) -> dict[str, str] | None:
         logger.warning("yt-dlp is not installed")
         last_error = "yt_dlp_missing"
         return None
-    try:
-        with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
-            info = ydl.extract_info(query, download=False)
-    except Exception as e:
-        last_error = _classify_extract_error(e)
-        logger.exception("yt-dlp extract failed for %s", query[:80])
+
+    info = None
+    last_exc: BaseException | None = None
+    for clients in _PLAYER_CLIENT_TRIES:
+        try:
+            with yt_dlp.YoutubeDL(_ydl_opts(clients)) as ydl:
+                info = ydl.extract_info(query, download=False)
+            last_exc = None
+            logger.info("youtube extract ok clients=%s", ",".join(clients))
+            break
+        except Exception as e:
+            last_exc = e
+            kind = _classify_extract_error(e)
+            logger.warning(
+                "yt-dlp %s clients=%s query=%s",
+                kind,
+                ",".join(clients),
+                query[:80],
+            )
+            continue
+    if last_exc is not None:
+        last_error = _classify_extract_error(last_exc)
         return None
     if not info:
         return None
@@ -139,7 +186,7 @@ def _extract_track(query: str) -> dict[str, str] | None:
 
 
 async def resolve_track(query: str) -> dict[str, str] | None:
-    loop = __import__("asyncio").get_running_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _extract_track, query)
 
 
@@ -161,6 +208,8 @@ def _play_fail_speech() -> str:
         if cookiefile_path():
             return "YouTube still blocked that video."
         return "YouTube blocked this server. Add YouTube cookies and restart."
+    if last_error == "reload_needed":
+        return "YouTube would not start that video. Try another link."
     return "I could not find that song."
 
 
