@@ -878,8 +878,11 @@ def register_slash_commands(
         description="Join your current voice channel (silent for now).",
     )
     async def join_slash(interaction: discord.Interaction):
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Aetherion is not available in this server.", ephemeral=True
             )
             return
@@ -888,13 +891,12 @@ def register_slash_commands(
         voice_state = getattr(member or interaction.user, "voice", None)
         channel = getattr(voice_state, "channel", None)
         if channel is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Join a voice channel first, then run /join.",
                 ephemeral=True,
             )
             return
 
-        await interaction.response.defer(ephemeral=True)
         try:
             recv_cls = get_recv_cls()
             vc = interaction.guild.voice_client if interaction.guild else None
@@ -918,6 +920,7 @@ def register_slash_commands(
                 f"Could not join voice: {e}",
                 ephemeral=True,
             )
+          
     @tree.command(
         name="leave",
         description="Leave the voice channel.",
