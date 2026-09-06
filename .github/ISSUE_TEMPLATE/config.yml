@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: "\U0001F512 Report a security vulnerability"
-    url: "https://github.com/lupintic/groksito-discord-bot/security/advisories/new"
+    url: "https://github.com/OniOrii/Aetherion-Grok-powered-AI/security/advisories/new"
     about: "Please use the private vulnerability reporting form for security issues."
-  - name: "\U0001F4DA Documentation / Philosophy Questions"
-    url: "https://github.com/lupintic/groksito-discord-bot/discussions"
-    about: "For questions about contributing, AGENTS.md, or architecture, start a Discussion."
+  - name: "\U0001F4DA Documentation"
+    url: "https://github.com/OniOrii/Aetherion-Grok-powered-AI#readme"
+    about: "Start with the README and ARCHITECTURE.md."

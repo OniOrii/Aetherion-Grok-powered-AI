@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve Groksito
+about: Create a report to help improve Aetherion
 title: ''
 labels: bug
 assignees: ''
@@ -22,7 +22,7 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots or paste relevant log output (remove any tokens!).
 
 **Environment**
-- OS / Docker version:
+- OS / Docker / Railway:
 - Python version:
 - Bot version / commit:
 - Auth mode (key / oauth / auto):
