@@ -66,15 +66,13 @@ def _wav_bytes(pcm16_mono: bytes, rate: int = STT_RATE) -> bytes:
 
 
 def _pcm48_stereo_to_16_mono(pcm: bytes) -> bytes:
-    if not pcm:
+    if not pcm or len(pcm) % 2:
         return b""
-    if len(pcm) % 4 == 0 and len(pcm) >= 3840:
-        mono, _ = audioop.tomono(pcm, 2, 1, 1)
-    elif len(pcm) % 2 == 0:
-        mono = pcm
+    if len(pcm) % 4 == 0:
+        mono = audioop.tomono(pcm, 2, 1.0, 1.0)
     else:
-        return b""
-    down, _ = audioop.ratecv(mono, 2, 1, DISCORD_RATE, STT_RATE, None)
+        mono = pcm
+    down, _state = audioop.ratecv(mono, 2, 1, DISCORD_RATE, STT_RATE, None)
     return down
 
 
