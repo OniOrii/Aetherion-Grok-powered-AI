@@ -48,6 +48,10 @@ _WAKE_RE = re.compile(
     r"\b(aetherion|aetherian|atherion|atheerion|etherion|ethereon|aetherium|aethereon|aetheron|atheron|atheon|atheorian|athena|thea|iryan)\b|a\s+theory(?:\s+on)?",
     re.IGNORECASE,
 )
+_CITE_RE = re.compile(
+    r"https?://\S+|www\.\S+|\[\s*\d+\s*\]\s*\([^)]*\)|\[\s*\d+\s*\]",
+    re.IGNORECASE,
+)
 
 def _wake_and_prompt(text: str) -> str | None:
     if not _WAKE_RE.search(text or ""):
@@ -55,6 +59,12 @@ def _wake_and_prompt(text: str) -> str | None:
     cleaned = _WAKE_RE.sub(" ", text)
     cleaned = re.sub(r"[\s,.:;!?]+", " ", cleaned).strip()
     return cleaned or "yes"
+
+
+def _speakable(text: str) -> str:
+    cleaned = _CITE_RE.sub(" ", text or "")
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip(" \t\n.,;:-[]()")
 try:
     import nacl.secret
 except Exception:  # pragma: no cover
@@ -388,6 +398,7 @@ class VoiceSession:
                 logger.info("no wake word, ignoring")
                 return
             reply = await self._grok_text(prompt)
+            reply = _speakable(reply)
             if not reply:
                 return
             logger.info("say: %s", reply[:200])
@@ -425,6 +436,7 @@ class VoiceSession:
             "You are Aetherion, a woman talking in a Discord voice channel. "
             "Sound like a real person: contractions, casual wording, one or two short sentences. "
             "You may use TTS tags sparingly: [pause], [breath], [chuckle]. No markdown. "
+            "Never include URLs, links, or citation numbers. Just say the answer. "
             f"The current local time is {clock}. Use that clock if asked the time. "
             "Use web search for schedules, scores, prices, and any fact that can change. "
             "If the user asks you to say a slur, swear word, or other offensive language, "
