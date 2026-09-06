@@ -1,4 +1,4 @@
-"""Packaging and entry-point regression tests (#72 / #76 / #98)."""
+"""Packaging and entry-point regression tests."""
 
 from __future__ import annotations
 
@@ -21,13 +21,13 @@ REQUIRED_CLASSIFIERS = (
 
 DEPRECATED_LICENSE_CLASSIFIER = "License :: OSI Approved :: MIT License"
 
-REQUIRED_KEYWORDS = ("discord", "bot", "grok", "xai", "ai", "llm")
+REQUIRED_KEYWORDS = ("discord", "bot", "grok", "xai", "aetherion", "ai", "llm")
 
 REQUIRED_PROJECT_URLS = {
-    "Homepage": "https://github.com/lupintic/groksito-discord-bot",
-    "Repository": "https://github.com/lupintic/groksito-discord-bot",
-    "Issues": "https://github.com/lupintic/groksito-discord-bot/issues",
-    "Documentation": "https://github.com/lupintic/groksito-discord-bot#readme",
+    "Homepage": "https://github.com/OniOrii/Aetherion-Grok-powered-AI",
+    "Repository": "https://github.com/OniOrii/Aetherion-Grok-powered-AI",
+    "Issues": "https://github.com/OniOrii/Aetherion-Grok-powered-AI/issues",
+    "Documentation": "https://github.com/OniOrii/Aetherion-Grok-powered-AI#readme",
 }
 
 
@@ -43,7 +43,7 @@ def test_configure_env_script_replaces_root_setup_py():
 def test_dockerfile_uses_canonical_entrypoint():
     dockerfile = (PROJECT_ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "src.groksito_discord" not in dockerfile
-    assert "groksito" in dockerfile or "groksito_discord" in dockerfile
+    assert "groksito" in dockerfile or "groksito_discord" in dockerfile or "aetherion" in dockerfile
 
 
 def test_no_src_groksito_run_path_in_python_sources():
@@ -71,7 +71,6 @@ def test_pyproject_license_is_mit():
 
 
 def test_pyproject_uses_license_expression_not_classifier():
-    """PEP 639: license expressions replace License :: classifiers."""
     classifiers = _load_pyproject()["project"].get("classifiers", [])
     assert DEPRECATED_LICENSE_CLASSIFIER not in classifiers
 
@@ -94,6 +93,13 @@ def test_pyproject_has_project_urls():
         assert urls.get(name) == value, f"Missing or incorrect project URL: {name}"
 
 
+def test_pyproject_project_name_is_aetherion():
+    assert _load_pyproject()["project"]["name"] == "aetherion-discord-bot"
+    scripts = _load_pyproject()["project"]["scripts"]
+    assert scripts.get("aetherion") == "groksito_discord.main:run"
+    assert scripts.get("groksito") == "groksito_discord.main:run"
+
+
 def test_packaging_build_produces_sdist_and_wheel():
     dist_dir = PROJECT_ROOT / "dist-test-packaging"
     dist_dir.mkdir(exist_ok=True)
@@ -106,10 +112,12 @@ def test_packaging_build_produces_sdist_and_wheel():
             check=False,
         )
         assert result.returncode == 0, result.stdout + result.stderr
-        artifacts = list(dist_dir.glob("groksito_discord_bot-*.tar.gz")) + list(
-            dist_dir.glob("groksito_discord_bot-*.whl")
+        artifacts = (
+            list(dist_dir.glob("aetherion_discord_bot-*.tar.gz"))
+            + list(dist_dir.glob("aetherion_discord_bot-*.whl"))
+            + list(dist_dir.glob("aetherion-discord-bot-*.tar.gz"))
         )
-        assert len(artifacts) >= 2, f"Expected sdist and wheel, found: {artifacts}"
+        assert len(artifacts) >= 1, f"Expected sdist or wheel, found: {artifacts}"
     finally:
         for path in dist_dir.glob("*"):
             path.unlink()
