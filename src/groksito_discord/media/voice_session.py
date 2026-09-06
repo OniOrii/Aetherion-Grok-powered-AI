@@ -42,7 +42,7 @@ MAX_SPEECH_S = 8.0
 RMS_THRESHOLD = 120
 
 _WAKE_RE = re.compile(
-    r"\b(aetherion|atherion|atheerion|etherion|aetherium|aethereon|aetheron|atheron|atheon|atheon|ethereon)\b|a\s+theory(?:\s+on)?",
+    r"\b(aetherion|aetherian|atherion|atheerion|etherion|aetherium|aethereon|aetheron|atheron|atheon|ethereon|athena)\b|a\s+theory(?:\s+on)?",
     re.IGNORECASE,
 )
 
