@@ -50,12 +50,12 @@ Forked from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito
   - On-demand Discord asset tools: `get_user_avatar` and `get_top_server_emoji`.
   - Full support for referenced messages, reply chains, and image harvesting.
 
-- **Games & live data**
-  - `/stmchr`, `/steamchart`, `/topgames` — Steam player counts and store embeds.
-  - `/versus` — two games head-to-head on Steam players vs Twitch viewers.
-  - `/topkorea` — TheLog PC bang top 10.
-  - `/korea50` — Gamemeca weekly top 50 (English names, cached daily).
-  - `/ping` — alive check. `/mislimites` — remaining rate-limit tokens.
+- **Slash commands**
+  - `/join` / `/leave` — voice session.
+  - `/datechannel` — daily date dock (Manage Server).
+  - `/welcome` — welcome banner channel (Manage Server).
+  - `/audio` — generate TTS in the current text channel.
+  - `/ping` — alive check.
 
 - **xAI Authentication Options**
   - Classic `XAI_API_KEY` (stable default).
@@ -139,9 +139,7 @@ Point the service at this repo, set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`, keep 
 - `/datechannel` on a voice channel → that channel becomes the daily date dock (Eastern midnight).
 - `/welcome` on a text channel → new-member banners land there.
 - `/audio` or right-click a message → Apps → "🔊 Leer en voz alta" for TTS in-channel.
-- Steam / Twitch: `/stmchr`, `/steamchart`, `/topgames`, `/versus`.
-- Korea: `/topkorea`, `/korea50`.
-- `/ping`, `/mislimites`.
+- `/ping` to confirm the bot is awake.
 
 Example interactions are natural English/Spanish conversation. The bot is intentionally low-ceremony.
 
@@ -151,7 +149,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for component breakdown, data flow, the
 
 High-level pieces live under `src/groksito_discord/`:
 - `main.py` — CLI entry (`groksito` console script).
-- `discord/client.py` — Gateway connection, slash commands (`/join`, `/leave`, `/datechannel`, `/welcome`, Steam, Korea), heartbeats, rate limits.
+- `discord/client.py` — Gateway connection, slash command wiring, heartbeats, rate limits.
+- `discord/slash_commands.py` — `/join`, `/leave`, `/datechannel`, `/welcome`, `/audio`, `/ping`.
 - `discord/date_dock.py` — Eastern-midnight voice-channel rename loop.
 - `discord/welcome.py` — new-member banners.
 - `core/conversation.py` — activation policy, vision harvest, referenced-message context.
@@ -159,7 +158,7 @@ High-level pieces live under `src/groksito_discord/`:
 - `llm/tools.py` + `llm/media_tools.py` — tiered custom tools and media intent gates.
 - `media/voice_session.py` — DAVE decrypt, wake word, STT, web search, Ara TTS, playback lock.
 - `media/*_handler.py` + `media/delivery.py` — image/video/audio generation and direct delivery.
-- `discord/integrations/steam.py` / `twitch.py` / `thelog.py` / `gamemeca.py` — live game data.
+- `discord/integrations/gamemeca.py` — optional ranking cache used internally.
 - `core/grok_oauth.py` — OAuth PKCE + token management.
 - `context/` — short-term per-channel history (`data/pantsu_context.json`; legacy filename).
 - `web/` — independent FastAPI dashboard.
@@ -180,7 +179,7 @@ Never commit `.env` or `oauth/xai_oauth_tokens.json`.
 
 Committed project roots: `src/`, `tests/`, `web/`, `data/.gitkeep`, Docker files, and root docs (`README.md`, `ARCHITECTURE.md`, `GROK_OAUTH.md`).
 
-- `data/` — runtime state (heartbeats, context, Steam cache, `date_channels.json`, welcome channel ids). Gitignored except `data/.gitkeep`.
+- `data/` — runtime state (heartbeats, context, `date_channels.json`, welcome channel ids). Gitignored except `data/.gitkeep`.
 - `oauth/` — OAuth tokens from `--login-oauth` (gitignored).
 
 ## 📄 License
@@ -189,16 +188,13 @@ MIT License — see [LICENSE](./LICENSE).
 
 ## 🤝 Contributing
 
-Contributions, bug reports, and feature ideas are welcome.
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) if present. Keep changes focused and respect the "maximum nativeness" philosophy.
+Contributions, bug reports, and feature ideas are welcome. Keep changes focused and respect the "maximum nativeness" philosophy.
 
 ## 🙏 Credits
 
 - Built and maintained by [@OniOrii](https://github.com/OniOrii) as **Aetherion**.
 - Started from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito-discord-bot).
 - Grok models and APIs by xAI.
-- Steam / Twitch / TheLog / Gamemeca data via public sources (no affiliation).
 
 ---
 
