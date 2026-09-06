@@ -147,30 +147,50 @@ def _classify_extract_error(exc: BaseException) -> str:
     return "extract_failed"
 
 
+def _usable_audio_url(url: str, fmt: dict[str, Any] | None = None) -> bool:
+    if not url.startswith("http"):
+        return False
+    low = url.lower()
+    path = low.split("?", 1)[0]
+    if any(h in low for h in ("ytimg.com", "ggpht.com")):
+        return False
+    if "storyboard" in low:
+        return False
+    if path.endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+        return False
+    if fmt is not None:
+        fid = str(fmt.get("format_id") or "").lower()
+        note = str(fmt.get("format_note") or "").lower()
+        if fid.startswith("sb") or "storyboard" in fid or "storyboard" in note:
+            return False
+        acodec = str(fmt.get("acodec") or "none")
+        vcodec = str(fmt.get("vcodec") or "none")
+        if acodec == "none" and vcodec in ("none", "images"):
+            return False
+    return True
+
+
 def _pick_stream(info: dict[str, Any]) -> str:
-    if info.get("url"):
-        return str(info["url"])
-    best = ""
-    best_score = -1.0
+    candidates: list[tuple[float, str]] = []
     for fmt in info.get("formats") or []:
-        url = fmt.get("url") or ""
-        if not url:
+        url = str(fmt.get("url") or "")
+        if not _usable_audio_url(url, fmt):
             continue
         proto = str(fmt.get("protocol") or "")
         if "dash" in proto or "sabr" in proto:
             continue
-        if (fmt.get("acodec") or "none") == "none" and (fmt.get("vcodec") or "none") != "none":
-            continue
         score = float(fmt.get("abr") or fmt.get("tbr") or 0)
-        if score >= best_score:
-            best_score = score
-            best = str(url)
-    if best:
-        return best
-    for fmt in info.get("formats") or []:
-        url = fmt.get("url") or ""
-        if url:
-            return str(url)
+        if "googlevideo.com" in url:
+            score += 1000
+        if (fmt.get("acodec") or "none") != "none":
+            score += 100
+        candidates.append((score, url))
+    if candidates:
+        candidates.sort(key=lambda row: row[0], reverse=True)
+        return candidates[0][1]
+    top = str(info.get("url") or "")
+    if _usable_audio_url(top):
+        return top
     return ""
 
 
@@ -184,7 +204,6 @@ def _unwrap_info(info: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def _source_queries(query: str) -> list[tuple[str, str, str | None]]:
-    """(source, ytdlp_query, default_search)."""
     q = (query or "").strip()
     if not q:
         return []
