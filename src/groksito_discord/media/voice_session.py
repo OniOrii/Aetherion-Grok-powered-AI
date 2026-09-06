@@ -20,6 +20,7 @@ import asyncio
 import io
 import logging
 import os
+import re
 import struct
 import tempfile
 import time
@@ -40,6 +41,17 @@ MIN_SPEECH_S = 0.25
 MAX_SPEECH_S = 8.0
 RMS_THRESHOLD = 120
 
+_WAKE_RE = re.compile(
+    r"\b(aetherion|atherion|etherion|aetherium)\b",
+    re.IGNORECASE,
+)
+
+def _wake_and_prompt(text: str) -> str | None:
+    if not _WAKE_RE.search(text or ""):
+        return None
+    cleaned = _WAKE_RE.sub(" ", text)
+    cleaned = re.sub(r"[\s,.:;!?]+", " ", cleaned).strip()
+    return cleaned or "yes"
 try:
     import nacl.secret
 except Exception:  # pragma: no cover
@@ -341,7 +353,11 @@ class VoiceSession:
                 logger.info("empty transcript")
                 return
             logger.info("heard (%s): %s", self.user_id, text[:200])
-            reply = await self._grok_text(text)
+            prompt = _wake_and_prompt(text)
+            if prompt is None:
+                logger.info("no wake word, ignoring")
+                return
+            reply = await self._grok_text(prompt)
             if not reply:
                 return
             logger.info("say: %s", reply[:200])
