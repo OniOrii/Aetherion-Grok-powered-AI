@@ -3,7 +3,6 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)
 ![Discord](https://img.shields.io/badge/Discord-Bot-7289da.svg)
 ![xAI](https://img.shields.io/badge/xAI-Grok-ff6b6b.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 **Aetherion** is a standalone Discord bot that brings Grok (xAI) natively into Discord servers — text, media, live voice, and music in the same voice channel. It is a fully conversational experience powered directly by Grok models, with vision, tool use, direct image/video/audio generation, a voice-channel listener that talks back, and YouTube audio playback on that same connection.
 
@@ -196,10 +195,6 @@ Committed project roots: `src/`, `tests/`, `web/`, `data/.gitkeep`, Docker files
 
 - `data/` — runtime state (heartbeats, context, `date_channels.json`, welcome channel ids). Gitignored except `data/.gitkeep`.
 - `oauth/` — OAuth tokens from `--login-oauth` (gitignored).
-
-## 📄 License
-
-MIT License — see [LICENSE](./LICENSE).
 
 ## 👍 Credits
 
