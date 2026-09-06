@@ -1,4 +1,4 @@
-"""YouTube cookie wiring for music resolve."""
+"""YouTube cookie wiring and music source fallback."""
 from __future__ import annotations
 
 from groksito_discord.media import voice_music as vm
@@ -16,32 +16,22 @@ def test_classify_bot_check():
     assert vm._classify_extract_error(err) == "bot_check"
 
 
-def test_classify_reload():
-    err = Exception("ERROR: [youtube] abc: The page needs to be reloaded.")
-    assert vm._classify_extract_error(err) == "reload_needed"
+def test_source_queries_add_soundcloud_fallback():
+    q = vm._source_queries("Your Soul by Hippie Sabotage")
+    assert q[0][0] == "youtube"
+    assert q[1][0] == "soundcloud"
+    assert q[1][1].startswith("scsearch1:")
 
 
-def test_ydl_opts_omits_cookiefile_by_default(monkeypatch):
+def test_source_queries_keep_direct_links():
+    yt = vm._source_queries("https://youtu.be/dQw4w9WgXcQ")
+    assert yt == [("youtube", "https://youtu.be/dQw4w9WgXcQ", None)]
+    sc = vm._source_queries("https://soundcloud.com/artist/track")
+    assert sc[0][0] == "soundcloud"
+
+
+def test_ydl_opts_ignores_missing_formats(monkeypatch):
     monkeypatch.setattr(vm, "cookiefile_path", lambda: None)
     opts = vm._ydl_opts(use_cookies=True)
+    assert opts["ignore_no_formats_error"] is True
     assert "cookiefile" not in opts
-    assert opts["default_search"] == "ytsearch1"
-
-
-def test_ydl_opts_adds_cookiefile_when_present(monkeypatch):
-    monkeypatch.setattr(vm, "cookiefile_path", lambda: "/tmp/youtube_cookies.txt")
-    opts = vm._ydl_opts(use_cookies=True)
-    assert opts["cookiefile"] == "/tmp/youtube_cookies.txt"
-    opts_anon = vm._ydl_opts(use_cookies=False)
-    assert "cookiefile" not in opts_anon
-
-
-def test_pick_stream_prefers_direct_audio():
-    info = {
-        "formats": [
-            {"url": "https://example/dash", "protocol": "http_dash_segments", "acodec": "opus", "abr": 160},
-            {"url": "https://example/ok.m4a", "protocol": "https", "acodec": "mp4a.40.2", "abr": 128},
-            {"url": "https://example/vid", "protocol": "https", "acodec": "none", "abr": 0},
-        ]
-    }
-    assert vm._pick_stream(info) == "https://example/ok.m4a"

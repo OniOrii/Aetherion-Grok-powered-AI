@@ -24,11 +24,11 @@ _SKIP_RE = re.compile(
     r"\b(?:skip|next)(?:\s+(?:the\s+)?(?:song|track|music))?\b",
     re.IGNORECASE,
 )
+_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 
 last_error: str | None = None
 _cookies_logged = False
 
-# Anonymous clients first. Cookies often force SABR / tv_downgraded with no URL.
 _ANON_CLIENTS: tuple[tuple[str, ...], ...] = (
     ("tv", "android_vr"),
     ("ios", "android"),
@@ -109,17 +109,21 @@ def cookiefile_path() -> str | None:
 def _ydl_opts(
     player_clients: tuple[str, ...] | None = None,
     use_cookies: bool = True,
+    default_search: str | None = "ytsearch1",
 ) -> dict[str, Any]:
     global _cookies_logged
-    clients = list(player_clients or _ANON_CLIENTS[0])
     opts: dict[str, Any] = {
         "noplaylist": True,
-        "default_search": "ytsearch1",
         "skip_download": True,
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {"youtube": {"player_client": clients}},
+        "ignore_no_formats_error": True,
+        "format": "bestaudio/best/best*",
     }
+    if default_search:
+        opts["default_search"] = default_search
+    if player_clients:
+        opts["extractor_args"] = {"youtube": {"player_client": list(player_clients)}}
     cookiefile = cookiefile_path() if use_cookies else None
     if cookiefile:
         opts["cookiefile"] = cookiefile
@@ -153,9 +157,9 @@ def _pick_stream(info: dict[str, Any]) -> str:
         if not url:
             continue
         proto = str(fmt.get("protocol") or "")
-        if "dash" in proto or "sabr" in proto or proto == "m3u8_native":
+        if "dash" in proto or "sabr" in proto:
             continue
-        if (fmt.get("acodec") or "none") == "none":
+        if (fmt.get("acodec") or "none") == "none" and (fmt.get("vcodec") or "none") != "none":
             continue
         score = float(fmt.get("abr") or fmt.get("tbr") or 0)
         if score >= best_score:
@@ -170,65 +174,123 @@ def _pick_stream(info: dict[str, Any]) -> str:
     return ""
 
 
-def _attempts() -> list[tuple[bool, tuple[str, ...]]]:
-    rows: list[tuple[bool, tuple[str, ...]]] = [(False, clients) for clients in _ANON_CLIENTS]
+def _unwrap_info(info: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not info:
+        return None
+    if "entries" in info:
+        entries = [e for e in (info.get("entries") or []) if e]
+        return entries[0] if entries else None
+    return info
+
+
+def _source_queries(query: str) -> list[tuple[str, str, str | None]]:
+    """(source, ytdlp_query, default_search)."""
+    q = (query or "").strip()
+    if not q:
+        return []
+    if _URL_RE.match(q):
+        low = q.lower()
+        if "soundcloud.com" in low:
+            return [("soundcloud", q, None)]
+        if "youtu.be" in low or "youtube.com" in low:
+            return [("youtube", q, None)]
+        return [("url", q, None)]
+    return [
+        ("youtube", q, "ytsearch1"),
+        ("soundcloud", f"scsearch1:{q}", None),
+    ]
+
+
+def _youtube_attempts() -> list[tuple[bool, tuple[str, ...]]]:
+    rows: list[tuple[bool, tuple[str, ...]]] = [(False, c) for c in _ANON_CLIENTS]
     if cookiefile_path():
-        rows.extend((True, clients) for clients in _COOKIE_CLIENTS)
+        rows.extend((True, c) for c in _COOKIE_CLIENTS)
     return rows
+
+
+def _extract_one(
+    ytdlp_query: str,
+    *,
+    use_cookies: bool,
+    clients: tuple[str, ...] | None,
+    default_search: str | None,
+    source: str,
+) -> dict[str, str] | None:
+    global last_error
+    import yt_dlp
+
+    opts = _ydl_opts(clients, use_cookies=use_cookies, default_search=default_search)
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = _unwrap_info(ydl.extract_info(ytdlp_query, download=False))
+    except Exception as e:
+        last_error = _classify_extract_error(e)
+        logger.warning(
+            "yt-dlp %s source=%s cookies=%s clients=%s query=%s",
+            last_error,
+            source,
+            use_cookies,
+            ",".join(clients or ()),
+            ytdlp_query[:80],
+        )
+        return None
+    if not info:
+        return None
+    url = _pick_stream(info)
+    title = (info.get("title") or ytdlp_query).strip()
+    if not url:
+        last_error = "no_format"
+        logger.warning(
+            "no stream url source=%s cookies=%s clients=%s title=%s",
+            source,
+            use_cookies,
+            ",".join(clients or ()),
+            title[:80],
+        )
+        return None
+    logger.info(
+        "extract ok source=%s cookies=%s clients=%s title=%s",
+        source,
+        use_cookies,
+        ",".join(clients or ()),
+        title[:80],
+    )
+    return {"url": url, "title": title[:120], "source": source}
 
 
 def _extract_track(query: str) -> dict[str, str] | None:
     global last_error
     last_error = None
     try:
-        import yt_dlp
+        import yt_dlp  # noqa: F401
     except Exception:
         logger.warning("yt-dlp is not installed")
         last_error = "yt_dlp_missing"
         return None
 
-    last_exc: BaseException | None = None
-    for use_cookies, clients in _attempts():
-        try:
-            with yt_dlp.YoutubeDL(_ydl_opts(clients, use_cookies=use_cookies)) as ydl:
-                info = ydl.extract_info(query, download=False)
-        except Exception as e:
-            last_exc = e
-            logger.warning(
-                "yt-dlp %s cookies=%s clients=%s query=%s",
-                _classify_extract_error(e),
-                use_cookies,
-                ",".join(clients),
-                query[:80],
-            )
+    for source, ytdlp_query, default_search in _source_queries(query):
+        if source == "youtube":
+            for use_cookies, clients in _youtube_attempts():
+                track = _extract_one(
+                    ytdlp_query,
+                    use_cookies=use_cookies,
+                    clients=clients,
+                    default_search=default_search,
+                    source=source,
+                )
+                if track:
+                    return track
             continue
-        if not info:
-            continue
-        if "entries" in info:
-            entries = [e for e in (info.get("entries") or []) if e]
-            info = entries[0] if entries else None
-        if not info:
-            continue
-        url = _pick_stream(info)
-        title = (info.get("title") or query).strip()
-        if not url:
-            last_error = "no_format"
-            logger.warning(
-                "youtube had no stream url cookies=%s clients=%s title=%s",
-                use_cookies,
-                ",".join(clients),
-                title[:80],
-            )
-            continue
-        logger.info(
-            "youtube extract ok cookies=%s clients=%s title=%s",
-            use_cookies,
-            ",".join(clients),
-            title[:80],
+        logger.info("music fallback source=%s query=%s", source, ytdlp_query[:80])
+        track = _extract_one(
+            ytdlp_query,
+            use_cookies=False,
+            clients=None,
+            default_search=default_search,
+            source=source,
         )
-        return {"url": url, "title": title[:120]}
-    if last_exc is not None and last_error is None:
-        last_error = _classify_extract_error(last_exc)
+        if track:
+            return track
     return None
 
 
@@ -256,7 +318,7 @@ def _play_fail_speech() -> str:
             return "YouTube still blocked that video."
         return "YouTube blocked this server. Add YouTube cookies and restart."
     if last_error in ("reload_needed", "no_format"):
-        return "YouTube would not start that video. Try another link."
+        return "I could not start that song. Try another name or a link."
     return "I could not find that song."
 
 
@@ -275,8 +337,13 @@ async def handle_music(vc: discord.VoiceClient | None, prompt: str) -> dict[str,
     track = await resolve_track(query)
     if not track:
         return {"speak": _play_fail_speech()}
+    source = track.get("source") or "youtube"
+    if source == "soundcloud":
+        speak = f"Playing {track['title']} from SoundCloud."
+    else:
+        speak = f"Playing {track['title']}."
     return {
-        "speak": f"Playing {track['title']}.",
+        "speak": speak,
         "url": track["url"],
         "title": track["title"],
     }
