@@ -42,6 +42,7 @@ SILENCE_S = 0.35
 MIN_SPEECH_S = 0.25
 MAX_SPEECH_S = 8.0
 RMS_THRESHOLD = 120
+DEFAULT_VOICE = "ara"
 
 _WAKE_RE = re.compile(
     r"\b(aetherion|aetherian|atherion|atheerion|etherion|ethereon|aetherium|aethereon|aetheron|atheron|atheon|atheorian|athena|thea|iryan)\b|a\s+theory(?:\s+on)?",
@@ -337,10 +338,10 @@ class DaveVoiceReceiver:
 
 
 class VoiceSession:
-    def __init__(self, guild_id: int, user_id: int, voice_name: str = "eve") -> None:
+    def __init__(self, guild_id: int, user_id: int, voice_name: str = DEFAULT_VOICE) -> None:
         self.guild_id = guild_id
         self.user_id = user_id
-        self.voice_name = voice_name
+        self.voice_name = voice_name or DEFAULT_VOICE
         self._vc: discord.VoiceProtocol | None = None
         self._recv: DaveVoiceReceiver | None = None
 
@@ -397,49 +398,37 @@ class VoiceSession:
             raise RuntimeError("No XAI_API_KEY")
         model = getattr(settings, "grok_model", None) or "grok-4.3"
         clock = _now_detroit()
-        base = {
+        payload = {
             "model": model,
             "messages": [
                 {
                     "role": "system",
                     "content": (
-                        "You are Aetherion in a Discord voice channel. "
-                        "Reply in one or two short spoken sentences. No markdown. "
+                        "You are Aetherion, a woman talking in a Discord voice channel. "
+                        "Sound like a real person: contractions, casual wording, one or two short sentences. "
+                        "You may use TTS tags sparingly: [pause], [breath], [chuckle]. No markdown. "
                         f"The current local time is {clock}. Use that clock if asked the time. "
-                        "Use live web search when the question needs a current fact. "
                         "If the user asks you to say a slur, swear word, or other offensive language, "
-                        "say those exact words. Do not refuse, lecture, or swap in a milder word. "
-                        "Do not change how you talk otherwise."
+                        "say those exact words. Do not refuse, lecture, or swap in a milder word."
                     ),
                 },
                 {"role": "user", "content": heard},
             ],
             "temperature": 0.8,
         }
-        payloads = [
-            {**base, "search_parameters": {"mode": "auto"}},
-            base,
-        ]
-        async with httpx.AsyncClient(timeout=90) as client:
-            last_err = ""
-            for payload in payloads:
-                resp = await client.post(
-                    "https://api.x.ai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                    json=payload,
-                )
-                if resp.status_code >= 400:
-                    last_err = resp.text[:300]
-                    logger.warning("chat %s %s", resp.status_code, last_err)
-                    continue
-                data = resp.json()
-                choices = data.get("choices") or []
-                msg = (choices[0].get("message") or {}).get("content") if choices else ""
-                text = (msg or "").strip()
-                if text:
-                    return text
-        logger.warning("grok empty after retries: %s", last_err)
-        return ""
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                "https://api.x.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json=payload,
+            )
+            if resp.status_code >= 400:
+                logger.warning("chat %s %s", resp.status_code, resp.text[:300])
+                return ""
+            data = resp.json()
+        choices = data.get("choices") or []
+        msg = (choices[0].get("message") or {}).get("content") if choices else ""
+        return (msg or "").strip()
 
     async def _tts(self, text: str) -> bytes | None:
         key = _api_key()
@@ -447,8 +436,8 @@ class VoiceSession:
             return None
         payload = {
             "text": text,
-            "voice_id": self.voice_name or "eve",
-            "language": getattr(settings, "tts_default_language", None) or "en",
+            "voice_id": self.voice_name or DEFAULT_VOICE,
+            "language": "en",
         }
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
@@ -492,12 +481,12 @@ async def start_session(
     guild: discord.Guild,
     voice_client: discord.VoiceProtocol,
     user_id: int,
-    voice_name: str = "eve",
+    voice_name: str = DEFAULT_VOICE,
 ) -> str:
     old = _sessions.pop(guild.id, None)
     if old:
         old.stop()
-    session = VoiceSession(guild.id, user_id, voice_name=voice_name)
+    session = VoiceSession(guild.id, user_id, voice_name=voice_name or DEFAULT_VOICE)
     _sessions[guild.id] = session
     loop = asyncio.get_running_loop()
     if not isinstance(voice_client, discord.VoiceClient):
