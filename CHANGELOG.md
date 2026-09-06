@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Voice wake-word aliases (Atherion, Aetherian, A Theory on, Athena, Theorion, Atheorion, and others)
 - Music on the same voice connection (no Lavalink): say **Aetherion play …** or use slash commands
 - `/play`, `/pause` (toggles resume), `/stop` for YouTube audio / podcast-style videos
+- Optional YouTube cookies for `/play` on Railway (`YOUTUBE_COOKIES`, `YOUTUBE_COOKIES_B64`, or `YOUTUBE_COOKIES_FILE`)
 - `/datechannel` Eastern-midnight date dock and `/welcome` banners
 - `aetherion` console script (Railway still accepts `groksito`)
 - `yt-dlp` dependency for resolving play queries

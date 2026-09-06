@@ -173,6 +173,19 @@ class AetherionSettings(BaseSettings):
         description="Optional override for short-term context JSON path (default: data/pantsu_context.json; see ARCHITECTURE.md)",
     )
 
+    youtube_cookies_file: Path | None = Field(
+        default=None,
+        description="Optional Netscape cookies.txt path for yt-dlp YouTube playback on datacenter hosts.",
+    )
+    youtube_cookies: str | None = Field(
+        default=None,
+        description="Optional Netscape cookies.txt contents (Railway-friendly). Written to data/youtube_cookies.txt at play time.",
+    )
+    youtube_cookies_b64: str | None = Field(
+        default=None,
+        description="Optional base64 of a Netscape cookies.txt (single-line Railway variable).",
+    )
+
     log_level: str = Field(default="INFO", description="Logging level")
 
     log_tool_selection: bool = Field(
@@ -197,7 +210,7 @@ class AetherionSettings(BaseSettings):
             return [int(x) for x in v]
         return []
 
-    @field_validator("data_dir", "pantsu_context_file", "grok_oauth_token_file", mode="before")
+    @field_validator("data_dir", "pantsu_context_file", "grok_oauth_token_file", "youtube_cookies_file", mode="before")
     @classmethod
     def resolve_path(cls, v: Any) -> Path | None:
         if v is None:
