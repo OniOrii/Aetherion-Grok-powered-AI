@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the modernization verification suite (#72 / #79).
+"""Run the verification suite.
 
 Usage:
     python scripts/check.py
@@ -28,7 +28,7 @@ def _run(label: str, cmd: list[str], *, cwd: Path = PROJECT_ROOT) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Groksito modernization verification")
+    parser = argparse.ArgumentParser(description="Aetherion verification")
     parser.add_argument(
         "--skip-docker",
         action="store_true",
@@ -46,11 +46,11 @@ def main() -> int:
     if not args.skip_docker:
         failures += _run(
             "docker build (bot)",
-            ["docker", "build", "--target", "bot", "-t", "groksito-bot:check", "."],
+            ["docker", "build", "--target", "bot", "-t", "aetherion-bot:check", "."],
         )
         failures += _run(
             "docker build (web)",
-            ["docker", "build", "--target", "web", "-t", "groksito-web:check", "."],
+            ["docker", "build", "--target", "web", "-t", "aetherion-web:check", "."],
         )
 
     if failures:

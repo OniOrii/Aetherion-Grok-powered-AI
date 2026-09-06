@@ -2,7 +2,7 @@
 
 ## Our Pledge
 
-We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, color, religion, or sexual identity and orientation.
+We as members, contributors, and leaders pledge to make participation in the Aetherion community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, color, religion, or sexual identity and orientation.
 
 We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community.
 
@@ -36,7 +36,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at https://github.com/lupintic/groksito-discord-bot/issues (open a private issue if supported) or by contacting the maintainer @lupintic. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at https://github.com/OniOrii/Aetherion-Grok-powered-AI/issues or by contacting the maintainer [@OniOrii](https://github.com/OniOrii). All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 
@@ -68,9 +68,9 @@ Community leaders will follow these Community Impact Guidelines in determining t
 
 **Consequence**: A permanent ban from any sort of public interaction within the community.
 
-## groksito-specific Notes
+## Aetherion-specific notes
 
-Contributors and maintainers must also respect the project's core philosophy ("Maximum Nativeness", "Let Grok be Grok") and architecture invariants documented in [AGENTS.md](./AGENTS.md) and [ARCHITECTURE.md](./ARCHITECTURE.md). This includes (but is not limited to) the decoupled web dashboard, sentinel delivery pattern, activation policy, guild whitelisting, and rate limiting.
+Contributors and maintainers must also respect the project's core philosophy ("Maximum Nativeness", "Let Grok be Grok") and architecture invariants documented in [ARCHITECTURE.md](./ARCHITECTURE.md). This includes the decoupled web dashboard, sentinel delivery pattern, activation policy, guild whitelisting, rate limiting, and the live voice session.
 
 ## Attribution
 
