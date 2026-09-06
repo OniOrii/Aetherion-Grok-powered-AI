@@ -16,7 +16,10 @@ from ..config import settings
 logger = logging.getLogger("groksito.date_dock")
 
 TZ = ZoneInfo("America/New_York")
-NAME_PREFIX = "🗓️ |"
+NAME_PREFIX = "\U0001f4c5 |"
+# Safety net: if a long midnight sleep is interrupted (restart, host freeze),
+# re-check at least this often so a stale date never sits all day.
+CHECK_INTERVAL_SECONDS = 10 * 60
 
 
 def _store_path() -> Path:
@@ -44,6 +47,8 @@ def _save_store(data: dict) -> None:
 def get_guild_date_channel_id(guild_id: int) -> int:
     store = _load_store()
     raw = store.get(str(guild_id)) or store.get(guild_id)
+    if isinstance(raw, dict):
+        raw = raw.get("channel_id")
     try:
         return int(raw or 0)
     except (TypeError, ValueError):
@@ -87,19 +92,57 @@ def seconds_until_next_midnight_et() -> float:
     return max(5.0, (tomorrow - now).total_seconds())
 
 
-async def update_guild_date_channel(guild: discord.Guild) -> bool:
-    cid = get_guild_date_channel_id(guild.id)
-    if not cid:
-        return False
-    channel = guild.get_channel(cid)
-    if channel is None:
-        try:
-            channel = await guild.fetch_channel(cid)
-        except Exception:
-            logger.warning("date dock: channel %s missing in guild %s", cid, guild.id)
-            return False
+def seconds_until_next_tick() -> float:
+    """Sleep until 12:00:05 AM ET, or 10 minutes, whichever comes first."""
+    return min(float(CHECK_INTERVAL_SECONDS), seconds_until_next_midnight_et())
+
+
+def _looks_like_date_channel(channel: discord.abc.GuildChannel) -> bool:
     if not isinstance(channel, discord.VoiceChannel):
-        logger.warning("date dock: %s is not a voice channel", cid)
+        return False
+    name = channel.name or ""
+    return name.startswith(NAME_PREFIX) or name.startswith("\u2784 |") or "\U0001f4c5" in name[:4]
+
+
+async def resolve_date_channel(guild: discord.Guild) -> discord.VoiceChannel | None:
+    """Use the saved ID, or rediscover a voice channel that already shows the date."""
+    cid = get_guild_date_channel_id(guild.id)
+    channel = None
+    if cid:
+        channel = guild.get_channel(cid)
+        if channel is None:
+            try:
+                channel = await guild.fetch_channel(cid)
+            except Exception:
+                logger.warning(
+                    "date dock: saved channel %s missing in guild %s; will rediscover",
+                    cid,
+                    guild.id,
+                )
+                channel = None
+        if channel is not None and not isinstance(channel, discord.VoiceChannel):
+            logger.warning("date dock: %s is not a voice channel", cid)
+            channel = None
+
+    if channel is None:
+        for ch in guild.voice_channels:
+            if _looks_like_date_channel(ch):
+                channel = ch
+                set_guild_date_channel(guild.id, ch.id)
+                logger.info(
+                    "date dock rediscovered channel %s (%s) in guild %s",
+                    ch.id,
+                    ch.name,
+                    guild.id,
+                )
+                break
+
+    return channel
+
+
+async def update_guild_date_channel(guild: discord.Guild) -> bool:
+    channel = await resolve_date_channel(guild)
+    if channel is None:
         return False
 
     new_name = format_date_channel_name()
@@ -129,7 +172,13 @@ async def date_dock_loop(client: discord.Client) -> None:
     await asyncio.sleep(8)
     await update_all_guilds(client)
     while True:
-        wait = seconds_until_next_midnight_et()
-        logger.info("date dock sleeping %.0f seconds until next ET midnight", wait)
+        wait = seconds_until_next_tick()
+        now = datetime.now(TZ)
+        logger.info(
+            "date dock next check in %.0fs (now %s ET, target name %s)",
+            wait,
+            now.strftime("%Y-%m-%d %H:%M:%S"),
+            format_date_channel_name(now),
+        )
         await asyncio.sleep(wait)
         await update_all_guilds(client)
