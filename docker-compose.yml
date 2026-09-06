@@ -1,12 +1,12 @@
 # =============================================================================
-# Groksito Discord Bot — Standalone docker-compose
+# Aetherion Discord Bot — Standalone docker-compose
 # =============================================================================
 # This compose file is for the independent bot project.
 # It does not depend on the old pantsu-connector services.
 # =============================================================================
 
 services:
-  groksito-discord-bot:
+  aetherion-discord-bot:
     # Pre-built GHCR image (uncomment and comment out `build:` to skip local builds):
     # Latest pre-release (e.g. 0.2.0-pre.1):
     # image: ghcr.io/lupintic/groksito-discord-bot:0.2.0-pre.1
@@ -16,7 +16,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: bot
-    container_name: groksito-discord-bot
+    container_name: aetherion-discord-bot
     restart: unless-stopped
     env_file:
       - .env
@@ -62,7 +62,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: web
-    container_name: groksito-config-web
+    container_name: aetherion-config-web
     command: uvicorn web.main:app --host 0.0.0.0 --port 8010
     # The "web" target in the multi-stage Dockerfile produces a much smaller image
     # (~280-400 MB) than the full "bot" target. It only contains the FastAPI
@@ -87,5 +87,5 @@ services:
 
 networks:
   default:
-    name: groksito-network
+    name: aetherion-network
     driver: bridge
