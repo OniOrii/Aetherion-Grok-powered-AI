@@ -121,7 +121,7 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
         logger.info(f"Aetherion connected as {_discord_client.user}")
         try:
             await _discord_client.change_presence(
-                activity=discord.Activity(type=discord.ActivityType.watching, name="Interstellar")
+                activity=discord.Activity(type=discord.ActivityType.watching, name="The Cosmos")
             )
             await tree.sync()
             logger.info("Slash commands synchronized")
