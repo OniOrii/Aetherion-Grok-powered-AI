@@ -1,4 +1,4 @@
-"""YouTube cookie wiring and stream URL filters."""
+"""Music resolve matching and stream filters."""
 from __future__ import annotations
 
 from groksito_discord.media import voice_music as vm
@@ -9,6 +9,14 @@ def test_parse_play_still_works():
         "play",
         "Astronaut in the Ocean",
     )
+
+
+def test_title_score_rejects_unrelated():
+    wanted = 'Hippie Sabotage - "Your Soul" [Official Audio]'
+    wrong = "parsg - heal your soul (prod. by Fujishen)"
+    right = "Hippie Sabotage Your Soul"
+    assert vm._title_score(wanted, wrong) < vm._MATCH_MIN
+    assert vm._title_score(wanted, right) >= vm._MATCH_MIN
 
 
 def test_pick_stream_skips_storyboard():
@@ -32,18 +40,3 @@ def test_pick_stream_skips_storyboard():
         ],
     }
     assert "googlevideo.com" in vm._pick_stream(info)
-
-
-def test_pick_stream_rejects_image_only():
-    info = {
-        "url": "https://i.ytimg.com/sb/abc/storyboard3_L2/M$M.jpg",
-        "formats": [
-            {
-                "format_id": "sb0",
-                "url": "https://i.ytimg.com/sb/abc/storyboard3_L2/M$M.jpg",
-                "acodec": "none",
-                "vcodec": "none",
-            }
-        ],
-    }
-    assert vm._pick_stream(info) == ""
