@@ -5,6 +5,7 @@ import asyncio
 import base64
 import logging
 import re
+import shlex
 from pathlib import Path
 from typing import Any
 
@@ -563,13 +564,48 @@ async def resolve_track(query: str) -> dict[str, str] | None:
     return await loop.run_in_executor(None, _extract_track, query)
 
 
+def _ffmpeg_before_options(url: str) -> str:
+    opts = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin"
+    if "googlevideo.com" not in url and "youtube.com" not in url:
+        return opts
+    ua = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    )
+    headers = [
+        f"User-Agent: {ua}",
+        "Referer: https://www.youtube.com/",
+        "Origin: https://www.youtube.com",
+    ]
+    cookiefile = cookiefile_path()
+    if cookiefile:
+        try:
+            pairs: list[str] = []
+            for line in Path(cookiefile).read_text(encoding="utf-8", errors="ignore").splitlines():
+                if not line or line.startswith("#") or "\t" not in line:
+                    continue
+                parts = line.split("\t")
+                if len(parts) < 7:
+                    continue
+                domain, _flag, _path, _secure, _exp, name, value = parts[:7]
+                if "youtube" in domain or "google" in domain:
+                    pairs.append(f"{name}={value}")
+            if pairs:
+                headers.append("Cookie: " + "; ".join(pairs))
+        except Exception:
+            logger.warning("could not attach YouTube cookies to ffmpeg")
+    packed = "\r\n".join(headers) + "\r\n"
+    return f"{opts} -user_agent {shlex.quote(ua)} -headers {shlex.quote(packed)}"
+
+
 def start_playback(vc: discord.VoiceClient, url: str) -> None:
     if vc.is_playing() or vc.is_paused():
         vc.stop()
     vc.play(
         discord.FFmpegPCMAudio(
             url,
-            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            before_options=_ffmpeg_before_options(url),
             options="-vn",
         )
     )
