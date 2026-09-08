@@ -25,6 +25,22 @@ _SKIP_RE = re.compile(
     re.IGNORECASE,
 )
 _URL_RE = re.compile(r"^https?://", re.IGNORECASE)
+_NOISE = {
+    "official",
+    "visualizer",
+    "audio",
+    "video",
+    "lyrics",
+    "lyric",
+    "hd",
+    "hq",
+    "mv",
+    "feat",
+    "ft",
+    "prod",
+    "the",
+    "and",
+}
 
 last_error: str | None = None
 _cookies_logged = False
@@ -41,8 +57,14 @@ _INVIDIOUS = (
     "https://yewtu.be",
     "https://inv.nadeko.net",
     "https://invidious.fdn.fr",
+    "https://invidious.nerdvpn.de",
+    "https://iv.ggtyler.dev",
 )
-_MATCH_MIN = 58
+_PIPED = (
+    "https://pipedapi.kavin.rocks",
+    "https://pipedapi.adminforge.de",
+)
+_MATCH_MIN = 50
 
 
 def parse_music_command(prompt: str) -> tuple[str, str] | None:
@@ -212,23 +234,30 @@ def _unwrap_info(info: dict[str, Any] | None) -> dict[str, Any] | None:
     return info
 
 
-def _title_score(wanted: str, got: str) -> int:
-    try:
-        from rapidfuzz import fuzz
-    except Exception:
-        a = set(re.findall(r"[a-z0-9]+", (wanted or "").lower()))
-        b = set(re.findall(r"[a-z0-9]+", (got or "").lower()))
-        if not a or not b:
-            return 0
-        return int(100 * len(a & b) / len(a))
-    return int(fuzz.token_set_ratio(wanted or "", got or ""))
-
-
 def _clean_search_title(title: str) -> str:
     text = re.sub(r"\[[^\]]*\]", " ", title or "")
-    text = re.sub(r"\([^\)]*official[^\)]*\)", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\([^\)]*\)", " ", text)
+    text = re.sub(r"\b(official|visualizer|audio|video|lyrics|lyric)\b", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip(" -")
     return text[:120]
+
+
+def _title_score(wanted: str, got: str) -> int:
+    wanted = wanted or ""
+    got = got or ""
+    try:
+        from rapidfuzz import fuzz
+
+        raw = int(fuzz.token_set_ratio(wanted, got))
+        clean = int(fuzz.token_set_ratio(_clean_search_title(wanted), _clean_search_title(got)))
+        partial = int(fuzz.partial_ratio(_clean_search_title(wanted), _clean_search_title(got)))
+        return max(raw, clean, partial)
+    except Exception:
+        a = {w for w in re.findall(r"[a-z0-9]+", wanted.lower()) if w not in _NOISE}
+        b = {w for w in re.findall(r"[a-z0-9]+", got.lower()) if w not in _NOISE}
+        if not a or not b:
+            return 0
+        return int(100 * len(a & b) / max(len(a), 1))
 
 
 def _source_queries(query: str) -> list[tuple[str, str, str | None]]:
@@ -276,6 +305,23 @@ def _run_ydl(
         return ydl.extract_info(ytdlp_query, download=False)
 
 
+def _pick_http_audio(items: list[dict[str, Any]], url_key: str = "url") -> str:
+    best = ""
+    best_score = -1
+    for item in items:
+        url = str(item.get(url_key) or item.get("url") or "")
+        if not _usable_audio_url(url):
+            continue
+        kind = str(item.get("type") or item.get("mimeType") or "")
+        if kind and "audio" not in kind and not item.get("audioQuality"):
+            continue
+        score = int(item.get("bitrate") or 0)
+        if score >= best_score:
+            best_score = score
+            best = url
+    return best
+
+
 def _invidious_audio(video_id: str) -> str:
     try:
         import httpx
@@ -289,29 +335,44 @@ def _invidious_audio(video_id: str) -> str:
                 follow_redirects=True,
             )
             if resp.status_code != 200:
+                logger.warning("invidious http=%s host=%s", resp.status_code, base)
                 continue
             data = resp.json()
             streams = list(data.get("adaptiveFormats") or []) + list(
                 data.get("formatStreams") or []
             )
-            best = ""
-            best_score = -1
-            for item in streams:
-                url = str(item.get("url") or "")
-                if not _usable_audio_url(url):
-                    continue
-                kind = str(item.get("type") or "")
-                if "audio" not in kind and not item.get("audioQuality"):
-                    continue
-                score = int(item.get("bitrate") or 0)
-                if score >= best_score:
-                    best_score = score
-                    best = url
+            best = _pick_http_audio(streams)
             if best:
                 logger.info("invidious audio ok host=%s id=%s", base, video_id)
                 return best
         except Exception:
             logger.warning("invidious miss host=%s id=%s", base, video_id)
+            continue
+    return ""
+
+
+def _piped_audio(video_id: str) -> str:
+    try:
+        import httpx
+    except Exception:
+        return ""
+    for base in _PIPED:
+        try:
+            resp = httpx.get(
+                f"{base}/streams/{video_id}",
+                timeout=8.0,
+                follow_redirects=True,
+            )
+            if resp.status_code != 200:
+                logger.warning("piped http=%s host=%s", resp.status_code, base)
+                continue
+            data = resp.json()
+            best = _pick_http_audio(list(data.get("audioStreams") or []))
+            if best:
+                logger.info("piped audio ok host=%s id=%s", base, video_id)
+                return best
+        except Exception:
+            logger.warning("piped miss host=%s id=%s", base, video_id)
             continue
     return ""
 
@@ -415,6 +476,7 @@ def _best_search_hit(search_q: str, wanted: str) -> dict[str, Any] | None:
             best_score,
         )
         return None
+    logger.info("search hit source_q=%s score=%s title=%s", search_q[:60], best_score, str(best.get("title"))[:80])
     return best
 
 
@@ -468,7 +530,8 @@ def _extract_track(query: str) -> dict[str, str] | None:
             return track
 
     if yt_info and yt_info.get("id"):
-        audio = _invidious_audio(str(yt_info["id"]))
+        vid = str(yt_info["id"])
+        audio = _invidious_audio(vid) or _piped_audio(vid)
         if audio:
             title = (yt_info.get("title") or query).strip()
             return {"url": audio, "title": title[:120], "source": "youtube"}
