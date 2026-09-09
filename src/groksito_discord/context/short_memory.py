@@ -24,6 +24,7 @@ def _key(user_id: int | str | None) -> str:
 
 
 def mentions_aetherion(text: str) -> bool:
+    """True when the text addresses or talks about Aetherion by name."""
     return bool(AETHERION_NAME_RE.search(text or ""))
 
 
@@ -65,3 +66,11 @@ def format_block(user_id: int | str | None) -> str:
             lines.append(f"   Aetherion: {bot}")
     lines.append("(Context only — do not paste this block in the reply.)")
     return "\n".join(lines)
+
+
+def clear(user_id: int | str | None = None) -> None:
+    """Test helper. Clear one user or every buffer."""
+    if user_id is None:
+        _turns.clear()
+        return
+    _turns.pop(_key(user_id), None)
