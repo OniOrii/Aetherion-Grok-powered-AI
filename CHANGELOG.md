@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Last-10 per-user conversation memory for text chat and voice (used only when Aetherion needs to recall something)
+- Name-address: saying Aetherion / Ethereon / Aetheron / Groksito counts as talking to the bot, same as a ping
 - Live Discord voice session: `/join` / `/leave`, DAVE decrypt, wake word, Ara TTS, Agent Tools web search
 - Voice wake-word aliases (Atherion, Aetherian, A Theory on, Athena, Theorion, Atheorion, and others)
 - Music on the same voice connection (no Lavalink): say **Aetherion play …** or use slash commands
@@ -18,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `yt-dlp` dependency for resolving play queries
 
 ### Changed
+- System prompt identity so Aetherion answers as itself and stays on the current thread in text chat
 - Project metadata, dashboard, and user-facing strings rebranded from Groksito to Aetherion
 - Package import path remains `groksito_discord` so existing deploys keep starting
 - Date dock sleeps until 12:00 AM Eastern instead of polling every 10 minutes
