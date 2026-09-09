@@ -313,7 +313,7 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
         try:
             await _discord_client.start(settings.discord_bot_token)
         except Exception as exc:
-            logger.error(f"Discord connection failed: {exc}", info=True)
+            logger.error(f"Discord connection failed: {exc}", exc_info=True)
             _discord_ready.clear()
 
     _discord_task = asyncio.create_task(_runner())
