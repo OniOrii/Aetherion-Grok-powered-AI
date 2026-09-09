@@ -268,6 +268,12 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
                 referenced, is_reply_to_bot, explicit_visual, is_reply_cont, has_x_link_intent = result if len(result) == 5 else (*result, False)
                 has_image_creation = False
             is_mentioned = _discord_client.user in getattr(message, "mentions", [])
+            if not is_mentioned:
+                try:
+                    from ..context.short_memory import mentions_aetherion
+                    is_mentioned = mentions_aetherion(getattr(message, "content", "") or "")
+                except Exception:
+                    is_mentioned = False
             if not is_mentioned and not is_reply_to_bot:
                 return
             rl = getattr(_discord_client, "rate_limiter", rate_limiter)
@@ -307,7 +313,7 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
         try:
             await _discord_client.start(settings.discord_bot_token)
         except Exception as exc:
-            logger.error(f"Discord connection failed: {exc}", exc_info=True)
+            logger.error(f"Discord connection failed: {exc}", info=True)
             _discord_ready.clear()
 
     _discord_task = asyncio.create_task(_runner())
