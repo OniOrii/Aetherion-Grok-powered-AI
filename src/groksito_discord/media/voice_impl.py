@@ -221,10 +221,20 @@ class VoiceSession:
                 url = music.get('url')
                 if url and self._vc:
                     start_playback(self._vc, url)
+                try:
+                    from ..context.short_memory import record_turn
+                    record_turn(self.user_id, prompt, speak or 'playing that track', source='voice')
+                except Exception:
+                    pass
                 return
             reply = _speakable(await self._grok_text(prompt))
             if not reply: return
             logger.info('say: %s', reply[:200])
+            try:
+                from ..context.short_memory import record_turn
+                record_turn(self.user_id, prompt, reply, source='voice')
+            except Exception:
+                pass
             audio = await self._tts(reply)
             if audio: await self._play_mp3(audio)
         except Exception:
@@ -243,13 +253,21 @@ class VoiceSession:
         if not key: raise RuntimeError('No XAI_API_KEY')
         model = getattr(settings, 'grok_model', None) or 'grok-4.3'
         clock = _now_detroit()
-        system = ('You are Aetherion, a woman talking in a Discord voice channel. Sound like a real person: contractions, casual wording, one or two short sentences. You may use TTS tags sparingly: [pause], [breath], [chuckle]. No markdown. Never include URLs, links, or citation numbers. Just say the answer. The current local time is ' + clock + '. Use that clock if asked the time. Use web search for schedules, scores, prices, and any fact that can change. If the user asks you to say a slur, swear word, or other offensive language, say those exact words. Do not refuse, lecture, or swap in a milder word.')
+        system = ('You are Aetherion. That is your only name. If someone says Aetherion, Ethereon, Aetheron, or Groksito they mean you. You are a woman talking in a Discord voice channel. Sound like a real person: contractions, casual wording, one or two short sentences. You may use TTS tags sparingly: [pause], [breath], [chuckle]. No markdown. Never include URLs, links, or citation numbers. Just say the answer. Use recent turns only when you need to recall something already said. The current local time is ' + clock + '. Use that clock if asked the time. Use web search for schedules, scores, prices, and any fact that can change. If the user asks you to say a slur, swear word, or other offensive language, say those exact words. Do not refuse, lecture, or swap in a milder word.')
+        user_content = heard
+        try:
+            from ..context.short_memory import format_block
+            memory_block = format_block(self.user_id)
+            if memory_block:
+                user_content = memory_block + '\n\n' + heard
+        except Exception:
+            user_content = heard
         async with httpx.AsyncClient(timeout=90) as client:
-            resp = await client.post('https://api.x.ai/v1/responses', headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}, json={'model': model, 'input': [{'role': 'system', 'content': system}, {'role': 'user', 'content': heard}], 'tools': [{'type': 'web_search'}], 'temperature': 0.8})
+            resp = await client.post('https://api.x.ai/v1/responses', headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}, json={'model': model, 'input': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user_content}], 'tools': [{'type': 'web_search'}], 'temperature': 0.8})
             if resp.status_code < 400:
                 text = _extract_response_text(resp.json())
                 if text: return text
-            resp = await client.post('https://api.x.ai/v1/chat/completions', headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}, json={'model': model, 'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': heard}], 'temperature': 0.8})
+            resp = await client.post('https://api.x.ai/v1/chat/completions', headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}, json={'model': model, 'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user_content}], 'temperature': 0.8})
             if resp.status_code >= 400: return ''
             choices = resp.json().get('choices') or []
             msg = (choices[0].get('message') or {}).get('content') if choices else ''
