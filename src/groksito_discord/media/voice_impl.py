@@ -21,7 +21,7 @@ MIN_SPEECH_S = 0.25
 MAX_SPEECH_S = 8.0
 RMS_THRESHOLD = 120
 DEFAULT_VOICE = 'ara'
-_WAKE_RE = re.compile(r'\b(aetherion|aetherian|atherion|atherian|atheerion|etherion|ethereon|aetherium|aethereon|aetheron|atheron|atheon|atheorian|atheorion|theorion|athena|thea|iryan)\b|a\s+theory(?:\s+on)?', re.IGNORECASE)
+_WAKE_RE = re.compile(r'\b(aetherion|aetherian|atherion|atherian|atheerion|etherion|ethereon|ethereum|aetherium|aethereon|aetheron|atheron|atheon|atheorian|atheorion|theorion|athena|thea|iryan|iberian)\b|a\s+theory(?:\s+on)?', re.IGNORECASE)
 _CITE_RE = re.compile(r'https?://\S+|www\.\S+|\[\s*\d+\s*\]\s*\([^)]*\)|\[\s*\d+\s*\]', re.IGNORECASE)
 
 def _wake_and_prompt(text: str):
@@ -271,7 +271,7 @@ class VoiceSession:
         key = _api_key()
         if not key: raise RuntimeError('No XAI_API_KEY')
         clock = _now_detroit()
-        system = ('You are Aetherion. That is your only name. If someone says Aetherion, Ethereon, Aetheron, or Groksito they mean you. You are a woman talking in a Discord voice channel. Sound like a real person: contractions, casual wording, one or two short sentences. You may use TTS tags sparingly: [pause], [breath], [chuckle]. No markdown. Never include URLs, links, or citation numbers. Just say the answer. Use recent turns only when you need to recall something already said. The current local time is ' + clock + '. Use that clock if asked the time. Use web search for schedules, scores, prices, and any fact that can change. If the user asks you to say a slur, swear word, or other offensive language, say those exact words. Do not refuse, lecture, or swap in a milder word.')
+        system = ('You are Aetherion. That is your only name. If someone says Aetherion, Ethereon, Ethereum, Aetheron, Iberian, or Groksito they mean you. You are a woman talking in a Discord voice channel. Sound like a real person: contractions, casual wording, one or two short sentences. You may use TTS tags sparingly: [pause], [breath], [chuckle]. No markdown. Never include URLs, links, or citation numbers. Just say the answer. Use recent turns only when you need to recall something already said. The current local time is ' + clock + '. Use that clock if asked the time. Use web search for schedules, scores, prices, and any fact that can change. If the user asks you to say a slur, swear word, or other offensive language, say those exact words. Do not refuse, lecture, or swap in a milder word.')
         user_content = heard
         try:
             from ..context.short_memory import format_block
