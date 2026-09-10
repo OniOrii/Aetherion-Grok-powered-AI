@@ -12,14 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Name-address: saying Aetherion / Ethereon / Aetheron / Groksito counts as talking to the bot, same as a ping
 - Live Discord voice session: `/join` / `/leave`, DAVE decrypt, wake word, Ara TTS, Agent Tools web search
 - Voice wake-word aliases (Atherion, Aetherian, A Theory on, Athena, Theorion, Atheorion, and others)
+- **2026-09-09** — Voice wake words **Ethereum** and **Iberian** (common STT mishears of Aetherion)
 - Music on the same voice connection (no Lavalink): say **Aetherion play …** or use slash commands
-- `/play`, `/pause` (toggles resume), `/stop` for YouTube audio / podcast-style videos
-- Optional YouTube cookies for `/play` on Railway (`YOUTUBE_COOKIES`, `YOUTUBE_COOKIES_B64`, or `YOUTUBE_COOKIES_FILE`)
+- `/play`, `/pause` (toggles resume), `/stop` for SoundCloud tracks
 - `/datechannel` Eastern-midnight date dock and `/welcome` banners
 - `aetherion` console script (Railway still accepts `groksito`)
-- `yt-dlp` dependency for resolving play queries
+- `yt-dlp` dependency for resolving SoundCloud play queries
 
 ### Changed
+- **2026-09-09** — `/play` and “Aetherion play …” search SoundCloud first and only; no YouTube / Mixcloud / Audiomack / Invidious / Piped waterfall
 - Live VC replies use light reasoning (`VOICE_REASONING_EFFORT=low`) and a short answer cap so spoken answers start sooner; text chat still uses full `GROK_MODEL`
 - System prompt identity so Aetherion answers as itself and stays on the current thread in text chat
 - Project metadata, dashboard, and user-facing strings rebranded from Groksito to Aetherion
@@ -32,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Play requests that started with extra STT noise (`Atherion - Play …`) skipped the music handler
 
 ### Removed
+- **2026-09-09** — YouTube music playback, YouTube cookie settings (`YOUTUBE_COOKIES`, `YOUTUBE_COOKIES_B64`, `YOUTUBE_COOKIES_FILE`), and `YOUTUBE_COOKIES.md`
+- **2026-09-09** — Mixcloud, Audiomack, Invidious, and Piped music fallbacks
 - Upstream `CONTRIBUTING.md`
 - Slash commands `/stmchr`, `/versus`, `/topkorea`, `/topgames`, `/steamchart`, `/mislimites`
 
