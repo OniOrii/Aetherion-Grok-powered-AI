@@ -8,3 +8,10 @@ This package contains the full Grok-powered Discord conversational experience:
 """
 
 __version__ = "0.2.0"
+
+try:
+    from .llm.persona_bind import bind_persona
+
+    bind_persona()
+except Exception:
+    pass
