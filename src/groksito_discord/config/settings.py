@@ -109,8 +109,8 @@ class AetherionSettings(BaseSettings):
     )
 
     tts_default_voice: str = Field(
-        default="eve",
-        description="Default voice_id for TTS generation (eve, ara, rex, sal, leo). Configurable from web dashboard. eve is energetic/upbeat default.",
+        default="zagan",
+        description="Default voice_id for TTS generation (zagan, eve, ara, rex, sal, leo, orion). Configurable from web dashboard. zagan is the proud-warrior default.",
     )
     tts_default_language: str = Field(
         default="es",
