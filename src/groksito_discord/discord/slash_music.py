@@ -34,7 +34,7 @@ async def ensure_voice(interaction: discord.Interaction):
     try:
         recv_cls = get_recv_cls()
         vc = await channel.connect(cls=recv_cls or discord.VoiceClient)
-        await start_session(interaction.guild, vc, interaction.user.id)
+        await start_session(interaction.guild, vc, interaction.user.id, voice_name="zagan")
         return vc, None
     except Exception as e:
         logger.exception("ensure_voice failed")
