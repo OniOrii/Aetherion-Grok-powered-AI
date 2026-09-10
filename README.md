@@ -4,7 +4,7 @@
 ![Discord](https://img.shields.io/badge/Discord-Bot-7289da.svg)
 ![xAI](https://img.shields.io/badge/xAI-Grok-ff6b6b.svg)
 
-**Aetherion** is a standalone Discord bot that brings Grok (xAI) natively into Discord servers — text, media, live voice, and music in the same voice channel. It is a fully conversational experience powered directly by Grok models, with vision, tool use, direct image/video/audio generation, a voice-channel listener that talks back, and YouTube audio playback on that same connection.
+**Aetherion** is a standalone Discord bot that brings Grok (xAI) natively into Discord servers — text, media, live voice, and music in the same voice channel. It is a fully conversational experience powered directly by Grok models, with vision, tool use, direct image/video/audio generation, a voice-channel listener that talks back, and SoundCloud playback on that same connection.
 
 The bot is designed around "maximum nativeness": minimal custom memory or context injection, trusting Grok's long context window, native web search, vision, and reasoning. It adds just enough Discord integration to be useful in a real server: slash commands, a date dock, welcome banners, a DAVE-aware voice session, and play/pause/stop.
 
@@ -24,7 +24,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for what landed recently.
   - `/join` while you are already in a voice channel. `/leave` to disconnect.
   - Joins with stock `discord.VoiceClient` so discord.py can finish the DAVE handshake, then decrypts inbound Opus with `davey`.
   - Listens only to the member who last ran `/join`.
-  - Wake word required: say **Aetherion** (STT aliases like Atherion, Aetherian, A Theory on, Athena, Thea, Iryan, Theorion, Atheorion still count).
+  - Wake word required: say **Aetherion** (STT aliases like Ethereum, Iberian, Ethereon, Atherion, Aetherian, A Theory on, Athena, Thea, Iryan, Theorion, Atheorion still count).
   - Pipeline: silence-gated PCM → xAI STT → Grok (`/v1/responses` + `web_search`) → Ara TTS back into the channel.
   - Ignores new speech until the current reply finishes playing.
   - Strips URLs and `[[1]](...)` citations so it does not read links out loud.
@@ -33,9 +33,9 @@ See [CHANGELOG.md](./CHANGELOG.md) for what landed recently.
 - **Music in the same VC (no Lavalink)**
   - Voice: **Aetherion play Astronaut in the Ocean**, **Aetherion stop**, **Aetherion pause**.
   - Slash: `/play query:...`, `/pause` (run again to resume), `/stop`.
-  - Resolves the first YouTube match (song, podcast episode, or a watch URL) and streams audio with ffmpeg on the existing VoiceClient.
+  - Resolves the first SoundCloud match (song name or a soundcloud.com link) and streams audio with ffmpeg on the existing VoiceClient.
   - `/play` will join your current voice channel if the bot is not already there.
-  - Best results: paste a clean `https://youtu.be/VIDEOID` into `/play`. Long titles can miss. YouTube may block some datacenter IPs (Railway) on niche videos.
+  - Best results: paste a SoundCloud track URL, or say a title that exists on SoundCloud. YouTube links are not used.
 
 - **Date dock**
   - `/datechannel` (Manage Server) pins a locked voice channel that shows today's date.
@@ -146,7 +146,7 @@ Point the service at this repo, set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`, keep 
 
 - Mention `@Aetherion` or reply directly to the bot → it activates in text.
 - Voice chat: join a VC, run `/join`, say **Aetherion** then the question, pause. `/leave` when done.
-- Music: `/play query: song or youtube url` while you are in a VC, or say **Aetherion play …**. `/pause` / `/stop` or say **Aetherion stop**.
+- Music: `/play query: song or soundcloud url` while you are in a VC, or say **Aetherion play …**. `/pause` / `/stop` or say **Aetherion stop**.
 - `/datechannel` on a voice channel → that channel becomes the daily date dock (Eastern midnight).
 - `/welcome` on a text channel → new-member banners land there.
 - `/audio` or right-click a message → Apps → "🔊 Leer en voz alta" for TTS in-channel.
@@ -169,7 +169,7 @@ High-level pieces live under `src/groksito_discord/`:
 - `llm/client.py` + `llm/llm_input.py` — Responses API orchestration and input building.
 - `llm/tools.py` + `llm/media_tools.py` — tiered custom tools and media intent gates.
 - `media/voice_session.py` / `media/voice_impl.py` — DAVE decrypt, wake word, STT, web search, Ara TTS, playback lock.
-- `media/voice_music.py` — YouTube resolve + ffmpeg play on the same VoiceClient.
+- `media/voice_music.py` — SoundCloud resolve + ffmpeg play on the same VoiceClient.
 - `media/*_handler.py` + `media/delivery.py` — image/video/audio generation and direct delivery.
 - `discord/integrations/gamemeca.py` — optional ranking cache used internally.
 - `core/grok_oauth.py` — OAuth PKCE + token management.
@@ -204,4 +204,4 @@ Committed project roots: `src/`, `tests/`, `web/`, `data/.gitkeep`, Docker files
 
 ---
 
-**Status**: Active. Self-hostable with Docker or Railway. Talks in voice and can play YouTube audio on the same connection.
+**Status**: Active. Self-hostable with Docker or Railway. Talks in voice and can play SoundCloud audio on the same connection.
