@@ -4,6 +4,10 @@ from groksito_discord.llm.persona import (
     annotate_creator_mentions,
     creator_is_author,
 )
+from groksito_discord.llm.persona_bind import bind_persona
+
+bind_persona()
+
 from groksito_discord.llm.prompt_builder import SYSTEM_PROMPT
 
 
