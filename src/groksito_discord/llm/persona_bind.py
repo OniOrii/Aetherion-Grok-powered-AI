@@ -1,4 +1,4 @@
-"""Apply the Zagan persona onto the live system prompt at import time."""
+"""Apply the Aetherion persona onto the live system prompt at import time."""
 from __future__ import annotations
 
 

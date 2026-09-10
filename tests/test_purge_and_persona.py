@@ -29,9 +29,11 @@ def test_skip_pinned():
     assert skip_pinned(_Msg(pinned=True)) is False
 
 
-def test_system_prompt_uses_zagan_persona():
+def test_system_prompt_uses_aetherion_persona():
     lowered = SYSTEM_PROMPT.lower()
-    assert "zagan" in lowered
+    assert "you are aetherion" in lowered
+    assert "proud ai" in lowered
+    assert "never say you are zagan" in lowered
     assert "1022200760018161684" in SYSTEM_PROMPT
     assert "never suck up" in lowered or "never sound submissive" in lowered
     assert "neutral" in lowered
