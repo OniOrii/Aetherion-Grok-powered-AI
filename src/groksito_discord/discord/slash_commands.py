@@ -17,6 +17,7 @@ from ..media.audio_handler import (
 )
 from ..media.voice_session import get_recv_cls, start_session, stop_session
 from .slash_music import register_music
+from .slash_purge import register_purge
 
 logger = logging.getLogger("aetherion.slash")
 
@@ -34,6 +35,7 @@ def is_guild_allowed(guild_id):
 def register(tree, client) -> None:
     from .client import rate_limiter
     register_music(tree, is_guild_allowed)
+    register_purge(tree, is_guild_allowed)
 
     @tree.command(name="ping", description="Check if Aetherion is awake")
     async def ping(interaction: discord.Interaction):
@@ -121,7 +123,8 @@ def register(tree, client) -> None:
     )
     @discord.app_commands.choices(
         voice=[
-            discord.app_commands.Choice(name="Eve (energetic, recommended)", value="eve"),
+            discord.app_commands.Choice(name="Zagan (proud warrior, default)", value="zagan"),
+            discord.app_commands.Choice(name="Eve (energetic)", value="eve"),
             discord.app_commands.Choice(name="Ara (warm)", value="ara"),
             discord.app_commands.Choice(name="Rex (professional)", value="rex"),
             discord.app_commands.Choice(name="Sal (balanced)", value="sal"),
@@ -155,7 +158,7 @@ def register(tree, client) -> None:
             return
         selected_style = estilo.value if estilo else None
         final_text = apply_wrapping_speech_tag(final_text, selected_style)
-        selected_voice = voice.value if voice else getattr(settings, "tts_default_voice", "eve") or "eve"
+        selected_voice = voice.value if voice else getattr(settings, "tts_default_voice", "zagan") or "zagan"
         selected_lang = getattr(settings, "tts_default_language", "es") or "es"
         request_id = None
         try:
@@ -247,7 +250,7 @@ def register(tree, client) -> None:
         if not final_text:
             await interaction.followup.send("El mensaje no contiene texto para leer en voz alta.", ephemeral=True)
             return
-        selected_voice = getattr(settings, "tts_default_voice", "eve") or "eve"
+        selected_voice = getattr(settings, "tts_default_voice", "zagan") or "zagan"
         selected_lang = getattr(settings, "tts_default_language", "es") or "es"
         request_id = None
         try:
