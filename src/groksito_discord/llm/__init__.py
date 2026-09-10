@@ -9,9 +9,13 @@ from .client import (
 )
 from .prompt_builder import (
     SUMMARIZATION_PROMPT,
-    SYSTEM_PROMPT,
     get_native_search_descriptions,
 )
+from .persona_bind import bind_persona
+
+bind_persona()
+
+from .prompt_builder import SYSTEM_PROMPT
 
 __all__ = [
     "call_grok_for_groksito",
