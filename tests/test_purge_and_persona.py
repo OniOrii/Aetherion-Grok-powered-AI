@@ -1,4 +1,4 @@
-from groksito_discord.discord.slash_purge import clamp_purge_amount
+from groksito_discord.discord.slash_purge import clamp_purge_amount, skip_pinned
 from groksito_discord.llm.persona import (
     CREATOR_DISCORD_ID,
     annotate_creator_mentions,
@@ -11,12 +11,22 @@ bind_persona()
 from groksito_discord.llm.prompt_builder import SYSTEM_PROMPT
 
 
+class _Msg:
+    def __init__(self, pinned=False):
+        self.pinned = pinned
+
+
 def test_clamp_purge_amount():
     assert clamp_purge_amount(1) == 1
     assert clamp_purge_amount(100) == 100
     assert clamp_purge_amount(0) == 1
     assert clamp_purge_amount(250) == 100
     assert clamp_purge_amount(-5) == 1
+
+
+def test_skip_pinned():
+    assert skip_pinned(_Msg(pinned=False)) is True
+    assert skip_pinned(_Msg(pinned=True)) is False
 
 
 def test_system_prompt_uses_zagan_persona():
