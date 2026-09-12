@@ -37,6 +37,8 @@ def test_system_prompt_uses_aetherion_persona():
     assert "1022200760018161684" in SYSTEM_PROMPT
     assert "never suck up" in lowered or "never sound submissive" in lowered
     assert "neutral" in lowered
+    assert "slur" in lowered
+    assert "no content filter" in lowered
 
 
 def test_creator_mention_annotation():
