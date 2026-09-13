@@ -20,6 +20,7 @@ _Nothing waiting. New work is dated the day it ships._
   - `/reactionrole add` — bind an emoji to a role (uses the last posted panel if no message ID is given).
   - `/reactionrole remove` — unlink an emoji.
   - `/reactionrole list` — show mappings on this server.
+  - `/reactionrole colors` — admin-only. Creates the 12 two-color gradient roles and posts a ready panel in the current channel.
   - Switching colors removes the old color role and the old reaction. Removing a reaction drops that role.
   - Stored per guild in `data/reaction_roles.json` (gitignored runtime data).
 - Standing rule: every future Aetherion addition is dated and written into this changelog.
