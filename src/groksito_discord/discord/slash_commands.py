@@ -50,9 +50,11 @@ def register(tree, client) -> None:
 
     @tree.command(
         name="welcome",
-        description="Set the channel for welcome banners (Manage Server required)",
+        description="Set the channel for welcome banners. Administrators only.",
     )
     @discord.app_commands.describe(channel="Channel where new-member welcomes should post")
+    @discord.app_commands.default_permissions(administrator=True)
+    @discord.app_commands.guild_only()
     async def welcome_slash(interaction: discord.Interaction, channel: discord.TextChannel):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message(
@@ -64,9 +66,9 @@ def register(tree, client) -> None:
             return
         member = interaction.user
         perms = getattr(member, "guild_permissions", None)
-        if not perms or not (perms.manage_guild or perms.administrator):
+        if not perms or not perms.administrator:
             await interaction.response.send_message(
-                "You need **Manage Server** to set the welcome channel.", ephemeral=True
+                "Only Discord Administrators can set the welcome channel.", ephemeral=True
             )
             return
         from .welcome import set_guild_welcome_channel
@@ -77,9 +79,11 @@ def register(tree, client) -> None:
 
     @tree.command(
         name="datechannel",
-        description="Set the voice channel that shows today's date (Manage Server required)",
+        description="Set the voice channel that shows today's date. Administrators only.",
     )
     @discord.app_commands.describe(channel="Voice channel to rename each night at midnight Eastern")
+    @discord.app_commands.default_permissions(administrator=True)
+    @discord.app_commands.guild_only()
     async def datechannel_slash(interaction: discord.Interaction, channel: discord.VoiceChannel):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message(
@@ -91,9 +95,9 @@ def register(tree, client) -> None:
             return
         member = interaction.user
         perms = getattr(member, "guild_permissions", None)
-        if not perms or not (perms.manage_guild or perms.administrator):
+        if not perms or not perms.administrator:
             await interaction.response.send_message(
-                "You need **Manage Server** to set the date channel.", ephemeral=True
+                "Only Discord Administrators can set the date channel.", ephemeral=True
             )
             return
         from .date_dock import set_guild_date_channel, format_date_channel_name
