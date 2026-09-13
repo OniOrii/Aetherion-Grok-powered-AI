@@ -24,6 +24,11 @@ _Nothing waiting. New work is dated the day it ships._
   - Switching colors removes the old color role and the old reaction. Removing a reaction drops that role.
   - Stored per guild in `data/reaction_roles.json` (gitignored runtime data).
 - Standing rule: every future Aetherion addition is dated and written into this changelog.
+- Ori-only edit for text Aetherion already posted.
+  - `/edit` — message link or ID, plus optional replacement text. Leave text empty to open an editor with the current wording.
+  - Right-click an Aetherion message → Apps → **Edit Aetherion text** to open the same editor.
+  - Locked to Ori (Discord ID `1022200760018161684`). Hidden from the slash menu for non-administrators. Other people cannot change Aetherion messages.
+  - Only works on messages Aetherion posted. Discord does not let anyone edit another user's text.
 
 ### Changed
 
