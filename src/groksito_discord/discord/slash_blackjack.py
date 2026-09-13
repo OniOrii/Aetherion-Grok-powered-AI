@@ -9,6 +9,7 @@ import discord
 from . import ai_coins
 from .blackjack import Hand, hand_value
 from .blackjack_table import render_hand_png
+from groksito_discord.llm.persona import creator_is_author
 
 logger = logging.getLogger("aetherion.slash_blackjack")
 
@@ -266,5 +267,85 @@ def register_blackjack(tree, is_guild_allowed) -> None:
             return
         await interaction.response.send_message(
             f"Claimed **{granted} AI Coins**. Wallet: **{bal}**.",
+            ephemeral=True,
+        )
+
+    @tree.command(name="leaderboard", description="AI Coin standings on this server")
+    async def leaderboard_slash(interaction: discord.Interaction):
+        if interaction.guild and not is_guild_allowed(interaction.guild.id):
+            await interaction.response.send_message(
+                "Aetherion is not available on this server.", ephemeral=True
+            )
+            return
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Leaderboard only works in a server.", ephemeral=True
+            )
+            return
+        await interaction.response.defer(thinking=True)
+        rows = ai_coins.snapshot_wallets()
+        ranked: list[tuple[int, int, str]] = []
+        for uid, bal, pending in rows:
+            member = guild.get_member(uid)
+            if member is None:
+                try:
+                    member = await guild.fetch_member(uid)
+                except Exception:
+                    member = None
+            if member is None:
+                continue
+            wealth = bal + pending
+            ranked.append((wealth, uid, member.display_name))
+        ranked.sort(key=lambda item: (-item[0], item[1]))
+        top = ranked[:10]
+        embed = discord.Embed(
+            title=f"AI Coin leaderboard \u00b7 {guild.name}",
+            color=EMBED_PLAY,
+        )
+        if not top:
+            embed.description = "Nobody on this server has a wallet yet. Play `/blackjack` to start."
+        else:
+            medals = {1: "\U0001F947", 2: "\U0001F948", 3: "\U0001F949"}
+            lines = []
+            for i, (wealth, uid, name) in enumerate(top, start=1):
+                mark = medals.get(i, f"`{i}.`")
+                you = " \u2190 you" if uid == interaction.user.id else ""
+                lines.append(f"{mark} **{name}** \u2014 {wealth} AI Coins{you}")
+            embed.description = "\n".join(lines)
+            yours = next((i for i, row in enumerate(ranked, start=1) if row[1] == interaction.user.id), None)
+            if yours and yours > 10:
+                embed.set_footer(text=f"You are #{yours} of {len(ranked)} on this server.")
+            else:
+                embed.set_footer(text=f"{len(ranked)} wallets on this server. Mid-hand bets count.")
+        await interaction.followup.send(embed=embed)
+
+    @tree.command(name="givecoins", description="Ori only: grant AI Coins to a member")
+    @discord.app_commands.describe(
+        member="Who receives the coins",
+        amount=f"How many coins ({ai_coins.MIN_GRANT}\u2013{ai_coins.MAX_GRANT})",
+    )
+    @discord.app_commands.default_permissions(administrator=True)
+    async def givecoins_slash(
+        interaction: discord.Interaction,
+        member: discord.Member,
+        amount: int,
+    ):
+        if interaction.guild and not is_guild_allowed(interaction.guild.id):
+            await interaction.response.send_message(
+                "Aetherion is not available on this server.", ephemeral=True
+            )
+            return
+        if not creator_is_author(interaction.user.id):
+            await interaction.response.send_message(
+                "Only Ori can grant AI Coins.", ephemeral=True
+            )
+            return
+        ok, bal, err = ai_coins.grant_coins(member.id, amount)
+        if not ok:
+            await interaction.response.send_message(err, ephemeral=True)
+            return
+        await interaction.response.send_message(
+            f"Granted **{amount} AI Coins** to {member.mention}. Their wallet is now **{bal}**.",
             ephemeral=True,
         )
