@@ -42,6 +42,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- Blackjack suits use real card glyphs for spades, hearts, diamonds, and clubs.
 - Blackjack table is a starfield instead of green felt. Card corners keep rank and suit apart so they no longer overlap; 6 and 9 are underlined.
 - Default tone is proud and useful, not rude. Does not treat a straight question as trolling.
 - When Ori (Discord ID `1022200760018161684`) pings or mentions Aetherion, replies stay respectful and helpful.
@@ -50,6 +51,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Fixed
 
+- Dealer blackjack no longer ends the hand on the deal. Hole card stays down until you hit, stand, double, or bust. Instant finish only if you are dealt blackjack (or both are).
 - Reaction roles survive a Railway/Docker restart that wipes `data/reaction_roles.json`. If the save file is gone, Aetherion rebuilds the map from the panel message (emoji + role mention lines) on the next react.
 
 ## [2026-09-12]
