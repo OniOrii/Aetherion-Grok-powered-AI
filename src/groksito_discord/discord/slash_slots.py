@@ -1,6 +1,7 @@
 """Slash slots against Aetherion. Fair reels + Aether Coin stakes."""
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import discord
@@ -14,15 +15,20 @@ from .slots import (
     SLOTS_DEFAULT_BET,
     SLOTS_MAX_BET,
     SLOTS_MIN_BET,
+    blur_grid,
+    format_cells,
     format_grid,
     payouts_text,
     spin,
+    spinning_cells,
 )
 
 logger = logging.getLogger("aetherion.slash_slots")
 
 _sessions: dict[int, dict[str, object]] = {}
+_busy: set[int] = set()
 
+EMBED_SPIN = 0xC9A227
 EMBED_WIN = 0x3D9B64
 EMBED_LOSE = 0xC45C4A
 EMBED_PUSH = 0x8A8F98
@@ -33,6 +39,12 @@ def has_live_hand_safe(user_id: int) -> bool:
         return bool(has_live_hand(user_id))
     except Exception:
         return False
+
+
+def _set_disabled(view: discord.ui.View, disabled: bool) -> None:
+    for child in view.children:
+        if isinstance(child, (discord.ui.Button, discord.ui.Select)):
+            child.disabled = disabled
 
 
 class BetModal(discord.ui.Modal, title="Change bet"):
@@ -93,25 +105,14 @@ class SlotsView(discord.ui.View):
         min_values=1,
         max_values=1,
         options=[
-            discord.SelectOption(
-                label="Cosmos Wheel", value="cosmos", emoji="\U0001F30C",
-                description="Balanced house wheel",
-            ),
-            discord.SelectOption(
-                label="Nebula", value="nebula", emoji="\U0001F49C",
-                description="Hits often, pays small",
-            ),
-            discord.SelectOption(
-                label="Event Horizon", value="horizon", emoji="\U0001F573\ufe0f",
-                description="Rare. Huge when it lands",
-            ),
+            discord.SelectOption(label="Cosmos Wheel", value="cosmos", emoji="\U0001F30C", description="Balanced house wheel"),
+            discord.SelectOption(label="Nebula", value="nebula", emoji="\U0001F49C", description="Hits often, pays small"),
+            discord.SelectOption(label="Event Horizon", value="horizon", emoji="\U0001F573\ufe0f", description="Rare. Huge when it lands"),
         ],
     )
     async def machine_select(self, interaction: discord.Interaction, select: discord.ui.Select):
         key = select.values[0]
-        session = _sessions.setdefault(
-            self.user_id, {"bet": SLOTS_DEFAULT_BET, "machine": DEFAULT_MACHINE}
-        )
+        session = _sessions.setdefault(self.user_id, {"bet": SLOTS_DEFAULT_BET, "machine": DEFAULT_MACHINE})
         session["machine"] = key
         self._sync_select(key)
         machine = MACHINES[key]
@@ -122,10 +123,7 @@ class SlotsView(discord.ui.View):
 
     @discord.ui.button(label="Spin Again", style=discord.ButtonStyle.primary)
     async def spin_again(self, interaction: discord.Interaction, button: discord.ui.Button):
-        session = _sessions.get(self.user_id) or {
-            "bet": SLOTS_DEFAULT_BET,
-            "machine": DEFAULT_MACHINE,
-        }
+        session = _sessions.get(self.user_id) or {"bet": SLOTS_DEFAULT_BET, "machine": DEFAULT_MACHINE}
         await _run_spin(
             interaction,
             user_id=self.user_id,
@@ -143,51 +141,58 @@ class SlotsView(discord.ui.View):
     async def see_payouts(self, interaction: discord.Interaction, button: discord.ui.Button):
         session = _sessions.get(self.user_id) or {"machine": DEFAULT_MACHINE}
         machine = MACHINES.get(str(session.get("machine") or DEFAULT_MACHINE), COSMOS)
-        embed = discord.Embed(
-            title=f"{machine.emoji} {machine.name} payouts",
-            description=payouts_text(machine),
-            color=machine.color,
-        )
-        embed.set_footer(text=f"Min {SLOTS_MIN_BET} \u00b7 Max {SLOTS_MAX_BET} \u00b7 Aether Coins")
+        embed = discord.Embed(title=f"{machine.emoji}  {machine.name}", description=payouts_text(machine), color=machine.color)
+        embed.set_footer(text=f"Bet {SLOTS_MIN_BET}\u2013{SLOTS_MAX_BET} Aether Coins")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-def _embed_for(result, *, balance: int, player_name: str) -> discord.Embed:
-    machine = result.machine
+def _cabinet_embed(*, machine, player_name: str, pocket: int, winnings_text: str, net_text: str, grid: str, bet: int, color: int) -> discord.Embed:
+    embed = discord.Embed(title=f"{machine.emoji}  {player_name}'s {machine.name}", description=grid, color=color)
+    embed.add_field(name="Pocket", value=f"**{pocket:,}**", inline=True)
+    embed.add_field(name="Winnings", value=winnings_text, inline=True)
+    embed.add_field(name="Net", value=net_text, inline=True)
+    embed.set_footer(text=f"Bet {bet:,}   \u00b7   Min {SLOTS_MIN_BET:,}   \u00b7   Max {SLOTS_MAX_BET:,}")
+    return embed
+
+
+def _final_embed(result, *, balance: int, player_name: str) -> discord.Embed:
     if result.net > 0:
         color = EMBED_WIN
     elif result.net < 0:
         color = EMBED_LOSE
     else:
         color = EMBED_PUSH
-    net = result.net
-    net_text = f"+{net}" if net > 0 else str(net)
-    embed = discord.Embed(
-        title=f"{machine.emoji}  {player_name}'s {machine.name}",
+    net = f"**+{result.net:,}**" if result.net > 0 else f"**{result.net:,}**"
+    return _cabinet_embed(
+        machine=result.machine,
+        player_name=player_name,
+        pocket=balance,
+        winnings_text=f"**{result.winnings:,}**",
+        net_text=net,
+        grid=format_grid(result),
+        bet=result.bet,
         color=color,
     )
-    embed.add_field(name="Pocket", value=f"**{balance}**", inline=True)
-    embed.add_field(name="Winnings", value=f"**{result.winnings}**", inline=True)
-    embed.add_field(name="Net", value=f"**{net_text}**", inline=True)
-    embed.add_field(name="\u200b", value=format_grid(result), inline=False)
-    embed.set_footer(
-        text=(
-            f"{machine.blurb}  \u00b7  Bet {result.bet}  \u00b7  "
-            f"Min {SLOTS_MIN_BET}  \u00b7  Max {SLOTS_MAX_BET}"
-        )
-    )
-    return embed
 
 
-async def _run_spin(
-    interaction: discord.Interaction,
-    *,
-    user_id: int,
-    machine_key: str,
-    bet: int,
-    edit: bool,
-    view: SlotsView | None,
-) -> None:
+async def _publish(interaction: discord.Interaction, *, embed, view, as_edit: bool) -> None:
+    if not interaction.response.is_done():
+        if as_edit:
+            await interaction.response.edit_message(embed=embed, view=view)
+        else:
+            await interaction.response.send_message(embed=embed, view=view)
+        return
+    await interaction.edit_original_response(embed=embed, view=view)
+
+
+async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_key: str, bet: int, edit: bool, view: SlotsView | None) -> None:
+    if user_id in _busy:
+        msg = "Reels are already spinning."
+        if interaction.response.is_done():
+            await interaction.followup.send(msg, ephemeral=True)
+        else:
+            await interaction.response.send_message(msg, ephemeral=True)
+        return
     if has_live_hand_safe(user_id):
         msg = "Finish the blackjack hand on the table first."
         if interaction.response.is_done():
@@ -196,32 +201,65 @@ async def _run_spin(
             await interaction.response.send_message(msg, ephemeral=True)
         return
     ai_coins.refund_stale_pending(user_id)
-
-    machine = MACHINES.get(machine_key, COSMOS)
-    result = spin(machine, bet)
-    ok, balance, err = ai_coins.resolve_wager(
-        user_id,
-        result.bet,
-        result.winnings,
-        min_bet=SLOTS_MIN_BET,
-        max_bet=SLOTS_MAX_BET,
-    )
-    if not ok:
+    if bet < SLOTS_MIN_BET or bet > SLOTS_MAX_BET:
+        msg = f"Bet must be {SLOTS_MIN_BET}\u2013{SLOTS_MAX_BET} Aether Coins."
         if interaction.response.is_done():
-            await interaction.followup.send(err, ephemeral=True)
+            await interaction.followup.send(msg, ephemeral=True)
         else:
-            await interaction.response.send_message(err, ephemeral=True)
+            await interaction.response.send_message(msg, ephemeral=True)
+        return
+    pocket = ai_coins.get_balance(user_id)
+    if bet > pocket:
+        msg = f"You only have {pocket} Aether Coins."
+        if interaction.response.is_done():
+            await interaction.followup.send(msg, ephemeral=True)
+        else:
+            await interaction.response.send_message(msg, ephemeral=True)
         return
 
-    _sessions[user_id] = {"bet": result.bet, "machine": machine.key}
+    machine = MACHINES.get(machine_key, COSMOS)
     name = getattr(interaction.user, "display_name", None) or interaction.user.name
     send_view = view or SlotsView(user_id, machine.key)
     send_view._sync_select(machine.key)
-    embed = _embed_for(result, balance=balance, player_name=name)
-    if edit:
-        await interaction.response.edit_message(embed=embed, view=send_view)
-    else:
-        await interaction.response.send_message(embed=embed, view=send_view)
+    _set_disabled(send_view, True)
+    _busy.add(user_id)
+    try:
+        spinning = _cabinet_embed(
+            machine=machine, player_name=name, pocket=pocket,
+            winnings_text="*Spinning\u2026*", net_text=f"**-{bet:,}**",
+            grid=spinning_cells(), bet=bet, color=EMBED_SPIN,
+        )
+        await _publish(interaction, embed=spinning, view=send_view, as_edit=edit)
+        await asyncio.sleep(0.85)
+        blur = _cabinet_embed(
+            machine=machine, player_name=name, pocket=pocket,
+            winnings_text="*Spinning\u2026*", net_text=f"**-{bet:,}**",
+            grid=format_cells(blur_grid(machine), tag="**\u2026**"), bet=bet, color=EMBED_SPIN,
+        )
+        await interaction.edit_original_response(embed=blur, view=send_view)
+        await asyncio.sleep(0.75)
+        result = spin(machine, bet)
+        ok, balance, err = ai_coins.resolve_wager(
+            user_id, result.bet, result.winnings, min_bet=SLOTS_MIN_BET, max_bet=SLOTS_MAX_BET,
+        )
+        if not ok:
+            _set_disabled(send_view, False)
+            await interaction.edit_original_response(view=send_view)
+            await interaction.followup.send(err, ephemeral=True)
+            return
+        _sessions[user_id] = {"bet": result.bet, "machine": machine.key}
+        _set_disabled(send_view, False)
+        final = _final_embed(result, balance=balance, player_name=name)
+        await interaction.edit_original_response(embed=final, view=send_view)
+    except Exception:
+        logger.exception("slots spin failed user=%s", user_id)
+        try:
+            _set_disabled(send_view, False)
+            await interaction.edit_original_response(view=send_view)
+        except Exception:
+            pass
+    finally:
+        _busy.discard(user_id)
 
 
 def register_slots(tree, is_guild_allowed) -> None:
@@ -243,9 +281,7 @@ def register_slots(tree, is_guild_allowed) -> None:
         machine: discord.app_commands.Choice[str] | None = None,
     ):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
-            await interaction.response.send_message(
-                "Aetherion is not available on this server.", ephemeral=True
-            )
+            await interaction.response.send_message("Aetherion is not available on this server.", ephemeral=True)
             return
         key = machine.value if machine is not None else DEFAULT_MACHINE
         session = _sessions.get(interaction.user.id) or {}
@@ -253,11 +289,4 @@ def register_slots(tree, is_guild_allowed) -> None:
             key = str(session["machine"])
         if bet == SLOTS_DEFAULT_BET and interaction.user.id in _sessions and session.get("bet"):
             bet = int(session["bet"])
-        await _run_spin(
-            interaction,
-            user_id=interaction.user.id,
-            machine_key=key,
-            bet=int(bet),
-            edit=False,
-            view=None,
-        )
+        await _run_spin(interaction, user_id=interaction.user.id, machine_key=key, bet=int(bet), edit=False, view=None)
