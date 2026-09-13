@@ -22,11 +22,13 @@ from ..config import settings
 logger = logging.getLogger("aetherion.ai_coins")
 
 EASTERN = ZoneInfo("America/Detroit")
-STARTING_BALANCE = 100
+STARTING_BALANCE = 500
 DAILY_DRIP = 25
 MIN_BET = 1
 DEFAULT_BET = 10
-MAX_BET = 500
+MAX_BET = 1000
+MIN_GRANT = 1
+MAX_GRANT = 10000
 
 _lock = threading.Lock()
 
@@ -102,7 +104,6 @@ def _ensure_user_unlocked(store: dict[str, Any], user_id: int) -> dict[str, Any]
 
 
 def refund_stale_pending(user_id: int) -> int:
-    """Return a held bet if the process died mid-hand. Safe to call often."""
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
@@ -125,7 +126,6 @@ def get_balance(user_id: int) -> int:
 
 
 def claim_daily(user_id: int) -> tuple[int, int, bool]:
-    """Returns (balance, granted, already_claimed_today)."""
     today = _today_eastern()
     with _lock:
         store = _load_store()
@@ -139,7 +139,6 @@ def claim_daily(user_id: int) -> tuple[int, int, bool]:
 
 
 def hold_bet(user_id: int, amount: int) -> tuple[bool, int, str]:
-    """Take `amount` off the wallet and park it as pending_bet."""
     amount = int(amount)
     if amount < MIN_BET:
         return False, 0, f"Minimum bet is {MIN_BET} AI Coin."
@@ -160,7 +159,6 @@ def hold_bet(user_id: int, amount: int) -> tuple[bool, int, str]:
 
 
 def add_to_pending(user_id: int, extra: int) -> tuple[bool, int, str]:
-    """Double-down: pull `extra` more coins into the held bet."""
     extra = int(extra)
     if extra <= 0:
         return False, 0, "Nothing to add."
@@ -180,7 +178,6 @@ def add_to_pending(user_id: int, extra: int) -> tuple[bool, int, str]:
 
 
 def settle_hand(user_id: int, credit: int) -> int:
-    """Clear pending_bet and add `credit` (0 on a loss, stake on a push, more on a win)."""
     credit = max(0, int(credit))
     with _lock:
         store = _load_store()
@@ -189,3 +186,42 @@ def settle_hand(user_id: int, credit: int) -> int:
         row["balance"] = int(row["balance"]) + credit
         _save_store(store)
         return int(row["balance"])
+
+
+def grant_coins(user_id: int, amount: int) -> tuple[bool, int, str]:
+    amount = int(amount)
+    if amount < MIN_GRANT or amount > MAX_GRANT:
+        return False, 0, f"Grant must be {MIN_GRANT}\u2013{MAX_GRANT} AI Coins."
+    with _lock:
+        store = _load_store()
+        row = _ensure_user_unlocked(store, user_id)
+        row["balance"] = int(row["balance"]) + amount
+        _save_store(store)
+        logger.info("granted coins user=%s amount=%s balance=%s", user_id, amount, row["balance"])
+        return True, int(row["balance"]), ""
+
+
+def snapshot_wallets() -> list[tuple[int, int, int]]:
+    with _lock:
+        store = _load_store()
+        out: list[tuple[int, int, int]] = []
+        users = store.get("users") or {}
+        if not isinstance(users, dict):
+            return out
+        for key, row in users.items():
+            try:
+                uid = int(key)
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(row, dict):
+                continue
+            try:
+                bal = int(row.get("balance", 0) or 0)
+            except (TypeError, ValueError):
+                bal = 0
+            try:
+                pending = int(row.get("pending_bet", 0) or 0)
+            except (TypeError, ValueError):
+                pending = 0
+            out.append((uid, max(0, bal), max(0, pending)))
+        return out
