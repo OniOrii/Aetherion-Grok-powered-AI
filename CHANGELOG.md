@@ -24,6 +24,11 @@ _Nothing waiting. New work is dated the day it ships._
   - Stored per guild in `data/reaction_roles.json` (gitignored runtime data).
 - Standing rule: every future Aetherion addition is dated and written into this changelog.
 
+### Changed
+
+- Default tone is proud and useful, not rude. Does not treat a straight question as trolling.
+- When Ori (Discord ID `1022200760018161684`) pings or mentions Aetherion, replies stay respectful and helpful. Never talks back to Ori.
+
 ## [2026-09-12]
 
 ### Changed
