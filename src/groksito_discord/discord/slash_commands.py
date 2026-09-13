@@ -18,6 +18,7 @@ from ..media.audio_handler import (
 from ..media.voice_session import get_recv_cls, start_session, stop_session
 from .slash_music import register_music
 from .slash_purge import register_purge
+from .slash_reactionrole import register_reactionrole
 
 logger = logging.getLogger("aetherion.slash")
 
@@ -36,6 +37,7 @@ def register(tree, client) -> None:
     from .client import rate_limiter
     register_music(tree, is_guild_allowed)
     register_purge(tree, is_guild_allowed)
+    register_reactionrole(tree, is_guild_allowed)
 
     @tree.command(name="ping", description="Check if Aetherion is awake")
     async def ping(interaction: discord.Interaction):
