@@ -15,7 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
-- Exclusive multi-color **reaction roles** (Carl-style, admin slash setup, anyone can react).
+- Exclusive multi-color **reaction roles** (Admin slash setup, anyone can react).
   - `/reactionrole post` — post a panel in the current channel. One color per person on that message.
   - `/reactionrole add` — bind an emoji to a role (uses the last posted panel if no message ID is given).
   - `/reactionrole remove` — unlink an emoji.
@@ -28,7 +28,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
-- Text and voice prompts allow slurs and swear words. Aetherion is not filtered for profanity and may use the exact words people use.
+- Aetherion is not filtered for profanity and may use the exact words people use.
 
 ## [2026-09-10]
 
@@ -43,7 +43,7 @@ _Nothing waiting. New work is dated the day it ships._
 ### Changed
 
 - Default TTS / VC timbre is xAI **Zagan** (voice sound only).
-- Identity is **Aetherion**, a proud AI intelligence — not Zagan, not a warrior name, not a woman.
+- Identity is **Aetherion**, a proud AI intelligence.
 - Proud, non-submissive tone. Does not suck up to anyone except the creator relationship above.
 - `/audio` default voice choice is Zagan.
 - Live voice sessions force the Zagan voice id on join.
