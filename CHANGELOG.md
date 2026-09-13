@@ -42,6 +42,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- Blackjack table is a starfield instead of green felt. Card corners keep rank and suit apart so they no longer overlap; 6 and 9 are underlined.
 - Default tone is proud and useful, not rude. Does not treat a straight question as trolling.
 - When Ori (Discord ID `1022200760018161684`) pings or mentions Aetherion, replies stay respectful and helpful.
 - `/welcome` and `/datechannel` are administrator-only and hidden from the slash menu for everyone else.
