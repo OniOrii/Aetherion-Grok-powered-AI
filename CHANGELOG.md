@@ -29,6 +29,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 - Default tone is proud and useful, not rude. Does not treat a straight question as trolling.
 - When Ori (Discord ID `1022200760018161684`) pings or mentions Aetherion, replies stay respectful and helpful. Never talks back to Ori.
+- `/welcome` and `/datechannel` are administrator-only and hidden from the slash menu for everyone else.
 
 ## [2026-09-12]
 
