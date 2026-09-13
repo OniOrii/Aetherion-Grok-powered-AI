@@ -37,6 +37,10 @@ _Nothing waiting. New work is dated the day it ships._
 - `/welcome` and `/datechannel` are administrator-only and hidden from the slash menu for everyone else.
 - `/status` is hidden from the slash menu for non-administrators. Only Ori can actually use it.
 
+### Fixed
+
+- Reaction roles survive a Railway/Docker restart that wipes `data/reaction_roles.json`. If the save file is gone, Aetherion rebuilds the map from the panel message (emoji + role mention lines) on the next react.
+
 ## [2026-09-12]
 
 ### Changed
