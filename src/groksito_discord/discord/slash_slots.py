@@ -147,11 +147,18 @@ class SlotsView(discord.ui.View):
 
 
 def _cabinet_embed(*, machine, player_name: str, pocket: int, winnings_text: str, net_text: str, grid: str, bet: int, color: int) -> discord.Embed:
-    embed = discord.Embed(title=f"{machine.emoji}  {player_name}'s {machine.name}", description=grid, color=color)
-    embed.add_field(name="Pocket", value=f"**{pocket:,}**", inline=True)
-    embed.add_field(name="Winnings", value=winnings_text, inline=True)
-    embed.add_field(name="Net", value=net_text, inline=True)
-    embed.set_footer(text=f"Bet {bet:,}   \u00b7   Min {SLOTS_MIN_BET:,}   \u00b7   Max {SLOTS_MAX_BET:,}")
+    body = (
+        f"{grid}\n\n"
+        f"Pocket {pocket:,}\n"
+        f"Winnings {winnings_text}\n"
+        f"Net {net_text}"
+    )
+    embed = discord.Embed(
+        title=f"{machine.emoji}  {player_name}'s {machine.name}",
+        description=body,
+        color=color,
+    )
+    embed.set_footer(text=f"Bet {bet:,}  \u00b7  Min {SLOTS_MIN_BET:,}  \u00b7  Max {SLOTS_MAX_BET:,}")
     return embed
 
 
@@ -162,12 +169,12 @@ def _final_embed(result, *, balance: int, player_name: str) -> discord.Embed:
         color = EMBED_LOSE
     else:
         color = EMBED_PUSH
-    net = f"**+{result.net:,}**" if result.net > 0 else f"**{result.net:,}**"
+    net = f"+{result.net:,}" if result.net > 0 else f"{result.net:,}"
     return _cabinet_embed(
         machine=result.machine,
         player_name=player_name,
         pocket=balance,
-        winnings_text=f"**{result.winnings:,}**",
+        winnings_text=f"{result.winnings:,}",
         net_text=net,
         grid=format_grid(result),
         bet=result.bet,
@@ -226,14 +233,14 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
     try:
         spinning = _cabinet_embed(
             machine=machine, player_name=name, pocket=pocket,
-            winnings_text="*Spinning\u2026*", net_text=f"**-{bet:,}**",
+            winnings_text="Spinning\u2026", net_text=f"-{bet:,}",
             grid=spinning_cells(), bet=bet, color=EMBED_SPIN,
         )
         await _publish(interaction, embed=spinning, view=send_view, as_edit=edit)
         await asyncio.sleep(0.85)
         blur = _cabinet_embed(
             machine=machine, player_name=name, pocket=pocket,
-            winnings_text="*Spinning\u2026*", net_text=f"**-{bet:,}**",
+            winnings_text="Spinning\u2026", net_text=f"-{bet:,}",
             grid=format_cells(blur_grid(machine), tag="**\u2026**"), bet=bet, color=EMBED_SPIN,
         )
         await interaction.edit_original_response(embed=blur, view=send_view)
