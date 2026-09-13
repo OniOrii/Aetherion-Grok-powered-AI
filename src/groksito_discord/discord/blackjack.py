@@ -11,7 +11,7 @@ Card = tuple[Rank, Suit]
 
 RANKS: list[Rank] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
 SUITS: list[Suit] = ["S", "H", "D", "C"]
-SUIT_SYM = {"S": "♠", "H": "♥", "D": "♦", "C": "♣"}
+SUIT_SYM = {"S": "\u2660", "H": "\u2665", "D": "\u2666", "C": "\u2663"}
 RANK_SYM = {1: "A", 11: "J", 12: "Q", 13: "K"}
 
 _rng = SystemRandom()
@@ -87,15 +87,14 @@ class Hand:
     def _resolve_naturals(self) -> None:
         p_bj = is_blackjack(self.player)
         d_bj = is_blackjack(self.dealer)
+        # Only a player natural ends the hand on the deal.
+        # Dealer blackjack stays hole-card-down until the player acts.
         if p_bj and d_bj:
             self.finished = True
             self.outcome = "both_bj"
         elif p_bj:
             self.finished = True
             self.outcome = "player_bj"
-        elif d_bj:
-            self.finished = True
-            self.outcome = "dealer_bj"
 
     def hit(self) -> None:
         if self.finished:
@@ -125,7 +124,6 @@ class Hand:
         self._compare()
 
     def _dealer_play(self) -> None:
-        # Stand on all 17s, including soft 17.
         while hand_value(self.dealer) < 17:
             self.dealer.append(self.shoe.pop())
 
@@ -135,6 +133,8 @@ class Hand:
         d = hand_value(self.dealer)
         if p > 21:
             self.outcome = "bust"
+        elif is_blackjack(self.dealer) and not is_blackjack(self.player):
+            self.outcome = "dealer_bj"
         elif d > 21 or p > d:
             self.outcome = "win"
         elif p < d:
@@ -143,7 +143,6 @@ class Hand:
             self.outcome = "push"
 
     def credit(self) -> int:
-        """Coins to add back after the stake was already held."""
         if self.outcome in ("player_bj",):
             return blackjack_payout(self.bet)
         if self.outcome in ("win",):
