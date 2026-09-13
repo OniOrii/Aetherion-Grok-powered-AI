@@ -1,47 +1,97 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to **Aetherion** are documented in this file. This is the permanent record.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+**Rule (standing, 2026-09-13):** every feature, command, persona change, voice change, or removal that lands on `main` is added here in the same commit or immediately after, with a calendar date (`YYYY-MM-DD`). Do not skip the changelog. Do not leave new work only in commit messages.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Older packaged history stays under version headings. Aetherion work from September 2026 onward is grouped by date.
 
 ## [Unreleased]
 
+_Nothing waiting. New work is dated the day it ships._
+
+## [2026-09-13]
+
 ### Added
-- Last-10 per-user conversation memory for text chat and voice (used only when Aetherion needs to recall something)
-- Name-address: saying Aetherion / Ethereon / Aetheron / Groksito counts as talking to the bot, same as a ping
-- Live Discord voice session: `/join` / `/leave`, DAVE decrypt, wake word, Ara TTS, Agent Tools web search
-- Voice wake-word aliases (Atherion, Aetherian, A Theory on, Athena, Theorion, Atheorion, and others)
-- **2026-09-09** — Voice wake words **Ethereum** and **Iberian** (common STT mishears of Aetherion)
-- Music on the same voice connection (no Lavalink): say **Aetherion play …** or use slash commands
-- `/play`, `/pause` (toggles resume), `/stop` for SoundCloud tracks
-- `/datechannel` Eastern-midnight date dock and `/welcome` banners
-- `aetherion` console script (Railway still accepts `groksito`)
-- `yt-dlp` dependency for resolving SoundCloud play queries
+
+- Exclusive multi-color **reaction roles** (Carl-style, admin slash setup, anyone can react).
+  - `/reactionrole post` — post a panel in the current channel. One color per person on that message.
+  - `/reactionrole add` — bind an emoji to a role (uses the last posted panel if no message ID is given).
+  - `/reactionrole remove` — unlink an emoji.
+  - `/reactionrole list` — show mappings on this server.
+  - Switching colors removes the old color role and the old reaction. Removing a reaction drops that role.
+  - Stored per guild in `data/reaction_roles.json` (gitignored runtime data).
+- Standing rule: every future Aetherion addition is dated and written into this changelog.
+
+## [2026-09-12]
 
 ### Changed
-- **2026-09-09** — `/play` and “Aetherion play …” search SoundCloud first and only; no YouTube / Mixcloud / Audiomack / Invidious / Piped waterfall
-- Live VC replies use light reasoning (`VOICE_REASONING_EFFORT=low`) and a short answer cap so spoken answers start sooner; text chat still uses full `GROK_MODEL`
-- System prompt identity so Aetherion answers as itself and stays on the current thread in text chat
-- Project metadata, dashboard, and user-facing strings rebranded from Groksito to Aetherion
-- Package import path remains `groksito_discord` so existing deploys keep starting
-- Date dock sleeps until 12:00 AM Eastern instead of polling every 10 minutes
-- Voice decrypt falls back to the member who ran `/join` when Discord has not mapped their SSRC yet
+
+- Text and voice prompts allow slurs and swear words. Aetherion is not filtered for profanity and may use the exact words people use.
+
+## [2026-09-10]
+
+### Added
+
+- Administrator `/purge` (Dyno-style): delete 1–100 recent messages in the current channel.
+  - Confirmation buttons before anything is deleted.
+  - Pinned messages are kept.
+  - Needs Manage Messages and Read Message History.
+- Ori creator recognition: Discord ID `1022200760018161684` is treated as Aetherion's creator/Master in text and voice.
+
+### Changed
+
+- Default TTS / VC timbre is xAI **Zagan** (voice sound only).
+- Identity is **Aetherion**, a proud AI intelligence — not Zagan, not a warrior name, not a woman.
+- Proud, non-submissive tone. Does not suck up to anyone except the creator relationship above.
+- `/audio` default voice choice is Zagan.
+- Live voice sessions force the Zagan voice id on join.
+
+## [2026-09-09]
+
+### Added
+
+- Last-10 per-user conversation memory for text chat and voice (used when Aetherion needs to recall something).
+- Name-address: saying Aetherion / Ethereon / Aetheron / Groksito counts as talking to the bot, same as a ping.
+- Voice wake-word aliases, including **Ethereum** and **Iberian** (common STT mishears of Aetherion), plus Atherion, Aetherian, A Theory on, Athena, Theorion, Atheorion, and others.
+- Live Discord voice session: `/join` / `/leave`, DAVE decrypt, wake word, TTS back into the channel, Agent Tools web search.
+- Music on the same voice connection (no Lavalink): say **Aetherion play …** or use slash commands.
+- `/play`, `/pause` (toggles resume), `/stop` for SoundCloud tracks.
+- `/datechannel` Eastern-midnight date dock and `/welcome` banners.
+- `aetherion` console script (Railway still accepts `groksito`).
+- `yt-dlp` for resolving SoundCloud play queries.
+- Voice-only light reasoning (`VOICE_REASONING_EFFORT=low`) so spoken answers start sooner; text chat still uses full `GROK_MODEL`.
+
+### Changed
+
+- `/play` and “Aetherion play …” search SoundCloud first and only.
+- System prompt identity so Aetherion answers as itself and stays on the current thread in text chat.
+- Project metadata, dashboard, and user-facing strings rebranded from Groksito to Aetherion.
+- Package import path remains `groksito_discord` so existing deploys keep starting.
+- Date dock sleeps until 12:00 AM Eastern instead of polling every 10 minutes.
+- Voice decrypt falls back to the member who ran `/join` when Discord has not mapped their SSRC yet.
+- Discord presence activity is **The Cosmos**.
 
 ### Fixed
-- `/join` from a second member could connect the bot but never transcribe their voice
-- Play requests that started with extra STT noise (`Atherion - Play …`) skipped the music handler
+
+- `/join` from a second member could connect the bot but never transcribe their voice.
+- Play requests that started with extra STT noise (`Atherion - Play …`) skipped the music handler.
+- YouTube storyboard images were incorrectly treated as audio (before SoundCloud-only).
+- Empty YouTube formats and googlevideo 403s during the old multi-source music path.
 
 ### Removed
-- **2026-09-09** — YouTube music playback, YouTube cookie settings (`YOUTUBE_COOKIES`, `YOUTUBE_COOKIES_B64`, `YOUTUBE_COOKIES_FILE`), and `YOUTUBE_COOKIES.md`
-- **2026-09-09** — Mixcloud, Audiomack, Invidious, and Piped music fallbacks
-- Upstream `CONTRIBUTING.md`
-- Slash commands `/stmchr`, `/versus`, `/topkorea`, `/topgames`, `/steamchart`, `/mislimites`
+
+- YouTube music playback, YouTube cookie settings (`YOUTUBE_COOKIES`, `YOUTUBE_COOKIES_B64`, `YOUTUBE_COOKIES_FILE`), and `YOUTUBE_COOKIES.md`.
+- Mixcloud, Audiomack, Invidious, and Piped music fallbacks.
+- Upstream `CONTRIBUTING.md`.
+- Slash commands `/stmchr`, `/versus`, `/topkorea`, `/topgames`, `/steamchart`, `/mislimites`.
 
 ## [0.2.0] - 2026-06-17
 
 First pre-release baseline. Seeded from merged work on `main` through the modernization
-roadmap, native-behavior improvements, and release automation.
+roadmap, native-behavior improvements, and release automation. This is the Groksito-era
+package baseline Aetherion was forked from.
 
 ### Added
 
