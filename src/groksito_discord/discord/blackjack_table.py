@@ -7,7 +7,7 @@ from random import Random
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from .blackjack import Card, RANK_SYM, hand_value
+from .blackjack import SUIT_SYM, Card, RANK_SYM, hand_value
 
 VOID = (6, 8, 16)
 GOLD = (212, 176, 72)
@@ -46,35 +46,9 @@ def _rounded(draw: ImageDraw.ImageDraw, box, radius: int, fill, outline=None, wi
 
 
 def _draw_suit(draw: ImageDraw.ImageDraw, cx: int, cy: int, size: int, suit: str, color) -> None:
-    s = max(8, int(size))
-    if suit == "D":
-        draw.polygon(
-            [(cx, cy - s), (cx + int(s * 0.68), cy), (cx, cy + s), (cx - int(s * 0.68), cy)],
-            fill=color,
-        )
-        return
-    if suit == "H":
-        r = int(s * 0.46)
-        draw.ellipse((cx - s + 1, cy - r - 2, cx + 3, cy + r), fill=color)
-        draw.ellipse((cx - 3, cy - r - 2, cx + s - 1, cy + r), fill=color)
-        draw.polygon([(cx - s + 2, cy + 2), (cx + s - 2, cy + 2), (cx, cy + s + 3)], fill=color)
-        return
-    if suit == "S":
-        draw.polygon([(cx, cy - s - 2), (cx + int(s * 0.82), cy + 4), (cx - int(s * 0.82), cy + 4)], fill=color)
-        r = int(s * 0.42)
-        draw.ellipse((cx - s + 2, cy - 2, cx + 4, cy + r + 6), fill=color)
-        draw.ellipse((cx - 4, cy - 2, cx + s - 2, cy + r + 6), fill=color)
-        stem = max(3, s // 6)
-        draw.rectangle((cx - stem, cy + 4, cx + stem, cy + s + 4), fill=color)
-        draw.polygon([(cx - s // 2, cy + s + 4), (cx + s // 2, cy + s + 4), (cx, cy + 6)], fill=color)
-        return
-    r = int(s * 0.40)
-    draw.ellipse((cx - r, cy - s, cx + r, cy - 2), fill=color)
-    draw.ellipse((cx - s + 1, cy - r + 2, cx + 3, cy + r + 6), fill=color)
-    draw.ellipse((cx - 3, cy - r + 2, cx + s - 1, cy + r + 6), fill=color)
-    stem = max(3, s // 6)
-    draw.rectangle((cx - stem, cy + 2, cx + stem, cy + s + 4), fill=color)
-    draw.polygon([(cx - s // 2, cy + s + 4), (cx + s // 2, cy + s + 4), (cx, cy + 8)], fill=color)
+    """Real card pips via DejaVu suit glyphs (spade/heart/diamond/club)."""
+    glyph = SUIT_SYM[suit]
+    draw.text((cx, cy), glyph, font=_font(max(12, int(size * 2.2))), fill=color, anchor="mm")
 
 
 def _paint_corner(draw: ImageDraw.ImageDraw, x: int, y: int, rank: int, suit: str, color, *, bottom: bool) -> None:
@@ -98,7 +72,7 @@ def _card_face(rank: int, suit: str) -> Image.Image:
     d = ImageDraw.Draw(img)
     _rounded(d, (1, 1, CARD_W - 2, CARD_H - 2), RADIUS, CREAM, outline=(214, 206, 188), width=2)
     color = RED if suit in ("H", "D") else BLACK
-    _draw_suit(d, CARD_W // 2, CARD_H // 2 - 2, 30, suit, color)
+    _draw_suit(d, CARD_W // 2, CARD_H // 2 - 2, 34, suit, color)
     _paint_corner(d, 12, 8, rank, suit, color, bottom=False)
     _paint_corner(d, CARD_W - 12, CARD_H - 10, rank, suit, color, bottom=True)
     return img
