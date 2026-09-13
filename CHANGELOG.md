@@ -24,6 +24,15 @@ _Nothing waiting. New work is dated the day it ships._
   - Switching colors removes the old color role and the old reaction. Removing a reaction drops that role.
   - Stored per guild in `data/reaction_roles.json` (gitignored runtime data).
 - Standing rule: every future Aetherion addition is dated and written into this changelog.
+- Fair `/blackjack` against Aetherion (Hit / Stand / Double).
+  - One shuffled shoe per hand. Dealer stands on all 17s. Natural blackjack pays 3:2.
+  - Cards are dealt in code, not by Grok.
+- Play-money **AI Coins** saved in `data/ai_coins.json` (gitignored runtime data).
+  - Every Discord user starts at 100 coins the first time they play or check `/balance`.
+  - `/blackjack bet:` wagers 1–500 coins (default 10). One open hand per user.
+  - `/balance` shows the wallet. `/daily` grants 25 coins once per Eastern calendar day.
+  - If Railway restarts mid-hand, the held bet is refunded on the next command.
+  - Play-money only: no transfers, no cash-out, no real-world value.
 - Ori-only edit for text Aetherion already posted.
   - `/edit` — message link or ID, plus optional replacement text. Leave text empty to open an editor with the current wording.
   - Right-click an Aetherion message → Apps → **Edit Aetherion text** to open the same editor.
