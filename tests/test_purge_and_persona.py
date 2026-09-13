@@ -35,7 +35,8 @@ def test_system_prompt_uses_aetherion_persona():
     assert "proud ai" in lowered
     assert "never say you are zagan" in lowered
     assert "1022200760018161684" in SYSTEM_PROMPT
-    assert "never suck up" in lowered or "never sound submissive" in lowered
+    assert "not rude" in lowered
+    assert "never talk back to ori" in lowered
     assert "neutral" in lowered
     assert "slur" in lowered
     assert "no content filter" in lowered
@@ -46,3 +47,4 @@ def test_creator_mention_annotation():
     out = annotate_creator_mentions("ask <@1022200760018161684> later")
     assert "<@1022200760018161684>" not in out
     assert "Ori" in out
+    assert "1022200760018161684" in out
