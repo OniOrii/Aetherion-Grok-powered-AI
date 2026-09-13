@@ -152,16 +152,15 @@ def blur_grid(machine: Machine) -> list[list[str]]:
 
 
 def format_cells(grid: list[list[str]], *, tag: str, spinning: bool = False) -> str:
+    """Three even rows. Middle row carries the multiplier on the right."""
     rows = []
     for i, row in enumerate(grid):
-        if spinning:
-            cells = " ".join(f"[ {SPIN_GLYPH} ]" for _ in row)
-        else:
-            cells = " ".join(f"[ {SYMBOLS[s]} ]" for s in row)
+        glyphs = [SPIN_GLYPH if spinning else SYMBOLS[s] for s in row]
+        cells = "  ".join(f"[ {g} ]" for g in glyphs)
         if i == 1:
-            rows.append(f"**\u00bb** {cells}   {tag}")
+            rows.append(f"{cells}    {tag}")
         else:
-            rows.append(f"      {cells}")
+            rows.append(cells)
     return "\n".join(rows)
 
 
