@@ -12,7 +12,7 @@ from ..config import settings
 
 logger = logging.getLogger("aetherion.reaction_roles")
 
-_CUSTOM_EMOJI_RE = re.compile(r"^<(a?):([A-Za-z0-9_]+):(\d+)>$)")
+_CUSTOM_EMOJI_RE = re.compile(r"^<(a?):([A-Za-z0-9_]+):(\d+)>$" )
 _ID_EMOJI_RE = re.compile(r"^([A-Za-z0-9_]+):(\d+)$")
 _PAIR_RE = re.compile(r"(?P<left><(?:a)?:[A-Za-z0-9_]+:\d+>|\S+)\s+<@&(?P<rid>\d+)>")
 RR_EMBED_TITLE = "Aetherion reaction roles"
@@ -64,7 +64,7 @@ def parse_emoji_input(raw: str) -> tuple[str, discord.PartialEmoji | str] | None
 
 
 def parse_panel_text(content: str, extra_blobs: list[str] | None = None) -> dict[str, int]:
-    """Read emoji → role id pairs from a panel message body or stamped embed."""
+    """Read emoji to role id pairs from a panel message body or stamped embed."""
     mapping: dict[str, int] = {}
     blobs = [content or ""]
     if extra_blobs:
