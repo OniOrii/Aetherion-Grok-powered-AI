@@ -28,11 +28,13 @@ _Nothing waiting. New work is dated the day it ships._
   - One shuffled shoe per hand. Dealer stands on all 17s. Natural blackjack pays 3:2.
   - Cards are dealt in code, not by Grok.
 - Play-money **AI Coins** saved in `data/ai_coins.json` (gitignored runtime data).
-  - Every Discord user starts at 100 coins the first time they play or check `/balance`.
-  - `/blackjack bet:` wagers 1–500 coins (default 10). One open hand per user.
+  - Every Discord user starts at 500 coins the first time they play or check `/balance`. People who already have a wallet keep their current balance.
+  - `/blackjack bet:` wagers 1–1,000 coins (default 10). One open hand per user.
   - `/balance` shows the wallet. `/daily` grants 25 coins once per Eastern calendar day.
   - If Railway restarts mid-hand, the held bet is refunded on the next command.
   - Play-money only: no transfers, no cash-out, no real-world value.
+- `/leaderboard` — top 10 AI Coin wallets among members of the current server.
+- `/givecoins` — Ori only (hidden from the slash menu for non-administrators). Grant 1–10,000 AI Coins to a member.
 - Blackjack table art: each hand posts a felt table image with real card faces and a face-down hole card. Drawn with PIL (same approach as welcome banners), not Grok Imagine.
 - Ori-only edit for text Aetherion already posted.
   - `/edit` — message link or ID, plus optional replacement text. Leave text empty to open an editor with the current wording.
