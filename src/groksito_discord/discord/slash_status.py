@@ -1,4 +1,4 @@
-"""Owner-only /status. Locked to Ori's Discord ID."""
+"""Owner-only /status. Hidden from non-admins. Locked to Ori's Discord ID."""
 from __future__ import annotations
 
 import logging
@@ -25,6 +25,7 @@ def register_status(tree, is_guild_allowed) -> None:
             discord.app_commands.Choice(name="Competing", value="competing"),
         ]
     )
+    @discord.app_commands.default_permissions(administrator=True)
     @discord.app_commands.guild_only()
     async def status_slash(
         interaction: discord.Interaction,
