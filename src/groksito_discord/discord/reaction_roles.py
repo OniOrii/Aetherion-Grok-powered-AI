@@ -12,8 +12,10 @@ from ..config import settings
 
 logger = logging.getLogger("aetherion.reaction_roles")
 
-_CUSTOM_EMOJI_RE = re.compile(r"^<(a?):([A-Za-z0-9_]+):(\d+)>$")
+_CUSTOM_EMOJI_RE = re.compile(r"^<(a?):([A-Za-z0-9_]+):(\d+)>$)")
 _ID_EMOJI_RE = re.compile(r"^([A-Za-z0-9_]+):(\d+)$")
+_PAIR_RE = re.compile(r"(?P<left><(?:a)?:[A-Za-z0-9_]+:\d+>|\S+)\s+<@&(?P<rid>\d+)>")
+RR_EMBED_TITLE = "Aetherion reaction roles"
 
 
 def _store_path() -> Path:
@@ -61,6 +63,33 @@ def parse_emoji_input(raw: str) -> tuple[str, discord.PartialEmoji | str] | None
     return text, text
 
 
+def parse_panel_text(content: str, extra_blobs: list[str] | None = None) -> dict[str, int]:
+    """Read emoji → role id pairs from a panel message body or stamped embed."""
+    mapping: dict[str, int] = {}
+    blobs = [content or ""]
+    if extra_blobs:
+        blobs.extend(extra_blobs)
+    for blob in blobs:
+        for match in _PAIR_RE.finditer(blob or ""):
+            parsed = parse_emoji_input(match.group("left"))
+            if parsed is None:
+                continue
+            mapping[parsed[0]] = int(match.group("rid"))
+        for line in (blob or "").splitlines():
+            line = line.strip()
+            if "=" not in line or "<@&" in line:
+                continue
+            left, _, right = line.partition("=")
+            parsed = parse_emoji_input(left.strip())
+            if parsed is None:
+                continue
+            try:
+                mapping[parsed[0]] = int(right.strip())
+            except ValueError:
+                continue
+    return mapping
+
+
 def get_panel(guild_id: int, message_id: int) -> dict | None:
     store = load_store()
     guild = store.get(str(guild_id)) or {}
@@ -95,6 +124,16 @@ def set_mapping(guild_id: int, message_id: int, channel_id: int, emoji_key: str,
     mapping[emoji_key] = int(role_id)
     guild[str(message_id)] = panel
     save_store(store)
+    return panel
+
+
+def restore_panel(guild_id: int, message_id: int, channel_id: int, mapping: dict[str, int], unique: bool = True) -> dict | None:
+    if not mapping:
+        return None
+    upsert_panel(guild_id, message_id, channel_id, unique=unique)
+    panel = None
+    for key, role_id in mapping.items():
+        panel = set_mapping(guild_id, message_id, channel_id, key, int(role_id))
     return panel
 
 
@@ -171,6 +210,64 @@ def panel_is_unique(guild_id: int, message_id: int) -> bool:
     return bool(panel.get("unique", True))
 
 
+def panel_embed(panel: dict) -> discord.Embed:
+    mapping = (panel or {}).get("map") or {}
+    lines = [f"{key} <@&{rid}>" for key, rid in mapping.items()]
+    embed = discord.Embed(
+        title=RR_EMBED_TITLE,
+        description="\n".join(lines)[:4000] or "No roles bound yet.",
+        color=0x2B2D31,
+    )
+    return embed
+
+
+async def stamp_panel_embed(message: discord.Message, guild_id: int, message_id: int) -> None:
+    panel = get_panel(guild_id, message_id)
+    if panel is None:
+        return
+    kept = [embed for embed in (message.embeds or []) if (embed.title or "") != RR_EMBED_TITLE]
+    kept.append(panel_embed(panel))
+    try:
+        await message.edit(embeds=kept[:10])
+    except discord.HTTPException:
+        logger.exception("could not stamp reaction role embed on %s", message_id)
+
+
+async def _fetch_payload_message(client, payload: discord.RawReactionActionEvent):
+    if client is None or payload.channel_id is None:
+        return None
+    channel = client.get_channel(payload.channel_id)
+    if channel is None:
+        try:
+            channel = await client.fetch_channel(payload.channel_id)
+        except discord.HTTPException:
+            return None
+    if channel is None or not hasattr(channel, "fetch_message"):
+        return None
+    try:
+        return await channel.fetch_message(payload.message_id)
+    except discord.HTTPException:
+        return None
+
+
+async def ensure_panel_from_message(client, payload: discord.RawReactionActionEvent) -> None:
+    """If the on-disk store was wiped, rebuild it from the Discord panel message."""
+    if payload.guild_id is None:
+        return
+    existing = get_panel(payload.guild_id, payload.message_id)
+    if existing and (existing.get("map") or {}):
+        return
+    message = await _fetch_payload_message(client, payload)
+    if message is None:
+        return
+    blobs = [embed.description or "" for embed in (message.embeds or [])]
+    mapping = parse_panel_text(message.content or "", blobs)
+    if not mapping:
+        return
+    restore_panel(payload.guild_id, payload.message_id, payload.channel_id, mapping)
+    logger.info("restored reaction role panel %s from Discord message", payload.message_id)
+
+
 async def _guild_and_member(client, payload: discord.RawReactionActionEvent):
     if payload.guild_id is None or payload.user_id is None:
         return None, None
@@ -235,6 +332,7 @@ async def _clear_other_reactions(
 async def handle_reaction_add(client, payload: discord.RawReactionActionEvent) -> None:
     if payload.guild_id is None or payload.user_id is None:
         return
+    await ensure_panel_from_message(client, payload)
     emoji_key = emoji_key_from_partial(payload.emoji)
     role_id = lookup_role_id(payload.guild_id, payload.message_id, emoji_key)
     if role_id is None:
@@ -280,6 +378,7 @@ async def handle_reaction_add(client, payload: discord.RawReactionActionEvent) -
 async def handle_reaction_remove(client, payload: discord.RawReactionActionEvent) -> None:
     if payload.guild_id is None or payload.user_id is None:
         return
+    await ensure_panel_from_message(client, payload)
     emoji_key = emoji_key_from_partial(payload.emoji)
     role_id = lookup_role_id(payload.guild_id, payload.message_id, emoji_key)
     if role_id is None:
