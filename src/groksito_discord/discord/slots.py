@@ -9,7 +9,7 @@ from typing import Mapping
 SYMBOLS: dict[str, str] = {
     "comet": "\u2604\ufe0f",
     "void": "\U0001F311",
-    "shard": "\U0001F6E1",
+    "shard": "\U0001F4A0",
     "moon": "\U0001F319",
     "star": "\u2B50",
     "coin": "\U0001FA99",
@@ -24,6 +24,7 @@ LABELS: dict[str, str] = {
     "coin": "Aether Coin",
 }
 
+SPIN_GLYPH = "\u2728"
 Paytable = dict[str, tuple[float, float]]
 
 
@@ -146,16 +147,32 @@ def spin(machine: Machine, bet: int) -> SpinResult:
     )
 
 
-def format_grid(result: SpinResult) -> str:
+def blur_grid(machine: Machine) -> list[list[str]]:
+    return [[_pick(machine.weights) for _ in range(3)] for _ in range(3)]
+
+
+def format_cells(grid: list[list[str]], *, tag: str, spinning: bool = False) -> str:
     rows = []
-    for i, row in enumerate(result.grid):
-        cells = " ".join(f"[ {SYMBOLS[s]} ]" for s in row)
-        if i == 1:
-            tag = f"  **{result.multiplier:g}x**" if result.multiplier > 0 else "  \u2014"
-            rows.append(f"**\u00bb** {cells}{tag}")
+    for i, row in enumerate(grid):
+        if spinning:
+            cells = " ".join(f"[ {SPIN_GLYPH} ]" for _ in row)
         else:
-            rows.append(f"    {cells}")
+            cells = " ".join(f"[ {SYMBOLS[s]} ]" for s in row)
+        if i == 1:
+            rows.append(f"**\u00bb** {cells}   {tag}")
+        else:
+            rows.append(f"      {cells}")
     return "\n".join(rows)
+
+
+def format_grid(result: SpinResult) -> str:
+    tag = f"**{result.multiplier:g}x**" if result.multiplier > 0 else "**0x**"
+    return format_cells(result.grid, tag=tag)
+
+
+def spinning_cells() -> str:
+    dummy = [["coin"] * 3 for _ in range(3)]
+    return format_cells(dummy, tag="**\u2026**", spinning=True)
 
 
 def payouts_text(machine: Machine) -> str:
@@ -169,7 +186,7 @@ def payouts_text(machine: Machine) -> str:
     ]
     order = ["coin", "star", "moon", "shard", "void", "comet"]
     for key in order:
-        three, pair = machine.pays[key]
+        three, _pair = machine.pays[key]
         lines.append(f"{SYMBOLS[key]} {SYMBOLS[key]} {SYMBOLS[key]}  \u2014  {three:g}x  ({LABELS[key]})")
     lines.append("")
     lines.append("**Any pair** on the middle line")
