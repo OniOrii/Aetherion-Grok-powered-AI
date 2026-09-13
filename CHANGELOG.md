@@ -35,6 +35,7 @@ _Nothing waiting. New work is dated the day it ships._
 - Default tone is proud and useful, not rude. Does not treat a straight question as trolling.
 - When Ori (Discord ID `1022200760018161684`) pings or mentions Aetherion, replies stay respectful and helpful.
 - `/welcome` and `/datechannel` are administrator-only and hidden from the slash menu for everyone else.
+- `/status` is hidden from the slash menu for non-administrators. Only Ori can actually use it.
 
 ## [2026-09-12]
 
@@ -67,7 +68,7 @@ _Nothing waiting. New work is dated the day it ships._
 - Last-10 per-user conversation memory for text chat and voice (used when Aetherion needs to recall something).
 - Name-address: saying Aetherion / Ethereon / Aetheron / Groksito counts as talking to the bot, same as a ping.
 - Voice wake-word aliases, including **Ethereum** and **Iberian** (common STT mishears of Aetherion), plus Atherion, Aetherian, A Theory on, Athena, Theorion, Atheorion, and others.
-- Live Discord voice session: `/join` / `/leave`, DAVE decrypt, wake word, TTS back into the channel, Agent Tools web search.
+- Live voice session: `/join` / `/leave`, DAVE decrypt, wake word, TTS back into the channel, Agent Tools web search.
 - Music on the same voice connection (no Lavalink): say **Aetherion play …** or use slash commands.
 - `/play`, `/pause` (toggles resume), `/stop` for SoundCloud tracks.
 - `/datechannel` Eastern-midnight date dock and `/welcome` banners.
