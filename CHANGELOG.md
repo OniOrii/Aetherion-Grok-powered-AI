@@ -16,11 +16,22 @@ _Nothing waiting. New work is dated the day it ships._
 ### Added
 
 - Exclusive multi-color **reaction roles** (Admin slash setup, anyone can react).
+  - `/reactionrole post` — post a panel in the current channel. One color per person on that message.
+  - `/reactionrole add` — bind an emoji to a role (uses the last posted panel if no message ID is given).
+  - `/reactionrole remove` — unlink an emoji.
+  - `/reactionrole list` — show mappings on this server.
+  - `/reactionrole colors` — admin-only. Creates the 12 two-color gradient roles and posts a ready panel in the current channel.
+  - Switching colors removes the old color role and the old reaction. Removing a reaction drops that role.
+  - Stored per guild in `data/reaction_roles.json` (gitignored runtime data).
+- Standing rule: every future Aetherion addition is dated and written into this changelog.
 - Fair `/blackjack` against Aetherion (Hit / Stand / Double).
+  - One shuffled shoe per hand. Dealer stands on all 17s. Natural blackjack pays 3:2.
+  - Cards are dealt in code, not by Grok.
 - Play-money **Aether Coins** saved in `data/ai_coins.json` (gitignored runtime data).
   - Every Discord user starts at 500 coins the first time they play or check `/balance`. People who already have a wallet keep their current balance.
   - `/blackjack bet:` wagers 1–1,000 coins (default 10). One open hand per user.
   - `/balance` shows the wallet. `/daily` grants 25 coins once per Eastern calendar day.
+  - If Railway restarts mid-hand, the held bet is refunded on the next command.
   - Play-money only: no transfers, no cash-out, no real-world value.
 - `/slots` — Aetherion slot cabinets for Aether Coins (fair weighted reels in code, not Grok).
   - Machines: **Cosmos Wheel** (default, balanced), **Nebula** (frequent small hits), **Event Horizon** (rare, heavy).
@@ -28,21 +39,27 @@ _Nothing waiting. New work is dated the day it ships._
   - Buttons: Spin Again, Change Bet, See Payouts. Same wallet as blackjack.
 - `/leaderboard` — top 10 Aether Coin wallets among members of the current server.
 - `/givecoins` — Ori only (hidden from the slash menu for non-administrators). Grant 1–10,000 Aether Coins to a member.
-- Blackjack table art: each hand posts a table image with real card faces.
+- Blackjack table art: each hand posts a felt table image with real card faces and a face-down hole card. Drawn with PIL (same approach as welcome banners), not Grok Imagine.
 - Ori-only edit for text Aetherion already posted.
+  - `/edit` — message link or ID, plus optional replacement text. Leave text empty to open an editor with the current wording.
+  - Right-click an Aetherion message → Apps → **Edit Aetherion text** to open the same editor.
+  - Locked to Ori (Discord ID `1022200760018161684`). Hidden from the slash menu for non-administrators. Other people cannot change Aetherion messages.
+  - Only works on messages Aetherion posted. Discord does not let anyone edit another user's text.
 
 ### Changed
 
 - Play-money currency is now **Aether Coins** (was AI Coins).
-- Blackjack suits use real card glyphs. Table is a starfield.
-- Default tone is proud and useful, not rude.
-- `/welcome` and `/datechannel` are administrator-only.
+- Blackjack suits use real card glyphs for spades, hearts, diamonds, and clubs.
+- Blackjack table is a starfield instead of green felt. Card corners keep rank and suit apart so they no longer overlap; 6 and 9 are underlined.
+- Default tone is proud and useful, not rude. Does not treat a straight question as trolling.
+- When Ori (Discord ID `1022200760018161684`) pings or mentions Aetherion, replies stay respectful and helpful.
+- `/welcome` and `/datechannel` are administrator-only and hidden from the slash menu for everyone else.
 - `/status` is hidden from the slash menu for non-administrators. Only Ori can actually use it.
 
 ### Fixed
 
-- Dealer blackjack no longer ends the hand on the deal.
-- Reaction roles survive a Railway/Docker restart that wipes `data/reaction_roles.json`.
+- Dealer blackjack no longer ends the hand on the deal. Hole card stays down until you hit, stand, double, or bust. Instant finish only if you are dealt blackjack (or both are).
+- Reaction roles survive a Railway/Docker restart that wipes `data/reaction_roles.json`. If the save file is gone, Aetherion rebuilds the map from the panel message (emoji + role mention lines) on the next react.
 
 ## [2026-09-12]
 
@@ -54,20 +71,61 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
-- Administrator `/purge`.
-- Ori creator recognition: Discord ID `1022200760018161684`.
+- Administrator `/purge` (Dyno-style): delete 1–100 recent messages in the current channel.
+  - Confirmation buttons before anything is deleted.
+  - Pinned messages are kept.
+  - Needs Manage Messages and Read Message History.
+- Ori creator recognition: Discord ID `1022200760018161684` is treated as Aetherion's creator in text and voice.
 
 ### Changed
 
 - Default TTS / VC timbre is xAI **Zagan** (voice sound only).
-- Identity is **Aetherion**.
+- Identity is **Aetherion**, a proud AI intelligence.
+- Proud, non-submissive tone. Does not suck up to anyone except the creator relationship above.
+- `/audio` default voice choice is Zagan.
+- Live voice sessions force the Zagan voice id on join.
 
 ## [2026-09-09]
 
 ### Added
 
-- Live voice, music, date dock, welcome banners, Aetherion identity.
+- Last-10 per-user conversation memory for text chat and voice (used when Aetherion needs to recall something).
+- Name-address: saying Aetherion / Ethereon / Aetheron / Groksito counts as talking to the bot, same as a ping.
+- Voice wake-word aliases, including **Ethereum** and **Iberian** (common STT mishears of Aetherion), plus Atherion, Aetherian, A Theory on, Athena, Theorion, Atheorion, and others.
+- Live voice session: `/join` / `/leave`, DAVE decrypt, wake word, TTS back into the channel, Agent Tools web search.
+- Music on the same voice connection (no Lavalink): say **Aetherion play …** or use slash commands.
+- `/play`, `/pause` (toggles resume), `/stop` for SoundCloud tracks.
+- `/datechannel` Eastern-midnight date dock and `/welcome` banners.
+- `aetherion` console script (Railway still accepts `groksito`).
+- `yt-dlp` for resolving SoundCloud play queries.
+- Voice-only light reasoning (`VOICE_REASONING_EFFORT=low`) so spoken answers start sooner; text chat still uses full `GROK_MODEL`.
+
+### Changed
+
+- `/play` and “Aetherion play …” search SoundCloud first and only.
+- System prompt identity so Aetherion answers as itself and stays on the current thread in text chat.
+- Project metadata, dashboard, and user-facing strings rebranded from Groksito to Aetherion.
+- Package import path remains `groksito_discord` so existing deploys keep starting.
+- Date dock sleeps until 12:00 AM Eastern instead of polling every 10 minutes.
+- Voice decrypt falls back to the member who ran `/join` when Discord has not mapped their SSRC yet.
+- Discord presence activity is **The Cosmos**.
+
+### Fixed
+
+- `/join` from a second member could connect the bot but never transcribe their voice.
+- Play requests that started with extra STT noise (`Atherion - Play …`) skipped the music handler.
+- YouTube storyboard images were incorrectly treated as audio (before SoundCloud-only).
+- Empty YouTube formats and googlevideo 403s during the old multi-source music path.
+
+### Removed
+
+- YouTube music playback, YouTube cookie settings (`YOUTUBE_COOKIES`, `YOUTUBE_COOKIES_B64`, `YOUTUBE_COOKIES_FILE`), and `YOUTUBE_COOKIES.md`.
+- Mixcloud, Audiomack, Invidious, and Piped music fallbacks.
+- Upstream `CONTRIBUTING.md`.
+- Slash commands `/stmchr`, `/versus`, `/topkorea`, `/topgames`, `/steamchart`, `/mislimites`.
 
 ## [0.2.0] - 2026-06-17
 
-First pre-release baseline from the Groksito-era package Aetherion was forked from.
+First pre-release baseline. Seeded from merged work on `main` through the modernization
+roadmap, native-behavior improvements, and release automation. This is the Groksito-era
+package baseline Aetherion was forked from.
