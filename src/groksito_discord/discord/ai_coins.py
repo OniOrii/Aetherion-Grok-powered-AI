@@ -227,3 +227,30 @@ def snapshot_wallets() -> list[tuple[int, int, int]]:
                 pending = 0
             out.append((uid, max(0, bal), max(0, pending)))
         return out
+
+
+def resolve_wager(
+    user_id: int,
+    stake: int,
+    payout: int,
+    *,
+    min_bet: int,
+    max_bet: int,
+) -> tuple[bool, int, str]:
+    stake = int(stake)
+    payout = max(0, int(payout))
+    if stake < min_bet:
+        return False, 0, f"Minimum bet is {min_bet} Aether Coins."
+    if stake > max_bet:
+        return False, 0, f"Maximum bet is {max_bet} Aether Coins."
+    with _lock:
+        store = _load_store()
+        row = _ensure_user_unlocked(store, user_id)
+        if int(row.get("pending_bet") or 0) > 0:
+            return False, int(row["balance"]), "You already have a hand in progress."
+        bal = int(row["balance"])
+        if stake > bal:
+            return False, bal, f"You only have {bal} Aether Coins."
+        row["balance"] = bal - stake + payout
+        _save_store(store)
+        return True, int(row["balance"]), ""
