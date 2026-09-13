@@ -102,6 +102,7 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
     intents.members = True
     intents.message_content = True
     intents.voice_states = True
+    intents.reactions = True
     _discord_client = discord.Client(intents=intents)
     rate_limiter = RateLimiter()
     tree = discord.app_commands.CommandTree(_discord_client)
@@ -206,6 +207,22 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
     async def on_member_update(before, after):
         from .welcome import on_member_update as _welcome_update
         await _welcome_update(before, after)
+
+    @_discord_client.event
+    async def on_raw_reaction_add(payload):
+        from .reaction_roles import handle_reaction_add
+        try:
+            await handle_reaction_add(_discord_client, payload)
+        except Exception:
+            logger.exception("reaction role add failed")
+
+    @_discord_client.event
+    async def on_raw_reaction_remove(payload):
+        from .reaction_roles import handle_reaction_remove
+        try:
+            await handle_reaction_remove(_discord_client, payload)
+        except Exception:
+            logger.exception("reaction role remove failed")
 
     @_discord_client.event
     async def on_message(message: discord.Message):
