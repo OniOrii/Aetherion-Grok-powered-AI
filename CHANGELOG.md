@@ -50,7 +50,7 @@ _Nothing waiting. New work is dated the day it ships._
   - Confirmation buttons before anything is deleted.
   - Pinned messages are kept.
   - Needs Manage Messages and Read Message History.
-- Ori creator recognition: Discord ID `1022200760018161684` is treated as Aetherion's creator/Master in text and voice.
+- Ori creator recognition: Discord ID `1022200760018161684` is treated as Aetherion's creator in text and voice.
 
 ### Changed
 
