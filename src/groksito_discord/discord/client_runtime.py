@@ -232,7 +232,7 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
                 return
             author_display = getattr(message.author, "display_name", None) or getattr(message.author, "name", "Usuario")
             if message.author.id == 1022200760018161684:
-                author_display = "Ori (creator of Aetherion)"
+                author_display = "Ori (creator/Master of Aetherion, Discord ID 1022200760018161684)"
             cid = generate_correlation_id()
             set_correlation_id(cid)
             cid_p = cid_prefix()
