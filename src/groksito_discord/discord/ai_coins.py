@@ -1,4 +1,4 @@
-"""Persistent play-money AI Coin ledger for Aetherion minigames.
+"""Persistent play-money Aether Coin ledger for Aetherion minigames.
 
 Stored under data/ai_coins.json (gitignored runtime data, same folder as
 welcome channels and reaction roles). Play-money only — no cash-out, no
@@ -29,6 +29,8 @@ DEFAULT_BET = 10
 MAX_BET = 1000
 MIN_GRANT = 1
 MAX_GRANT = 10000
+CURRENCY = "Aether Coins"
+CURRENCY_ONE = "Aether Coin"
 
 _lock = threading.Lock()
 
@@ -141,9 +143,9 @@ def claim_daily(user_id: int) -> tuple[int, int, bool]:
 def hold_bet(user_id: int, amount: int) -> tuple[bool, int, str]:
     amount = int(amount)
     if amount < MIN_BET:
-        return False, 0, f"Minimum bet is {MIN_BET} AI Coin."
+        return False, 0, f"Minimum bet is {MIN_BET} Aether Coin."
     if amount > MAX_BET:
-        return False, 0, f"Maximum bet is {MAX_BET} AI Coins."
+        return False, 0, f"Maximum bet is {MAX_BET} Aether Coins."
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
@@ -151,7 +153,7 @@ def hold_bet(user_id: int, amount: int) -> tuple[bool, int, str]:
             return False, int(row["balance"]), "You already have a hand in progress."
         bal = int(row["balance"])
         if amount > bal:
-            return False, bal, f"You only have {bal} AI Coins."
+            return False, bal, f"You only have {bal} Aether Coins."
         row["balance"] = bal - amount
         row["pending_bet"] = amount
         _save_store(store)
@@ -170,7 +172,7 @@ def add_to_pending(user_id: int, extra: int) -> tuple[bool, int, str]:
             return False, int(row["balance"]), "No hand in progress."
         bal = int(row["balance"])
         if extra > bal:
-            return False, bal, f"You only have {bal} AI Coins left to double."
+            return False, bal, f"You only have {bal} Aether Coins left to double."
         row["balance"] = bal - extra
         row["pending_bet"] = held + extra
         _save_store(store)
@@ -191,7 +193,7 @@ def settle_hand(user_id: int, credit: int) -> int:
 def grant_coins(user_id: int, amount: int) -> tuple[bool, int, str]:
     amount = int(amount)
     if amount < MIN_GRANT or amount > MAX_GRANT:
-        return False, 0, f"Grant must be {MIN_GRANT}\u2013{MAX_GRANT} AI Coins."
+        return False, 0, f"Grant must be {MIN_GRANT}\u2013{MAX_GRANT} Aether Coins."
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
