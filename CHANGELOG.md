@@ -33,6 +33,7 @@ _Nothing waiting. New work is dated the day it ships._
   - `/balance` shows the wallet. `/daily` grants 25 coins once per Eastern calendar day.
   - If Railway restarts mid-hand, the held bet is refunded on the next command.
   - Play-money only: no transfers, no cash-out, no real-world value.
+- Blackjack table art: each hand posts a felt table image with real card faces and a face-down hole card. Drawn with PIL (same approach as welcome banners), not Grok Imagine.
 - Ori-only edit for text Aetherion already posted.
   - `/edit` — message link or ID, plus optional replacement text. Leave text empty to open an editor with the current wording.
   - Right-click an Aetherion message → Apps → **Edit Aetherion text** to open the same editor.
