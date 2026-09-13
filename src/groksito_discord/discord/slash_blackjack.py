@@ -1,12 +1,14 @@
 """Slash blackjack against Aetherion. Fair shoe + AI Coin stakes."""
 from __future__ import annotations
 
+import io
 import logging
 
 import discord
 
 from . import ai_coins
-from .blackjack import Hand, format_hand, hand_value
+from .blackjack import Hand, hand_value
+from .blackjack_table import render_hand_png
 
 logger = logging.getLogger("aetherion.slash_blackjack")
 
@@ -16,6 +18,7 @@ EMBED_PLAY = 0xC9A227
 EMBED_WIN = 0x3D9B64
 EMBED_LOSE = 0xC45C4A
 EMBED_PUSH = 0x8A8F98
+TABLE_NAME = "blackjack.png"
 
 
 def _can_double(hand: Hand, pocket: int) -> bool:
@@ -30,11 +33,9 @@ def _can_double(hand: Hand, pocket: int) -> bool:
 def _embed_for(hand: Hand, *, balance: int, reveal: bool) -> discord.Embed:
     hide = not reveal and not hand.finished
     player_total = hand_value(hand.player)
-    if hide:
-        dealer_shown = hand_value(hand.dealer[:1])
-        dealer_total_text = f"{dealer_shown}+"
-    else:
-        dealer_total_text = str(hand_value(hand.dealer))
+    dealer_total_text = (
+        f"{hand_value(hand.dealer[:1])}+" if hide else str(hand_value(hand.dealer))
+    )
 
     if hand.finished:
         if hand.outcome in ("player_bj", "win"):
@@ -53,19 +54,26 @@ def _embed_for(hand: Hand, *, balance: int, reveal: bool) -> discord.Embed:
         footer = "Hit, stand, or double. Only you can press the buttons."
 
     embed = discord.Embed(title=title, color=color)
-    embed.add_field(
-        name=f"Your hand \u00b7 {player_total}",
-        value=format_hand(hand.player),
-        inline=False,
-    )
-    embed.add_field(
-        name=f"Aetherion \u00b7 {dealer_total_text}",
-        value=format_hand(hand.dealer, hide_hole=hide),
-        inline=False,
-    )
+    embed.add_field(name="You", value=str(player_total), inline=True)
+    embed.add_field(name="Aetherion", value=dealer_total_text, inline=True)
     embed.add_field(name="Bet", value=f"{hand.bet} AI Coins", inline=True)
     embed.add_field(name="Wallet", value=f"{balance} AI Coins", inline=True)
     embed.set_footer(text=footer)
+    return embed
+
+
+def _table_file(hand: Hand, *, reveal: bool) -> discord.File | None:
+    try:
+        raw = render_hand_png(hand, reveal=reveal)
+        return discord.File(io.BytesIO(raw), filename=TABLE_NAME)
+    except Exception:
+        logger.exception("blackjack table render failed")
+        return None
+
+
+def _attach_image(embed: discord.Embed, table: discord.File | None) -> discord.Embed:
+    if table is not None:
+        embed.set_image(url=f"attachment://{TABLE_NAME}")
     return embed
 
 
@@ -96,11 +104,16 @@ class BlackjackView(discord.ui.View):
             balance = ai_coins.settle_hand(self.user_id, hand.credit())
             _games.pop(self.user_id, None)
             if self.message is not None:
-                await self.message.edit(
-                    embed=_embed_for(hand, balance=balance, reveal=True),
-                    view=None,
-                    content="Hand timed out. Stood automatically.",
-                )
+                table = _table_file(hand, reveal=True)
+                embed = _attach_image(_embed_for(hand, balance=balance, reveal=True), table)
+                kwargs = {
+                    "embed": embed,
+                    "view": None,
+                    "content": "Hand timed out. Stood automatically.",
+                }
+                if table is not None:
+                    kwargs["attachments"] = [table]
+                await self.message.edit(**kwargs)
         except Exception:
             logger.exception("blackjack timeout settle failed user=%s", self.user_id)
             _games.pop(self.user_id, None)
@@ -136,24 +149,25 @@ async def _act(interaction: discord.Interaction, view: BlackjackView, action: st
     else:
         hand.stand()
 
+    reveal = hand.finished
     if hand.finished:
         balance = ai_coins.settle_hand(view.user_id, hand.credit())
         _games.pop(view.user_id, None)
         view.stop()
-        await interaction.response.edit_message(
-            embed=_embed_for(hand, balance=balance, reveal=True),
-            view=None,
-        )
-        return
+        view_to_send = None
+    else:
+        balance = ai_coins.get_balance(view.user_id)
+        for item in view.children:
+            if isinstance(item, discord.ui.Button) and item.custom_id == "bj_double":
+                item.disabled = True
+        view_to_send = view
 
-    pocket = ai_coins.get_balance(view.user_id)
-    for item in view.children:
-        if isinstance(item, discord.ui.Button) and item.custom_id == "bj_double":
-            item.disabled = True
-    await interaction.response.edit_message(
-        embed=_embed_for(hand, balance=pocket, reveal=False),
-        view=view,
-    )
+    table = _table_file(hand, reveal=reveal)
+    embed = _attach_image(_embed_for(hand, balance=balance, reveal=reveal), table)
+    kwargs = {"embed": embed, "view": view_to_send}
+    if table is not None:
+        kwargs["attachments"] = [table]
+    await interaction.response.edit_message(**kwargs)
 
 
 def register_blackjack(tree, is_guild_allowed) -> None:
@@ -186,24 +200,30 @@ def register_blackjack(tree, is_guild_allowed) -> None:
         hand = Hand(user_id=user_id, bet=int(bet))
         hand.deal_opening()
         pocket = ai_coins.get_balance(user_id)
+        note = (
+            f"Returned {refunded} AI Coins from a hand that died in a restart."
+            if refunded
+            else None
+        )
 
         if hand.finished:
             pocket = ai_coins.settle_hand(user_id, hand.credit())
-            note = f"Returned {refunded} AI Coins from a hand that died in a restart.\n" if refunded else ""
-            await interaction.response.send_message(
-                content=note or None,
-                embed=_embed_for(hand, balance=pocket, reveal=True),
-            )
+            table = _table_file(hand, reveal=True)
+            embed = _attach_image(_embed_for(hand, balance=pocket, reveal=True), table)
+            kwargs = {"content": note, "embed": embed}
+            if table is not None:
+                kwargs["file"] = table
+            await interaction.response.send_message(**kwargs)
             return
 
         _games[user_id] = hand
         view = BlackjackView(user_id, can_double=_can_double(hand, pocket))
-        note = f"Returned {refunded} AI Coins from a hand that died in a restart." if refunded else None
-        await interaction.response.send_message(
-            content=note,
-            embed=_embed_for(hand, balance=pocket, reveal=False),
-            view=view,
-        )
+        table = _table_file(hand, reveal=False)
+        embed = _attach_image(_embed_for(hand, balance=pocket, reveal=False), table)
+        kwargs = {"content": note, "embed": embed, "view": view}
+        if table is not None:
+            kwargs["file"] = table
+        await interaction.response.send_message(**kwargs)
         try:
             view.message = await interaction.original_response()
         except Exception:
