@@ -8,7 +8,6 @@ from typing import Mapping
 
 AETHER = "\u2726"
 
-# Fallback set if a machine has no glyphs.
 SYMBOLS: dict[str, str] = {
     "comet": "\u2604\ufe0f",
     "void": "\U0001F30C",
@@ -191,15 +190,14 @@ def format_cells(
     glyphs: Mapping[str, str] | None = None,
 ) -> str:
     table = glyphs or SYMBOLS
-    pad = "\u2003\u2003"
     rows = []
     for i, row in enumerate(grid):
         marks = [SPIN_GLYPH if spinning else table.get(s, SYMBOLS.get(s, "?")) for s in row]
-        inner = "   ".join(marks)
+        body = "[ {} | {} | {} ]".format(*marks)
         if i == 1:
-            rows.append(f"**\u00bb**{pad}[ {inner} ]    `{tag}`")
+            rows.append(f"{body}  `{tag}`")
         else:
-            rows.append(f"{pad}   [ {inner} ]")
+            rows.append(body)
     return "\n".join(rows)
 
 
