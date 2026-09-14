@@ -33,6 +33,7 @@ _Nothing waiting. New work is dated the day it ships._
 - `/daily` grants **500** Aether Coins.
 - Slot pair and trip multipliers are **2x** the previous table.
 - `/cointoss` uses a smaller coin that falls the full frame. Odds are **48% heads / 48% tails / 2% side**.
+- Coin toss art is a minted Aetherion piece on a starfield, and it sits flat on a landing ring when it stops.
 
 ### Fixed
 
