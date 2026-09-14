@@ -24,6 +24,10 @@ _Nothing waiting. New work is dated the day it ships._
 - Connect Four GIFs no longer loop. The disc falls once, then the board freezes as a still image.
 - `/poker` \u2014 Texas Hold'em, 2-4 seats. Friends can Join, or Seat Aetherion. Fair house player uses only its own cards. Buy-in 10-1,000 Aether Coins. Fold / Check-Call / Raise / All-in. Hole cards stay private.
 
+### Changed
+
+- Poker table uses a felt oval, wider seats, and hole cards that sit side by side instead of overlapping.
+
 ### Fixed
 
 - `/poker` no longer posts 10/10 blinds on a 10-coin buy-in. That all-inned both seats and made every button say you cannot act.
