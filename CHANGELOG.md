@@ -22,15 +22,17 @@ _Nothing waiting. New work is dated the day it ships._
 - `/leaderboard` and Ori-only `/givecoins`.
 - Blackjack table art and Ori-only `/edit`.
 - Blackjack **Play Again** + **Change Bet** after each hand (same last stake, no retyping `/blackjack`).
-- `/cointoss` — Heads / Tails, rare side landing at 2.5x, falling flip animation, custom Aether coin art. Bet 10–10,000.
+- `/cointoss` — Heads / Tails, 2% side landing at 2.5x, falling flip animation, custom Aether coin art. Bet 10–10,000.
 
 ### Changed
 
 - `/slots` cabinet now animates (spark reel → blur → land) and uses a tighter Pocket / Winnings / Net embed.
 - Play-money currency is now **Aether Coins** (was AI Coins).
 - Blackjack table is a starfield with real suit glyphs.
-- Aether Coin bets and grants go by **10s**. Daily drip is 20. Blackjack minimum is 10.
-- `/cointoss` flips end-over-end (up/down), lands flat, and only shows HEADS / TAILS on the face.
+- Aether Coin bets and grants go by **10s**. Blackjack minimum is 10.
+- `/daily` grants **500** Aether Coins.
+- Slot pair and trip multipliers are **2x** the previous table.
+- `/cointoss` uses a smaller coin that falls the full frame. Odds are **48% heads / 48% tails / 2% side**.
 
 ### Fixed
 

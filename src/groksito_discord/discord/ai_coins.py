@@ -23,7 +23,7 @@ logger = logging.getLogger("aetherion.ai_coins")
 
 EASTERN = ZoneInfo("America/Detroit")
 STARTING_BALANCE = 500
-DAILY_DRIP = 20
+DAILY_DRIP = 500
 STEP = 10
 MIN_BET = 10
 DEFAULT_BET = 10
