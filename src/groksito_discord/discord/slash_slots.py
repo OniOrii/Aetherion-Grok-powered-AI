@@ -175,6 +175,7 @@ def _cabinet_embed(*, machine, pocket: int, winnings_text: str, net_text: str, g
     )
     embed = discord.Embed(title=machine.name, description=body, color=color)
     embed.set_footer(text=f"Bet: {coins(f'{bet:,}')}  |  Min: {coins(f'{SLOTS_MIN_BET:,}')}  |  Max: {coins(f'{SLOTS_MAX_BET:,}')}")
+    embed.set_thumbnail(url=f"attachment://{THUMB_NAME}")
     return embed
 
 
@@ -198,8 +199,6 @@ def _final_embed(result, *, balance: int) -> discord.Embed:
 
 
 async def _publish(interaction: discord.Interaction, *, embed, view, as_edit: bool, thumb: discord.File | None) -> None:
-    if thumb is not None:
-        embed.set_thumbnail(url=f"attachment://{THUMB_NAME}")
     if not interaction.response.is_done():
         if as_edit:
             kwargs = {"embed": embed, "view": view}
@@ -255,6 +254,8 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
     send_view._sync_select(machine.key)
     _set_disabled(send_view, True)
     _busy.add(user_id)
+    session = _sessions.setdefault(user_id, {"bet": bet, "machine": machine.key})
+    attach_thumb = (not edit) or session.get("thumb") != machine.key
     try:
         ticks = [spinning_cells()] + [format_cells(blur_grid(machine), tag="\u2026", glyphs=machine.glyphs) for _ in range(3)]
         first = True
@@ -273,7 +274,7 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
                 embed=frame,
                 view=send_view,
                 as_edit=edit if first else True,
-                thumb=_cabinet_file(machine.key),
+                thumb=_cabinet_file(machine.key) if (first and attach_thumb) else None,
             )
             first = False
             await asyncio.sleep(0.55)
@@ -286,10 +287,12 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
             await interaction.edit_original_response(view=send_view)
             await interaction.followup.send(err, ephemeral=True)
             return
-        _sessions[user_id] = {"bet": result.bet, "machine": machine.key}
+        session["bet"] = result.bet
+        session["machine"] = machine.key
+        session["thumb"] = machine.key
         _set_disabled(send_view, False)
         final = _final_embed(result, balance=balance)
-        await _publish(interaction, embed=final, view=send_view, as_edit=True, thumb=_cabinet_file(machine.key))
+        await _publish(interaction, embed=final, view=send_view, as_edit=True, thumb=None)
     except Exception:
         logger.exception("slots spin failed user=%s", user_id)
         try:
