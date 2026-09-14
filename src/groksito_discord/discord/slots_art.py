@@ -79,8 +79,9 @@ def _icon(draw: ImageDraw.ImageDraw, kind: str, cx: int, cy: int, accent) -> Non
         draw.ellipse((cx - 16, cy - 16, cx + 16, cy + 16), outline=accent, width=2)
         draw.ellipse((cx - 6, cy - 8, cx + 2, cy), fill=accent)
     elif kind == "charm":
-        draw.ellipse((cx - 12, cy - 12, cx + 12, cy + 12), outline=accent, width=2)
-        draw.regular_polygon((cx, cy, 7), n_sides=5, rotation=18, outline=accent)
+        draw.ellipse((cx - 13, cy - 13, cx + 13, cy + 13), outline=accent, width=2)
+        draw.line((cx, cy - 8, cx, cy + 8), fill=accent, width=2)
+        draw.line((cx - 8, cy, cx + 8, cy), fill=accent, width=2)
     elif kind == "hole":
         draw.ellipse((cx - 18, cy - 18, cx + 18, cy + 18), outline=accent, width=2)
         draw.ellipse((cx - 10, cy - 10, cx + 10, cy + 10), fill=(4, 4, 6), outline=accent)
@@ -104,13 +105,10 @@ def _paint(key: str) -> bytes:
         r = rng.choice((0, 1, 1, 2))
         c = rng.randint(140, 230)
         d.ellipse((x, y, x + r, y + r), fill=(c, c - 8, min(255, c + 20)))
-    # cabinet body fills most of the frame so the thumb reads bigger
     d.rounded_rectangle((18, 10, size - 18, size - 10), radius=28, fill=theme["body"], outline=theme["accent"], width=4)
     d.rounded_rectangle((28, 20, size - 28, size - 20), radius=22, outline=theme["accent"], width=1)
-    # lamp
     d.ellipse((size // 2 - 16, 24, size // 2 + 16, 52), fill=theme["accent"])
     d.ellipse((size // 2 - 8, 30, size // 2 + 8, 46), fill=(255, 240, 180))
-    # three reel windows
     win_y, win_h, ww, gap = 70, 168, 86, 12
     total = 3 * ww + 2 * gap
     x0 = (size - total) // 2
@@ -119,13 +117,10 @@ def _paint(key: str) -> bytes:
         x = x0 + i * (ww + gap)
         d.rounded_rectangle((x, win_y, x + ww, win_y + win_h), radius=10, fill=theme["window"], outline=theme["accent"], width=3)
         _icon(d, icons[i], x + ww // 2, win_y + win_h // 2, theme["accent"])
-    # payline through the middle of the windows
     mid_y = win_y + win_h // 2
     d.line((x0 - 8, mid_y, x0 + total + 8, mid_y), fill=theme["accent"], width=2)
-    # plate
     d.rounded_rectangle((48, 258, size - 48, 330), radius=12, fill=theme["plate"], outline=theme["accent"], width=3)
     d.text((size // 2, 294), theme["label"], font=_font(22), fill=theme["accent"], anchor="mm")
-    # spin button
     d.ellipse((size // 2 - 18, 338, size // 2 + 18, 374), fill=theme["accent"], outline=(255, 230, 160), width=2)
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
