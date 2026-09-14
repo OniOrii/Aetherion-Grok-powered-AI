@@ -34,8 +34,8 @@ _Nothing waiting. New work is dated the day it ships._
 - Slot pair and trip multipliers are **2x** the previous table.
 - `/cointoss` uses a smaller coin that falls the full frame. Odds are **48% heads / 48% tails / 2% side**.
 - Coin toss background is a sharp starfield with no planet. Side landings use their own standing-rim frame after the flip.
-- Slot reel rows share one bracket column so the three lines sit even. Reel grid uses wider spacing so the machine reads larger in the embed.
-- Each slot machine has its own cabinet mark and reel glyphs: Cosmos 🪐, Nebula 🔮, Event Horizon 🕳️.
+- Slot reel rows keep `|` dividers between symbols and wider row spacing.
+- Each cabinet portrait is a real 3-reel machine with that cabinet's icons (Cosmos planet/star/coin, Nebula crystal/orb, Event Horizon hole/moon/swirl).
 - Slots cabinet thumbnail stays put after the first attach so the corner image does not flicker on every embed edit.
 - Coin toss uses **8** mid-air frames.
 
