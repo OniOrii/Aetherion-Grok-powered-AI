@@ -1,0 +1,186 @@
+"""Public /help. Explains Aetherion commands without touching game or voice logic."""
+from __future__ import annotations
+
+import logging
+
+import discord
+
+from . import ai_coins
+
+logger = logging.getLogger("aetherion.slash_help")
+
+HELP_COLOR = 0xC9A227
+PAGES = ("overview", "chat", "voice", "games", "coins", "server")
+
+
+def _embed(page: str) -> discord.Embed:
+    key = page if page in PAGES else "overview"
+    embed = discord.Embed(color=HELP_COLOR)
+    embed.set_footer(text="Aetherion · pick a topic below or run /help topic:")
+
+    if key == "chat":
+        embed.title = "Aetherion · Chat"
+        embed.description = (
+            "Aetherion is Grok in Discord. Mention **@Aetherion** or reply to it.\n\n"
+            "It can read pictures you attach, search the web, and generate or edit images. "
+            "Video generation is available when that setting is on.\n\n"
+            f"`/audio` — speak text in this channel. Default voice is **Zagan**.\n"
+            "Right-click a message → Apps → **Leer en voz alta** to hear that message.\n"
+            "`/ping` — check that the bot is awake."
+        )
+        return embed
+
+    if key == "voice":
+        embed.title = "Aetherion · Voice & music"
+        embed.description = (
+            "Join a voice channel first, then run `/join`. `/leave` disconnects.\n\n"
+            "Aetherion listens to the person who last used `/join`. "
+            "Say **Aetherion**, then the question, then pause.\n\n"
+            "Music is **SoundCloud only** on that same connection.\n"
+            "`/play` `query:` song name or a soundcloud.com link\n"
+            "`/pause` · `/stop`\n\n"
+            "You can also say **Aetherion play …**, **Aetherion pause**, or **Aetherion stop**.\n"
+            "YouTube links are rejected on purpose."
+        )
+        return embed
+
+    if key == "games":
+        embed.title = "Aetherion · Games"
+        embed.description = (
+            "Play-money only. Same **Aether Coins** wallet for every game.\n\n"
+            f"`/blackjack` — fair dealer. Hit, Stand, Double. Bet {ai_coins.MIN_BET}–{ai_coins.MAX_BET}.\n"
+            "After the hand: **Play Again** or **Change Bet**.\n\n"
+            "`/slots` — Cosmos Wheel, Nebula, or Event Horizon. Bet 100–10,000.\n"
+            "**Spin Again** and **Change Bet** stay on the machine.\n\n"
+            "`/cointoss` — call Heads or Tails. Bet 10–10,000.\n"
+            "Odds are 48% / 48% / 2% side. Side pays 2.5x."
+        )
+        return embed
+
+    if key == "coins":
+        embed.title = "Aetherion · Aether Coins"
+        embed.description = (
+            "Play-money. No cash-out. Bets and grants move in tens.\n\n"
+            f"New players start with **{ai_coins.STARTING_BALANCE}** Aether Coins.\n"
+            f"`/daily` — claim **{ai_coins.DAILY_DRIP}** once per Eastern day.\n"
+            "`/balance` — your wallet.\n"
+            "`/leaderboard` — top wallets on this server.\n\n"
+            f"Blackjack bets: {ai_coins.MIN_BET}–{ai_coins.MAX_BET}.\n"
+            "Slots bets: 100–10,000.\n"
+            "Coin toss bets: 10–10,000."
+        )
+        return embed
+
+    if key == "server":
+        embed.title = "Aetherion · Server tools"
+        embed.description = (
+            "Administrators:\n"
+            "`/reactionrole colors` — post the color-role panel.\n"
+            "`/reactionrole post` `add` `remove` `list` — custom panels.\n"
+            "People can keep **one** color from a panel at a time.\n"
+            "`/welcome` — channel for new-member banners.\n"
+            "`/datechannel` — voice channel that shows today's date at midnight Eastern.\n"
+            "`/purge` — delete up to 100 recent messages in this channel.\n\n"
+            "Ori only: `/givecoins`, `/edit`, `/status`."
+        )
+        return embed
+
+    embed.title = "Aetherion · Help"
+    embed.description = (
+        "Grok in Discord — chat, vision, live voice, SoundCloud, and Aether Coin games.\n"
+        "Mention **@Aetherion** or reply to it. Use the menu for a topic."
+    )
+    embed.add_field(
+        name="Talk & voice",
+        value=(
+            "`/join` `/leave` — voice chat\n"
+            "`/play` `/pause` `/stop` — SoundCloud\n"
+            "`/audio` `/ping` `/help`"
+        ),
+        inline=True,
+    )
+    embed.add_field(
+        name="Games & coins",
+        value=(
+            "`/blackjack` `/slots` `/cointoss`\n"
+            "`/balance` `/daily` `/leaderboard`"
+        ),
+        inline=True,
+    )
+    embed.add_field(
+        name="Server",
+        value=(
+            "`/reactionrole` color roles\n"
+            "`/welcome` `/datechannel` `/purge`"
+        ),
+        inline=True,
+    )
+    return embed
+
+
+class HelpView(discord.ui.View):
+    def __init__(self, user_id: int, page: str):
+        super().__init__(timeout=180)
+        self.user_id = user_id
+        self.page = page if page in PAGES else "overview"
+        self._sync_select()
+
+    def _sync_select(self) -> None:
+        for child in self.children:
+            if isinstance(child, discord.ui.Select):
+                child.placeholder = f"Topic · {self.page}"
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("This help menu is not yours. Run `/help`.", ephemeral=True)
+            return False
+        return True
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            child.disabled = True
+
+    @discord.ui.select(
+        placeholder="Topic · overview",
+        min_values=1,
+        max_values=1,
+        options=[
+            discord.SelectOption(label="Overview", value="overview", description="Command list"),
+            discord.SelectOption(label="Chat", value="chat", description="Mentions, images, /audio"),
+            discord.SelectOption(label="Voice & music", value="voice", description="/join and SoundCloud"),
+            discord.SelectOption(label="Games", value="games", description="Blackjack, slots, coin toss"),
+            discord.SelectOption(label="Aether Coins", value="coins", description="Wallet, daily, bets"),
+            discord.SelectOption(label="Server tools", value="server", description="Roles, welcome, date dock"),
+        ],
+    )
+    async def pick_topic(self, interaction: discord.Interaction, select: discord.ui.Select):
+        self.page = str(select.values[0])
+        self._sync_select()
+        await interaction.response.edit_message(embed=_embed(self.page), view=self)
+
+
+def register_help(tree, is_guild_allowed) -> None:
+    @tree.command(name="help", description="How Aetherion works, and every command")
+    @discord.app_commands.describe(topic="Jump straight to a help page")
+    @discord.app_commands.choices(
+        topic=[
+            discord.app_commands.Choice(name="Overview", value="overview"),
+            discord.app_commands.Choice(name="Chat", value="chat"),
+            discord.app_commands.Choice(name="Voice & music", value="voice"),
+            discord.app_commands.Choice(name="Games", value="games"),
+            discord.app_commands.Choice(name="Aether Coins", value="coins"),
+            discord.app_commands.Choice(name="Server tools", value="server"),
+        ]
+    )
+    async def help_slash(
+        interaction: discord.Interaction,
+        topic: discord.app_commands.Choice[str] | None = None,
+    ):
+        if interaction.guild and not is_guild_allowed(interaction.guild.id):
+            await interaction.response.send_message(
+                "Aetherion is not available on this server.", ephemeral=True
+            )
+            return
+        page = topic.value if topic else "overview"
+        view = HelpView(interaction.user.id, page)
+        await interaction.response.send_message(embed=_embed(page), view=view)
