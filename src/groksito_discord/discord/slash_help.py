@@ -54,7 +54,8 @@ def _embed(page: str) -> discord.Embed:
             "**Spin Again** and **Change Bet** stay on the machine.\n\n"
             "`/cointoss` \u2014 call Heads or Tails. Bet 10\u201310,000.\n"
             "Odds are 48% / 48% / 2% side. Side pays 2.5x.\n\n"
-            f"`/connect4` \u2014 challenge a member. Same bet each ({ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}). Winner takes the pot.\n"
+            f"`/connect4` \u2014 challenge a member. Same bet each ({ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}). Winner takes the pot.\n\n"
+            f"`/poker` \u2014 Texas Hold'em, 2\u20134 seats. Friends Join, or Seat Aetherion. Buy-in {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}."
         )
         return embed
 
@@ -66,7 +67,7 @@ def _embed(page: str) -> discord.Embed:
             f"`/daily` \u2014 claim **{ai_coins.DAILY_DRIP}** once per Eastern day.\n"
             "`/balance` \u2014 your wallet.\n"
             "`/leaderboard` \u2014 top wallets on this server.\n\n"
-            f"Blackjack and Connect Four bets: {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}.\n"
+            f"Blackjack, Connect Four, and Poker bets: {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}.\n"
             "Slots bets: 100\u201310,000.\n"
             "Coin toss bets: 10\u201310,000."
         )
@@ -103,7 +104,7 @@ def _embed(page: str) -> discord.Embed:
     embed.add_field(
         name="Games & coins",
         value=(
-            "`/blackjack` `/slots` `/cointoss` `/connect4`\n"
+            "`/blackjack` `/slots` `/cointoss` `/connect4` `/poker`\n"
             "`/balance` `/daily` `/leaderboard`"
         ),
         inline=True,
@@ -149,7 +150,7 @@ class HelpView(discord.ui.View):
             discord.SelectOption(label="Overview", value="overview", description="Command list"),
             discord.SelectOption(label="Chat", value="chat", description="Mentions, images, /audio"),
             discord.SelectOption(label="Voice & music", value="voice", description="/join and SoundCloud"),
-            discord.SelectOption(label="Games", value="games", description="Blackjack, slots, coin toss, Connect Four"),
+            discord.SelectOption(label="Games", value="games", description="Blackjack, slots, coin toss, Connect Four, poker"),
             discord.SelectOption(label="Aether Coins", value="coins", description="Wallet, daily, bets"),
             discord.SelectOption(label="Server tools", value="server", description="Roles, welcome, date dock"),
         ],
