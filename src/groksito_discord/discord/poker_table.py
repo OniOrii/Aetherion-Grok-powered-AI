@@ -14,20 +14,23 @@ CREAM = (248, 244, 234)
 RED = (178, 36, 42)
 BLACK = (20, 20, 22)
 BACK = (16, 22, 40)
-SHADOW = (0, 0, 0, 130)
+SHADOW = (0, 0, 0, 140)
 NEBULA_TEAL = (40, 90, 110, 70)
 NEBULA_VIOLET = (70, 40, 110, 65)
+FELT = (18, 42, 36, 150)
 MUTED = (170, 176, 188)
 
 SUIT_SYM = {"S": "\u2660", "H": "\u2665", "D": "\u2666", "C": "\u2663"}
 RANK_SYM = {1: "A", 11: "J", 12: "Q", 13: "K", 14: "A"}
 
-CARD_W = 92
-CARD_H = 128
-HOLE_W = 120
-HOLE_H = 168
-RADIUS = 12
-GAP = 8
+CARD_W = 74
+CARD_H = 104
+HOLE_W = 118
+HOLE_H = 164
+RADIUS = 11
+GAP = 12
+SEAT_W = 268
+SEAT_H = 188
 
 _FONT_CANDIDATES = (
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -76,10 +79,10 @@ def _card_face(rank: int, suit: str, w: int = CARD_W, h: int = CARD_H) -> Image.
     _rounded(d, (1, 1, w - 2, h - 2), RADIUS, CREAM, outline=(214, 206, 188), width=2)
     color = RED if suit in ("H", "D") else BLACK
     face = RANK_SYM.get(rank, str(rank))
-    d.text((10, 6), face, font=_font(20), fill=color, anchor="lt")
-    _draw_suit(d, 16, 40, 8, suit, color)
-    _draw_suit(d, w // 2, h // 2 + 4, 22, suit, color)
-    d.text((w - 10, h - 8), face, font=_font(20), fill=color, anchor="rb")
+    d.text((9, 5), face, font=_font(18), fill=color, anchor="lt")
+    _draw_suit(d, 14, 36, 7, suit, color)
+    _draw_suit(d, w // 2, h // 2 + 6, 18, suit, color)
+    d.text((w - 9, h - 7), face, font=_font(18), fill=color, anchor="rb")
     return img
 
 
@@ -87,46 +90,48 @@ def _card_back(w: int = CARD_W, h: int = CARD_H) -> Image.Image:
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     _rounded(d, (1, 1, w - 2, h - 2), RADIUS, BACK, outline=GOLD_DIM, width=2)
-    _rounded(d, (8, 8, w - 9, h - 9), 8, (12, 16, 32), outline=GOLD_DIM, width=1)
-    d.text((w // 2, h // 2), "A", font=_font(28), fill=GOLD, anchor="mm")
+    _rounded(d, (7, 7, w - 8, h - 8), 8, (12, 16, 32), outline=GOLD_DIM, width=1)
+    d.text((w // 2, h // 2), "A", font=_font(24), fill=GOLD, anchor="mm")
     return img
 
 
 def _shadow(card: Image.Image) -> Image.Image:
-    pad = 10
+    pad = 8
     base = Image.new("RGBA", (card.width + pad, card.height + pad), (0, 0, 0, 0))
     sh = Image.new("RGBA", base.size, (0, 0, 0, 0))
     sd = ImageDraw.Draw(sh)
-    _rounded(sd, (4, 6, card.width + 4, card.height + 6), RADIUS + 1, SHADOW)
-    sh = sh.filter(ImageFilter.GaussianBlur(4))
+    _rounded(sd, (3, 5, card.width + 3, card.height + 5), RADIUS + 1, SHADOW)
+    sh = sh.filter(ImageFilter.GaussianBlur(3))
     base.alpha_composite(sh)
     base.alpha_composite(card, (0, 0))
     return base
 
 
-def _paste_cards(img: Image.Image, cards, x: int, y: int, *, backs: int = 0, faces=None) -> None:
-    faces = faces or []
+def _paste_cards(img: Image.Image, x: int, y: int, *, backs: int = 0, faces=None) -> None:
+    faces = list(faces or [])
     total = max(backs, len(faces), 1)
+    step = CARD_W + GAP
     for i in range(total):
         if i < len(faces) and faces[i] is not None:
-            rank, suit = faces[i]
-            face = _card_face(rank, suit)
+            face = _card_face(*faces[i])
         else:
             face = _card_back()
         stamped = _shadow(face)
-        img.paste(stamped, (x + i * (CARD_W + GAP - 18), y), stamped)
+        img.paste(stamped, (x + i * step, y), stamped)
 
 
 def render_hole_png(cards) -> bytes:
-    width = 40 + len(cards) * (HOLE_W + 12)
-    height = HOLE_H + 48
-    img = _space_field(max(320, width), height)
+    cards = list(cards or [])
+    width = 48 + max(1, len(cards)) * (HOLE_W + 14)
+    height = HOLE_H + 56
+    img = _space_field(max(340, width), height)
     d = ImageDraw.Draw(img)
-    d.text((img.width // 2, 18), "YOUR HOLE CARDS", font=_font(16), fill=GOLD, anchor="mm")
-    x0 = (img.width - (len(cards) * HOLE_W + (len(cards) - 1) * 12)) // 2
+    d.text((img.width // 2, 20), "YOUR HOLE CARDS", font=_font(16), fill=GOLD, anchor="mm")
+    row = len(cards) * HOLE_W + max(0, len(cards) - 1) * 14
+    x0 = (img.width - row) // 2
     for i, (rank, suit) in enumerate(cards):
         face = _shadow(_card_face(rank, suit, HOLE_W, HOLE_H))
-        img.paste(face, (x0 + i * (HOLE_W + 12), 28), face)
+        img.paste(face, (x0 + i * (HOLE_W + 14), 34), face)
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
     return buf.getvalue()
@@ -142,52 +147,66 @@ def render_table_png(
     actor_id: int | None = None,
     reveal: bool = False,
 ) -> bytes:
-    width, height = 920, 620
+    width, height = 980, 700
     img = _space_field(width, height)
     d = ImageDraw.Draw(img)
     d.rounded_rectangle((10, 10, width - 11, height - 11), radius=30, outline=GOLD_DIM, width=2)
     d.rounded_rectangle((16, 16, width - 17, height - 17), radius=26, outline=(80, 70, 40), width=1)
-    d.text((width // 2, 34), "AETHERION  \u00b7  TEXAS HOLD'EM", font=_font(22), fill=GOLD, anchor="mm")
+    d.text((width // 2, 36), "AETHERION  \u00b7  TEXAS HOLD'EM", font=_font(22), fill=GOLD, anchor="mm")
     d.text((width // 2, 62), f"{street.upper()}   \u00b7   POT  {pot}", font=_font(16), fill=CREAM, anchor="mm")
 
-    board_w = 5 * CARD_W + 4 * (GAP - 2)
+    felt = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    fd = ImageDraw.Draw(felt)
+    fd.ellipse((90, 150, width - 90, height - 150), fill=FELT, outline=GOLD_DIM, width=2)
+    img = Image.alpha_composite(img.convert("RGBA"), felt).convert("RGB")
+    d = ImageDraw.Draw(img)
+
+    board_w = 5 * CARD_W + 4 * GAP
     bx = (width - board_w) // 2
-    by = 210
-    d.rounded_rectangle((bx - 18, by - 16, bx + board_w + 10, by + CARD_H + 22), radius=18, outline=GOLD_DIM, width=1)
+    by = 268
+    d.rounded_rectangle((bx - 22, by - 20, bx + board_w + 14, by + CARD_H + 26), radius=18, outline=GOLD, width=2)
+    d.text((width // 2, by - 8), "BOARD", font=_font(12), fill=GOLD_DIM, anchor="mm")
     for i in range(5):
         if i < len(board):
             face = _shadow(_card_face(*board[i]))
         else:
             face = _shadow(_card_back())
-        img.paste(face, (bx + i * (CARD_W + GAP - 2), by), face)
+        img.paste(face, (bx + i * (CARD_W + GAP), by), face)
 
     slots = (
-        (48, 96),
-        (width - 48 - 220, 96),
-        (48, height - 196),
-        (width - 48 - 220, height - 196),
+        (36, 86),
+        (width - 36 - SEAT_W, 86),
+        (36, height - 36 - SEAT_H),
+        (width - 36 - SEAT_W, height - 36 - SEAT_H),
     )
     for i, seat in enumerate(seats[:4]):
         sx, sy = slots[i]
         active = not seat.get("folded")
         is_actor = actor_id is not None and seat.get("user_id") == actor_id and active and not reveal
         outline = GOLD if is_actor else GOLD_DIM
-        fill_a = (20, 24, 36, 160) if active else (12, 12, 16, 140)
-        panel = Image.new("RGBA", (220, 168), (0, 0, 0, 0))
+        fill_a = (16, 22, 34, 200) if active else (10, 10, 14, 170)
+        panel = Image.new("RGBA", (SEAT_W, SEAT_H), (0, 0, 0, 0))
         pd = ImageDraw.Draw(panel)
-        _rounded(pd, (0, 0, 219, 167), 14, fill_a, outline=outline, width=2)
+        _rounded(pd, (0, 0, SEAT_W - 1, SEAT_H - 1), 16, fill_a, outline=outline, width=2)
         img.paste(panel, (sx, sy), panel)
-        name = str(seat.get("name") or "Seat")[:16]
-        tag = "FOLDED" if seat.get("folded") else ("ALL-IN" if seat.get("all_in") else f"{seat.get('stack', 0)}")
+        name = str(seat.get("name") or "Seat")[:18]
         color = MUTED if seat.get("folded") else CREAM
-        d.text((sx + 14, sy + 10), name, font=_font(15), fill=GOLD if is_actor else color)
-        d.text((sx + 14, sy + 30), tag if seat.get("folded") or seat.get("all_in") else f"stack {tag}", font=_font(13), fill=MUTED)
+        d.text((sx + 16, sy + 12), name, font=_font(16), fill=GOLD if is_actor else color)
+        if seat.get("folded"):
+            status = "FOLDED"
+        elif seat.get("all_in"):
+            status = f"ALL-IN  {seat.get('stack', 0)}"
+        else:
+            status = f"stack {seat.get('stack', 0)}"
+        d.text((sx + 16, sy + 34), status, font=_font(13), fill=MUTED)
         bet = int(seat.get("bet") or 0)
         if bet:
-            d.text((sx + 14, sy + 48), f"bet {bet}", font=_font(13), fill=GOLD)
+            d.text((sx + SEAT_W - 16, sy + 34), f"bet {bet}", font=_font(13), fill=GOLD, anchor="rt")
         hole = list(seat.get("hole") or [])
         show = reveal and hole and not seat.get("folded")
-        _paste_cards(img, hole, sx + 12, sy + 64, backs=0 if show else 2, faces=hole if show else [])
+        pair_w = CARD_W * 2 + GAP
+        cx = sx + (SEAT_W - pair_w) // 2
+        _paste_cards(img, cx, sy + 58, backs=0 if show else 2, faces=hole if show else [])
 
     if subtitle:
         d.text((width // 2, height - 28), subtitle[:64], font=_font(15), fill=GOLD, anchor="mm")
