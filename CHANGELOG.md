@@ -16,6 +16,7 @@ _Nothing waiting. New work is dated the day it ships._
 ### Added
 
 - `/help` with topic pages (overview, chat, voice, games, coins, server) and a dropdown to switch pages.
+- `/connect4` \u2014 two-player Connect Four. Challenge a member, both stake the same Aether Coin bet, winner takes the pot. Draw returns both stakes.
 
 ## [2026-09-13]
 
@@ -24,15 +25,15 @@ _Nothing waiting. New work is dated the day it ships._
 - Exclusive multi-color **reaction roles** (Admin slash setup, anyone can react).
 - Fair `/blackjack` against Aetherion (Hit / Stand / Double).
 - Play-money **Aether Coins** saved in `data/ai_coins.json`.
-- `/slots` — Cosmos Wheel, Nebula, Event Horizon. Bet 100–10,000. Same wallet as blackjack.
+- `/slots` \u2014 Cosmos Wheel, Nebula, Event Horizon. Bet 100\u201310,000. Same wallet as blackjack.
 - `/leaderboard` and Ori-only `/givecoins`.
 - Blackjack table art and Ori-only `/edit`.
 - Blackjack **Play Again** + **Change Bet** after each hand (same last stake, no retyping `/blackjack`).
-- `/cointoss` — Heads / Tails, 2% side landing at 2.5x, falling flip animation, custom Aether coin art. Bet 10–10,000.
+- `/cointoss` \u2014 Heads / Tails, 2% side landing at 2.5x, falling flip animation, custom Aether coin art. Bet 10\u201310,000.
 
 ### Changed
 
-- `/slots` cabinet now animates (spark reel → blur → land) and uses a tighter Pocket / Winnings / Net embed.
+- `/slots` cabinet now animates (spark reel \u2192 blur \u2192 land) and uses a tighter Pocket / Winnings / Net embed.
 - Play-money currency is now **Aether Coins** (was AI Coins).
 - Blackjack table is a starfield with real suit glyphs.
 - Aether Coin bets and grants go by **10s**. Blackjack minimum is 10.

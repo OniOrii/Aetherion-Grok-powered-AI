@@ -24,6 +24,7 @@ from .slash_status import register_status
 from .slash_blackjack import register_blackjack
 from .slash_slots import register_slots
 from .slash_cointoss import register_cointoss
+from .slash_connect4 import register_connect4
 from .slash_help import register_help
 
 logger = logging.getLogger("aetherion.slash")
@@ -50,6 +51,7 @@ def register(tree, client) -> None:
     register_blackjack(tree, is_guild_allowed)
     register_slots(tree, is_guild_allowed)
     register_cointoss(tree, is_guild_allowed)
+    register_connect4(tree, is_guild_allowed)
 
     @tree.command(name="ping", description="Check if Aetherion is awake")
     async def ping(interaction: discord.Interaction):
@@ -194,7 +196,7 @@ def register(tree, client) -> None:
             text=final_text, voice=selected_voice, language=selected_lang, request_id=request_id
         )
         if result and "SUCCESS" in result:
-            style_note = f" · estilo **{selected_style}**" if selected_style else ""
+            style_note = f" \u00b7 estilo **{selected_style}**" if selected_style else ""
             await interaction.followup.send(
                 f"Audio generado con la voz **{selected_voice}**{style_note} y enviado al canal.",
                 ephemeral=True,

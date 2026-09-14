@@ -16,85 +16,86 @@ PAGES = ("overview", "chat", "voice", "games", "coins", "server")
 def _embed(page: str) -> discord.Embed:
     key = page if page in PAGES else "overview"
     embed = discord.Embed(color=HELP_COLOR)
-    embed.set_footer(text="Aetherion · pick a topic below or run /help topic:")
+    embed.set_footer(text="Aetherion \u00b7 pick a topic below or run /help topic:")
 
     if key == "chat":
-        embed.title = "Aetherion · Chat"
+        embed.title = "Aetherion \u00b7 Chat"
         embed.description = (
             "Aetherion is Grok in Discord. Mention **@Aetherion** or reply to it.\n\n"
             "It can read pictures you attach, search the web, and generate or edit images. "
             "Video generation is available when that setting is on.\n\n"
-            f"`/audio` — speak text in this channel. Default voice is **Zagan**.\n"
-            "Right-click a message → Apps → **Leer en voz alta** to hear that message.\n"
-            "`/ping` — check that the bot is awake."
+            f"`/audio` \u2014 speak text in this channel. Default voice is **Zagan**.\n"
+            "Right-click a message \u2192 Apps \u2192 **Leer en voz alta** to hear that message.\n"
+            "`/ping` \u2014 check that the bot is awake."
         )
         return embed
 
     if key == "voice":
-        embed.title = "Aetherion · Voice & music"
+        embed.title = "Aetherion \u00b7 Voice & music"
         embed.description = (
             "Join a voice channel first, then run `/join`. `/leave` disconnects.\n\n"
             "Aetherion listens to the person who last used `/join`. "
             "Say **Aetherion**, then the question, then pause.\n\n"
             "Music is **SoundCloud only** on that same connection.\n"
             "`/play` `query:` song name or a soundcloud.com link\n"
-            "`/pause` · `/stop`\n\n"
-            "You can also say **Aetherion play …**, **Aetherion pause**, or **Aetherion stop**.\n"
+            "`/pause` \u00b7 `/stop`\n\n"
+            "You can also say **Aetherion play \u2026**, **Aetherion pause**, or **Aetherion stop**.\n"
             "YouTube links are rejected on purpose."
         )
         return embed
 
     if key == "games":
-        embed.title = "Aetherion · Games"
+        embed.title = "Aetherion \u00b7 Games"
         embed.description = (
             "Play-money only. Same **Aether Coins** wallet for every game.\n\n"
-            f"`/blackjack` — fair dealer. Hit, Stand, Double. Bet {ai_coins.MIN_BET}–{ai_coins.MAX_BET}.\n"
+            f"`/blackjack` \u2014 fair dealer. Hit, Stand, Double. Bet {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}.\n"
             "After the hand: **Play Again** or **Change Bet**.\n\n"
-            "`/slots` — Cosmos Wheel, Nebula, or Event Horizon. Bet 100–10,000.\n"
+            "`/slots` \u2014 Cosmos Wheel, Nebula, or Event Horizon. Bet 100\u201310,000.\n"
             "**Spin Again** and **Change Bet** stay on the machine.\n\n"
-            "`/cointoss` — call Heads or Tails. Bet 10–10,000.\n"
-            "Odds are 48% / 48% / 2% side. Side pays 2.5x."
+            "`/cointoss` \u2014 call Heads or Tails. Bet 10\u201310,000.\n"
+            "Odds are 48% / 48% / 2% side. Side pays 2.5x.\n\n"
+            f"`/connect4` \u2014 challenge a member. Same bet each ({ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}). Winner takes the pot.\n"
         )
         return embed
 
     if key == "coins":
-        embed.title = "Aetherion · Aether Coins"
+        embed.title = "Aetherion \u00b7 Aether Coins"
         embed.description = (
             "Play-money. No cash-out. Bets and grants move in tens.\n\n"
             f"New players start with **{ai_coins.STARTING_BALANCE}** Aether Coins.\n"
-            f"`/daily` — claim **{ai_coins.DAILY_DRIP}** once per Eastern day.\n"
-            "`/balance` — your wallet.\n"
-            "`/leaderboard` — top wallets on this server.\n\n"
-            f"Blackjack bets: {ai_coins.MIN_BET}–{ai_coins.MAX_BET}.\n"
-            "Slots bets: 100–10,000.\n"
-            "Coin toss bets: 10–10,000."
+            f"`/daily` \u2014 claim **{ai_coins.DAILY_DRIP}** once per Eastern day.\n"
+            "`/balance` \u2014 your wallet.\n"
+            "`/leaderboard` \u2014 top wallets on this server.\n\n"
+            f"Blackjack and Connect Four bets: {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}.\n"
+            "Slots bets: 100\u201310,000.\n"
+            "Coin toss bets: 10\u201310,000."
         )
         return embed
 
     if key == "server":
-        embed.title = "Aetherion · Server tools"
+        embed.title = "Aetherion \u00b7 Server tools"
         embed.description = (
             "Administrators:\n"
-            "`/reactionrole colors` — post the color-role panel.\n"
-            "`/reactionrole post` `add` `remove` `list` — custom panels.\n"
+            "`/reactionrole colors` \u2014 post the color-role panel.\n"
+            "`/reactionrole post` `add` `remove` `list` \u2014 custom panels.\n"
             "People can keep **one** color from a panel at a time.\n"
-            "`/welcome` — channel for new-member banners.\n"
-            "`/datechannel` — voice channel that shows today's date at midnight Eastern.\n"
-            "`/purge` — delete up to 100 recent messages in this channel.\n\n"
+            "`/welcome` \u2014 channel for new-member banners.\n"
+            "`/datechannel` \u2014 voice channel that shows today's date at midnight Eastern.\n"
+            "`/purge` \u2014 delete up to 100 recent messages in this channel.\n\n"
             "Ori only: `/givecoins`, `/edit`, `/status`."
         )
         return embed
 
-    embed.title = "Aetherion · Help"
+    embed.title = "Aetherion \u00b7 Help"
     embed.description = (
-        "Grok in Discord — chat, vision, live voice, SoundCloud, and Aether Coin games.\n"
+        "Grok in Discord \u2014 chat, vision, live voice, SoundCloud, and Aether Coin games.\n"
         "Mention **@Aetherion** or reply to it. Use the menu for a topic."
     )
     embed.add_field(
         name="Talk & voice",
         value=(
-            "`/join` `/leave` — voice chat\n"
-            "`/play` `/pause` `/stop` — SoundCloud\n"
+            "`/join` `/leave` \u2014 voice chat\n"
+            "`/play` `/pause` `/stop` \u2014 SoundCloud\n"
             "`/audio` `/ping` `/help`"
         ),
         inline=True,
@@ -102,7 +103,7 @@ def _embed(page: str) -> discord.Embed:
     embed.add_field(
         name="Games & coins",
         value=(
-            "`/blackjack` `/slots` `/cointoss`\n"
+            "`/blackjack` `/slots` `/cointoss` `/connect4`\n"
             "`/balance` `/daily` `/leaderboard`"
         ),
         inline=True,
@@ -128,7 +129,7 @@ class HelpView(discord.ui.View):
     def _sync_select(self) -> None:
         for child in self.children:
             if isinstance(child, discord.ui.Select):
-                child.placeholder = f"Topic · {self.page}"
+                child.placeholder = f"Topic \u00b7 {self.page}"
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.user_id:
@@ -141,14 +142,14 @@ class HelpView(discord.ui.View):
             child.disabled = True
 
     @discord.ui.select(
-        placeholder="Topic · overview",
+        placeholder="Topic \u00b7 overview",
         min_values=1,
         max_values=1,
         options=[
             discord.SelectOption(label="Overview", value="overview", description="Command list"),
             discord.SelectOption(label="Chat", value="chat", description="Mentions, images, /audio"),
             discord.SelectOption(label="Voice & music", value="voice", description="/join and SoundCloud"),
-            discord.SelectOption(label="Games", value="games", description="Blackjack, slots, coin toss"),
+            discord.SelectOption(label="Games", value="games", description="Blackjack, slots, coin toss, Connect Four"),
             discord.SelectOption(label="Aether Coins", value="coins", description="Wallet, daily, bets"),
             discord.SelectOption(label="Server tools", value="server", description="Roles, welcome, date dock"),
         ],
