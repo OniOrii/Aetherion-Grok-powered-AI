@@ -22,6 +22,7 @@ _Nothing waiting. New work is dated the day it ships._
 - Connect Four drop animation is a single GIF per turn so the board does not flicker between holes.
 - Connect Four drop GIFs play once and freeze on the landed disc. They no longer restart from the top.
 - Connect Four GIFs no longer loop. The disc falls once, then the board freezes as a still image.
+- `/poker` \u2014 Texas Hold'em, 2-4 seats. Friends can Join, or Seat Aetherion. Fair house player uses only its own cards. Buy-in 10-1,000 Aether Coins. Fold / Check-Call / Raise / All-in. Hole cards stay private.
 
 ## [2026-09-13]
 
