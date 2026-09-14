@@ -302,6 +302,10 @@ async def _animate_fall(
         await asyncio.sleep(max(0.35, seconds))
     finally:
         match.board[landing_row][col] = parked
+    still = _table_file(match, subtitle=caption)
+    landed = _embed(match, balance=ai_coins.get_balance(match.p1))
+    landed.set_footer(text=caption)
+    await _publish(interaction, embed=landed, view=view, table=still, edit=True)
 
 
 async def _publish(
@@ -438,7 +442,6 @@ class PlayView(discord.ui.View):
             if not match.finished and match.vs_bot and match.turn == P2:
                 think_embed = _embed(match, balance=ai_coins.get_balance(match.p1))
                 think_embed.set_footer(text="Aetherion is choosing a column...")
-                think_embed.set_image(url=f"attachment://{TABLE_GIF}")
                 await _publish(interaction, embed=think_embed, view=self, table=None, edit=True)
                 await asyncio.sleep(THINK_SLEEP)
                 _bot_move(match)
