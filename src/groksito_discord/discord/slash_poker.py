@@ -138,9 +138,14 @@ def _strength(hole, board) -> float:
 
 
 def _blinds(buyin: int) -> tuple[int, int]:
-    if buyin <= 20:
-        return 10, 10
+    if buyin < 40:
+        return 0, 0
     return 10, 20
+
+
+def _raise_step(buyin: int) -> int:
+    _sb, bb = _blinds(buyin)
+    return bb if bb else 10
 
 
 @dataclass
@@ -281,6 +286,8 @@ def _next_index(table: Table, start: int) -> int | None:
 def _post_blinds(table: Table) -> None:
     sb_amt, bb_amt = _blinds(table.buyin)
     n = len(table.seats)
+    if n == 0:
+        return
     if n == 2:
         sb_i = table.dealer
         bb_i = 1 - table.dealer
@@ -289,6 +296,8 @@ def _post_blinds(table: Table) -> None:
         bb_i = (table.dealer + 2) % n
 
     def post(i: int, amt: int) -> None:
+        if amt <= 0:
+            return
         seat = table.seats[i]
         pay = min(seat.stack, amt)
         seat.stack -= pay
@@ -299,12 +308,12 @@ def _post_blinds(table: Table) -> None:
 
     post(sb_i, sb_amt)
     post(bb_i, bb_amt)
-    table.current_bet = max(s.bet for s in table.seats)
+    table.current_bet = max((s.bet for s in table.seats), default=0)
     if n == 2:
-        table.actor = sb_i
+        nxt = _next_index(table, (sb_i - 1) % n)
     else:
         nxt = _next_index(table, bb_i)
-        table.actor = nxt if nxt is not None else bb_i
+    table.actor = nxt if nxt is not None else 0
 
 
 def _deal_holes(table: Table) -> None:
@@ -322,6 +331,8 @@ def _deal_holes(table: Table) -> None:
     _post_blinds(table)
     for seat in table.seats:
         seat.acted = False
+    if table.seats and (table.seats[table.actor].all_in or _street_over(table)):
+        _after_action(table)
 
 
 def _street_over(table: Table) -> bool:
@@ -391,8 +402,8 @@ def _one_left(table: Table) -> bool:
 
 def _apply_action(table: Table, seat: Seat, action: str) -> str:
     to_call = max(0, table.current_bet - seat.bet)
-    _sb, bb = _blinds(table.buyin)
-    raise_to = table.current_bet + bb
+    step = _raise_step(table.buyin)
+    raise_to = table.current_bet + step
     if action == "fold":
         seat.folded = True
         seat.acted = True
@@ -414,7 +425,7 @@ def _apply_action(table: Table, seat: Seat, action: str) -> str:
             return f"{seat.name} is all-in."
         return f"{seat.name} calls {pay}." if pay else f"{seat.name} checks."
     if action == "raise":
-        target = max(raise_to, table.current_bet + bb)
+        target = max(raise_to, table.current_bet + step)
         need = target - seat.bet
         if need >= seat.stack or seat.stack <= to_call:
             action = "allin"
@@ -800,8 +811,11 @@ class PlayView(discord.ui.View):
             await interaction.response.send_message("Wait a second.", ephemeral=True)
             return
         seat = table.seat_of(interaction.user.id)
-        if seat is None or seat.folded or seat.all_in:
+        if seat is None or seat.folded:
             await interaction.response.send_message("You cannot act.", ephemeral=True)
+            return
+        if seat.all_in:
+            await interaction.response.send_message("You are already all-in. Wait for the board.", ephemeral=True)
             return
         if table.seats[table.actor].user_id != interaction.user.id:
             await interaction.response.send_message("Wait for your turn.", ephemeral=True)
