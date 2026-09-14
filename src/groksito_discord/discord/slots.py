@@ -193,7 +193,7 @@ def format_cells(
     rows = []
     for i, row in enumerate(grid):
         marks = [SPIN_GLYPH if spinning else table.get(s, SYMBOLS.get(s, "?")) for s in row]
-        body = "[  {}    {}    {}  ]".format(*marks)
+        body = "[  {}  |  {}  |  {}  ]".format(*marks)
         if i == 1:
             rows.append(f"{body}   `{tag}`")
         else:
