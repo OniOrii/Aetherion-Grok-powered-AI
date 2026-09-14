@@ -134,6 +134,7 @@ class SlotsView(discord.ui.View):
         key = select.values[0]
         session = _sessions.setdefault(self.user_id, {"bet": SLOTS_DEFAULT_BET, "machine": DEFAULT_MACHINE})
         session["machine"] = key
+        session.pop("art", None)
         self._sync_select(key)
         machine = MACHINES[key]
         await interaction.response.send_message(
@@ -175,7 +176,7 @@ class SlotsView(discord.ui.View):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-def _cabinet_embed(*, machine, pocket: int, winnings_text: str, net_text: str, grid: str, bet: int, color: int) -> discord.Embed:
+def _cabinet_embed(*, machine, pocket: int, winnings_text: str, net_text: str, grid: str, bet: int, color: int, with_image: bool) -> discord.Embed:
     body = (
         f"Pocket: {coins(f'**{pocket:,}**')}\n"
         f"Winnings: {coins(f'**{winnings_text}**')}\n"
@@ -184,11 +185,12 @@ def _cabinet_embed(*, machine, pocket: int, winnings_text: str, net_text: str, g
     )
     embed = discord.Embed(title=_machine_title(machine.name), description=body, color=color)
     embed.set_footer(text=f"Bet: {coins(f'{bet:,}')}  |  Min: {coins(f'{SLOTS_MIN_BET:,}')}  |  Max: {coins(f'{SLOTS_MAX_BET:,}')}")
-    embed.set_image(url=f"attachment://{IMAGE_NAME}")
+    if with_image:
+        embed.set_image(url=f"attachment://{IMAGE_NAME}")
     return embed
 
 
-def _final_embed(result, *, balance: int) -> discord.Embed:
+def _final_embed(result, *, balance: int, with_image: bool) -> discord.Embed:
     if result.net > 0:
         color = EMBED_WIN
     elif result.net < 0:
@@ -204,6 +206,7 @@ def _final_embed(result, *, balance: int) -> discord.Embed:
         grid=format_grid(result),
         bet=result.bet,
         color=color,
+        with_image=with_image,
     )
 
 
@@ -264,7 +267,7 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
     _set_disabled(send_view, True)
     _busy.add(user_id)
     session = _sessions.setdefault(user_id, {"bet": bet, "machine": machine.key})
-    attach = (not edit) or session.get("art") != machine.key
+    art = _cabinet_file(machine.key)
     try:
         ticks = [spinning_cells()] + [format_cells(blur_grid(machine), tag="\u2026", glyphs=machine.glyphs) for _ in range(3)]
         first = True
@@ -277,13 +280,14 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
                 grid=grid,
                 bet=bet,
                 color=EMBED_SPIN,
+                with_image=art is not None,
             )
             await _publish(
                 interaction,
                 embed=frame,
                 view=send_view,
                 as_edit=edit if first else True,
-                image=_cabinet_file(machine.key) if (first and attach) else None,
+                image=art if first else None,
             )
             first = False
             await asyncio.sleep(0.55)
@@ -300,7 +304,7 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
         session["machine"] = machine.key
         session["art"] = machine.key
         _set_disabled(send_view, False)
-        final = _final_embed(result, balance=balance)
+        final = _final_embed(result, balance=balance, with_image=art is not None)
         await _publish(interaction, embed=final, view=send_view, as_edit=True, image=None)
     except Exception:
         logger.exception("slots spin failed user=%s", user_id)
