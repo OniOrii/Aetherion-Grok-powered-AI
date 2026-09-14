@@ -16,15 +16,15 @@ from .connect4_board import (
     P2,
     ROWS,
     choose_column,
-    fall_path,
     render_board_png,
+    render_fall_gif,
 )
 
 logger = logging.getLogger("aetherion.slash_connect4")
 
 DISC = {EMPTY: "\u26ab", P1: "\U0001f534", P2: "\U0001f7e1"}
 TABLE_NAME = "connect4.png"
-FALL_SLEEP = 0.20
+TABLE_GIF = "connect4.gif"
 THINK_SLEEP = 0.65
 
 EMBED_WAIT = 0xC9A227
@@ -286,20 +286,20 @@ async def _animate_fall(
 ) -> None:
     parked = match.board[landing_row][col]
     match.board[landing_row][col] = EMPTY
-    path = fall_path(landing_row)
-    if not path:
-        path = [landing_row]
     try:
-        for hover in path:
-            table = _table_file(
-                match,
-                falling=(piece, col, hover),
-                subtitle=caption,
-            )
-            embed = _embed(match, balance=ai_coins.get_balance(match.p1))
-            embed.set_footer(text=caption)
-            await _publish(interaction, embed=embed, view=view, table=table, edit=True)
-            await asyncio.sleep(FALL_SLEEP)
+        raw, seconds = render_fall_gif(
+            match.board,
+            piece=piece,
+            col=col,
+            landing_row=landing_row,
+            subtitle=caption,
+        )
+        table = discord.File(io.BytesIO(raw), filename=TABLE_GIF)
+        embed = _embed(match, balance=ai_coins.get_balance(match.p1))
+        embed.set_footer(text=caption)
+        embed.set_image(url=f"attachment://{TABLE_GIF}")
+        await _publish(interaction, embed=embed, view=view, table=table, edit=True)
+        await asyncio.sleep(max(0.35, seconds))
     finally:
         match.board[landing_row][col] = parked
 
@@ -436,10 +436,10 @@ class PlayView(discord.ui.View):
             )
             _after_drop(match, piece)
             if not match.finished and match.vs_bot and match.turn == P2:
-                think = _table_file(match, subtitle="Aetherion is choosing a column...")
                 think_embed = _embed(match, balance=ai_coins.get_balance(match.p1))
                 think_embed.set_footer(text="Aetherion is choosing a column...")
-                await _publish(interaction, embed=think_embed, view=self, table=think, edit=True)
+                think_embed.set_image(url=f"attachment://{TABLE_GIF}")
+                await _publish(interaction, embed=think_embed, view=self, table=None, edit=True)
                 await asyncio.sleep(THINK_SLEEP)
                 _bot_move(match)
                 if match.last_row >= 0:
