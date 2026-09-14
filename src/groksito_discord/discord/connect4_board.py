@@ -153,7 +153,7 @@ def render_board_png(
 
 
 FRAME_MS = 110
-HOLD_MS = 450
+HOLD_MS = 30000
 
 
 def render_fall_gif(
@@ -191,11 +191,12 @@ def render_fall_gif(
         save_all=True,
         append_images=frames[1:],
         duration=durations,
-        loop=0,
+        loop=1,
         optimize=True,
         disposal=1,
     )
-    return buf.getvalue(), sum(durations) / 1000.0
+    play = (FRAME_MS * max(1, len(frames) - 1) + 80) / 1000.0
+    return buf.getvalue(), play
 
 
 def _copy(board: list[list[int]]) -> list[list[int]]:
