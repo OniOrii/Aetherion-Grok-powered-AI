@@ -36,16 +36,15 @@ def _font(size: int) -> ImageFont.ImageFont:
 
 
 def _space(width: int, height: int) -> Image.Image:
-    """Hard-edged night sky. No nebula wash."""
     img = Image.new("RGB", (width, height), VOID)
     d = ImageDraw.Draw(img)
     rng = Random(width * 23 + height * 7)
-    for _ in range(320):
+    for _ in range(340):
         x = rng.randint(1, width - 2)
         y = rng.randint(1, height - 2)
         c = rng.randint(120, 200)
         img.putpixel((x, y), (c, c, min(255, c + 18)))
-    for _ in range(28):
+    for _ in range(30):
         x = rng.randint(3, width - 4)
         y = rng.randint(3, height - 4)
         c = rng.randint(210, 255)
@@ -54,11 +53,6 @@ def _space(width: int, height: int) -> Image.Image:
         d.point((x + 1, y), fill=(c // 2, c // 2, c))
         d.point((x, y - 1), fill=(c // 2, c // 2, c))
         d.point((x, y + 1), fill=(c // 2, c // 2, c))
-    # hard planet, no blur
-    px, py, pr = width - 58, 72, 28
-    d.ellipse((px - pr, py - pr, px + pr, py + pr), fill=(18, 28, 58), outline=(70, 90, 130))
-    d.ellipse((px - pr + 10, py - pr + 8, px + pr - 6, py + pr - 10), fill=(28, 48, 88))
-    d.ellipse((px - 6, py - 10, px + 4, py), fill=(50, 78, 120))
     return img.convert("RGBA")
 
 
@@ -84,9 +78,7 @@ def _face(size: int, face: str) -> Image.Image:
     d.ellipse((10, 10, size - 11, size - 11), fill=(168, 128, 42), outline=GOLD)
     d.ellipse((16, 16, size - 17, size - 17), fill=(198, 158, 58), outline=GOLD_DIM)
     d.ellipse((22, 22, size - 23, size - 23), outline=PALE, width=1)
-    # inner well
     d.ellipse((28, 28, size - 29, size - 29), fill=(214, 176, 72))
-    # highlight wedge
     d.pieslice((28, 28, size - 29, size - 29), start=200, end=250, fill=(232, 200, 110))
     d.ellipse((36, 36, size - 37, size - 37), fill=(214, 176, 72))
     mid = size // 2
@@ -101,7 +93,6 @@ def _face(size: int, face: str) -> Image.Image:
             width=2,
         )
         d.ellipse((mid - 3, 54, mid + 3, 60), fill=INK)
-    # readable plate
     plate_y = mid + 8
     d.rounded_rectangle((mid - 46, plate_y, mid + 46, plate_y + 28), radius=6, fill=PALE, outline=INK, width=1)
     label = "TAILS" if face == "tails" else "HEADS"
@@ -134,14 +125,17 @@ def _edge_horizontal(width: int, height: int) -> Image.Image:
 
 
 def _side_standing() -> Image.Image:
-    w, h = 26, int(COIN * 0.9)
-    img = Image.new("RGBA", (w + 6, h), (0, 0, 0, 0))
+    """Coin standing on its rim, edge facing the camera."""
+    w, h = 34, int(COIN * 0.95)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    d.rounded_rectangle((3, 0, w + 2, h - 1), radius=11, fill=GOLD_DIM, outline=GOLD, width=2)
-    d.rectangle((w // 2, 8, w // 2 + 4, h - 8), fill=HIGHLIGHT)
-    for i in range(12):
-        y = 8 + i * ((h - 16) / 11)
-        d.line((5, y, w, y), fill=(36, 26, 8), width=1)
+    d.rounded_rectangle((1, 1, w - 2, h - 2), radius=14, fill=GOLD_DIM, outline=GOLD, width=2)
+    d.rectangle((w // 2 - 2, 10, w // 2 + 3, h - 10), fill=HIGHLIGHT)
+    for i in range(14):
+        y = 10 + i * ((h - 20) / 13)
+        d.line((4, y, w - 5, y), fill=(36, 26, 8), width=1)
+    d.ellipse((w // 2 - 5, 8, w // 2 + 5, 18), fill=GOLD_DARK, outline=PALE)
+    d.ellipse((w // 2 - 5, h - 18, w // 2 + 5, h - 8), fill=GOLD_DARK, outline=PALE)
     return img
 
 
@@ -157,9 +151,6 @@ def _composite(coin: Image.Image, y: int) -> bytes:
 
 def render_flip_frame(tilt_deg: float, y_frac: float, preview_face: str = "heads") -> bytes:
     top = 16
-    if y_frac >= 0.96:
-        coin = _flat_sprite(preview_face)
-        return _composite(coin, FLOOR - coin.height)
     squash = abs(math.cos(math.radians(tilt_deg)))
     floor = FLOOR - int(COIN * FLAT)
     y = int(top + max(0.0, min(1.0, y_frac)) * (floor - top))
@@ -193,12 +184,12 @@ def render_thumb(face: str) -> bytes:
     return buf.getvalue()
 
 
+# Mid-air only. The land pose is a separate frame in slash_cointoss.
 FLIP_BEATS: list[tuple[float, float]] = [
     (12.0, 0.00),
-    (78.0, 0.15),
-    (118.0, 0.30),
-    (188.0, 0.46),
-    (258.0, 0.62),
-    (328.0, 0.78),
-    (0.0, 1.00),
+    (78.0, 0.17),
+    (118.0, 0.34),
+    (188.0, 0.51),
+    (258.0, 0.68),
+    (328.0, 0.84),
 ]
