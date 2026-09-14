@@ -12,13 +12,15 @@ SIDE = "side"
 
 WIN_MULTI = 2.0
 SIDE_MULTI = 2.5
-SIDE_CHANCE = 15  # out of 1000 — 1.5%
 
 TOSS_MIN_BET = 10
 TOSS_DEFAULT_BET = 100
 TOSS_MAX_BET = 10_000
 
 FACE_LABEL = {HEADS: "Heads", TAILS: "Tails", SIDE: "its Side"}
+
+# Exactly 48% heads, 48% tails, 2% side.
+_BAG = [SIDE] * 2 + [HEADS] * 48 + [TAILS] * 48
 
 
 @dataclass
@@ -35,19 +37,16 @@ class TossResult:
 def flip(pick: str, bet: int) -> TossResult:
     pick = pick if pick in (HEADS, TAILS) else HEADS
     bet = int(bet)
-    roll = secrets.randbelow(1000)
-    if roll < SIDE_CHANCE:
-        landed = SIDE
+    landed = secrets.choice(_BAG)
+    if landed == SIDE:
         multi = SIDE_MULTI
         won = True
+    elif landed == pick:
+        multi = WIN_MULTI
+        won = True
     else:
-        landed = HEADS if secrets.randbelow(2) == 0 else TAILS
-        if landed == pick:
-            multi = WIN_MULTI
-            won = True
-        else:
-            multi = 0.0
-            won = False
+        multi = 0.0
+        won = False
     winnings = int(bet * multi) if multi else 0
     return TossResult(
         pick=pick,
