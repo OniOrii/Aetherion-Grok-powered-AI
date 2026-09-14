@@ -152,6 +152,52 @@ def render_board_png(
     return buf.getvalue()
 
 
+FRAME_MS = 110
+HOLD_MS = 450
+
+
+def render_fall_gif(
+    board: list[list[int]],
+    *,
+    piece: int,
+    col: int,
+    landing_row: int,
+    subtitle: str = "",
+) -> tuple[bytes, float]:
+    """One GIF for a drop so Discord does not reload a new PNG every hole."""
+    path = fall_path(landing_row) or [landing_row]
+    raw_frames: list[Image.Image] = []
+    for hover in path:
+        raw = render_board_png(board, subtitle=subtitle, falling=(piece, col, hover))
+        raw_frames.append(Image.open(io.BytesIO(raw)).convert("RGB"))
+    landed = [row[:] for row in board]
+    landed[landing_row][col] = piece
+    raw = render_board_png(landed, subtitle=subtitle, last=(landing_row, col))
+    raw_frames.append(Image.open(io.BytesIO(raw)).convert("RGB"))
+
+    try:
+        method = Image.Quantize.MEDIANCUT
+        dither = Image.Dither.NONE
+    except AttributeError:
+        method = 0
+        dither = 0
+    base = raw_frames[0].quantize(colors=48, method=method)
+    frames = [base] + [f.quantize(palette=base, dither=dither) for f in raw_frames[1:]]
+    durations = [FRAME_MS] * (len(frames) - 1) + [HOLD_MS]
+    buf = io.BytesIO()
+    frames[0].save(
+        buf,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=durations,
+        loop=0,
+        optimize=True,
+        disposal=1,
+    )
+    return buf.getvalue(), sum(durations) / 1000.0
+
+
 def _copy(board: list[list[int]]) -> list[list[int]]:
     return [row[:] for row in board]
 
