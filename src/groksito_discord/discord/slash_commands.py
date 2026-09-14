@@ -23,6 +23,7 @@ from .slash_reactionrole import register_reactionrole
 from .slash_status import register_status
 from .slash_blackjack import register_blackjack
 from .slash_slots import register_slots
+from .slash_cointoss import register_cointoss
 
 logger = logging.getLogger("aetherion.slash")
 
@@ -46,6 +47,7 @@ def register(tree, client) -> None:
     register_edit(tree, is_guild_allowed)
     register_blackjack(tree, is_guild_allowed)
     register_slots(tree, is_guild_allowed)
+    register_cointoss(tree, is_guild_allowed)
 
     @tree.command(name="ping", description="Check if Aetherion is awake")
     async def ping(interaction: discord.Interaction):

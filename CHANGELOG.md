@@ -22,12 +22,14 @@ _Nothing waiting. New work is dated the day it ships._
 - `/leaderboard` and Ori-only `/givecoins`.
 - Blackjack table art and Ori-only `/edit`.
 - Blackjack **Play Again** + **Change Bet** after each hand (same last stake, no retyping `/blackjack`).
+- `/cointoss` — Heads / Tails, rare side landing at 2.5x, falling flip animation, custom Aether coin art. Bet 10–10,000.
 
 ### Changed
 
 - `/slots` cabinet now animates (spark reel → blur → land) and uses a tighter Pocket / Winnings / Net embed.
 - Play-money currency is now **Aether Coins** (was AI Coins).
 - Blackjack table is a starfield with real suit glyphs.
+- Slots paytables and blackjack win credits are about **2%** kinder to the player.
 
 ### Fixed
 
