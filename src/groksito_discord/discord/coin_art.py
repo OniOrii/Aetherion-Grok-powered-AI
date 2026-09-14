@@ -26,6 +26,7 @@ W, H = 300, 540
 COIN = 136
 FLAT = 0.58
 FLOOR = H - 28
+FLIP_SLEEP = 0.16
 
 
 def _font(size: int) -> ImageFont.ImageFont:
@@ -125,7 +126,6 @@ def _edge_horizontal(width: int, height: int) -> Image.Image:
 
 
 def _side_standing() -> Image.Image:
-    """Coin standing on its rim, edge facing the camera."""
     w, h = 34, int(COIN * 0.95)
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -184,12 +184,18 @@ def render_thumb(face: str) -> bytes:
     return buf.getvalue()
 
 
-# Mid-air only. The land pose is a separate frame in slash_cointoss.
+# Mid-air only. Land pose is a separate frame in slash_cointoss.
 FLIP_BEATS: list[tuple[float, float]] = [
-    (12.0, 0.00),
-    (78.0, 0.17),
-    (118.0, 0.34),
-    (188.0, 0.51),
-    (258.0, 0.68),
-    (328.0, 0.84),
+    (8.0, 0.00),
+    (38.0, 0.08),
+    (72.0, 0.16),
+    (108.0, 0.24),
+    (142.0, 0.32),
+    (178.0, 0.40),
+    (214.0, 0.48),
+    (248.0, 0.56),
+    (284.0, 0.64),
+    (318.0, 0.72),
+    (352.0, 0.80),
+    (20.0, 0.88),
 ]
