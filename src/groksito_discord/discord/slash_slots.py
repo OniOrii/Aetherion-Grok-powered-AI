@@ -120,8 +120,8 @@ class SlotsView(discord.ui.View):
         min_values=1,
         max_values=1,
         options=[
-            discord.SelectOption(label="Cosmos Wheel", value="cosmos", emoji="\U0001F30C", description="Balanced house wheel"),
-            discord.SelectOption(label="Nebula", value="nebula", emoji="\U0001F49C", description="Hits often, pays small"),
+            discord.SelectOption(label="Cosmos Wheel", value="cosmos", emoji="\U0001FA90", description="Balanced house wheel"),
+            discord.SelectOption(label="Nebula", value="nebula", emoji="\U0001F52E", description="Hits often, pays small"),
             discord.SelectOption(label="Event Horizon", value="horizon", emoji="\U0001F573\ufe0f", description="Rare. Huge when it lands"),
         ],
     )
@@ -256,7 +256,7 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
     _set_disabled(send_view, True)
     _busy.add(user_id)
     try:
-        ticks = [spinning_cells()] + [format_cells(blur_grid(machine), tag="\u2026") for _ in range(3)]
+        ticks = [spinning_cells()] + [format_cells(blur_grid(machine), tag="\u2026", glyphs=machine.glyphs) for _ in range(3)]
         first = True
         for grid in ticks:
             frame = _cabinet_embed(
