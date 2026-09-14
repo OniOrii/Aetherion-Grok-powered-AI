@@ -153,7 +153,21 @@ def render_board_png(
 
 
 FRAME_MS = 110
-HOLD_MS = 30000
+
+
+def _gif_no_loop(data: bytes) -> bytes:
+    """Strip NETSCAPE loop so Discord plays the fall once."""
+    marker = b"NETSCAPE2.0"
+    i = data.find(marker)
+    if i < 3:
+        return data
+    start = i - 3
+    if data[start] != 0x21:
+        return data
+    end = start + 19
+    if end > len(data):
+        return data
+    return data[:start] + data[end:]
 
 
 def render_fall_gif(
@@ -183,7 +197,7 @@ def render_fall_gif(
         dither = 0
     base = raw_frames[0].quantize(colors=48, method=method)
     frames = [base] + [f.quantize(palette=base, dither=dither) for f in raw_frames[1:]]
-    durations = [FRAME_MS] * (len(frames) - 1) + [HOLD_MS]
+    durations = [FRAME_MS] * len(frames)
     buf = io.BytesIO()
     frames[0].save(
         buf,
@@ -195,8 +209,8 @@ def render_fall_gif(
         optimize=True,
         disposal=1,
     )
-    play = (FRAME_MS * max(1, len(frames) - 1) + 80) / 1000.0
-    return buf.getvalue(), play
+    play = FRAME_MS * len(frames) / 1000.0
+    return _gif_no_loop(buf.getvalue()), play
 
 
 def _copy(board: list[list[int]]) -> list[list[int]]:

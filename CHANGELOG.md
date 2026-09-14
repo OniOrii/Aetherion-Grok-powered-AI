@@ -21,6 +21,7 @@ _Nothing waiting. New work is dated the day it ships._
 - Connect Four discs now fall down the column each turn. Aetherion pauses to choose, then drops with the same animation.
 - Connect Four drop animation is a single GIF per turn so the board does not flicker between holes.
 - Connect Four drop GIFs play once and freeze on the landed disc. They no longer restart from the top.
+- Connect Four GIFs no longer loop. The disc falls once, then the board freezes as a still image.
 
 ## [2026-09-13]
 
