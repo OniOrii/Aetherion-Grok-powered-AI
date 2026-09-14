@@ -33,7 +33,8 @@ _Nothing waiting. New work is dated the day it ships._
 - `/daily` grants **500** Aether Coins.
 - Slot pair and trip multipliers are **2x** the previous table.
 - `/cointoss` uses a smaller coin that falls the full frame. Odds are **48% heads / 48% tails / 2% side**.
-- Coin toss lands foreshortened on a pad so it reads as a coin lying flat. Side landings stand on the rim facing the camera. Starfield background is deeper.
+- Coin toss background is a sharp starfield (no blur wash). Landing ring removed. Coin face is a minted plate with a pale **HEADS** / **TAILS** banner.
+- Each slot machine has its own cabinet mark and reel glyphs: Cosmos 🪐, Nebula 🔮, Event Horizon 🕳️.
 
 ### Fixed
 
