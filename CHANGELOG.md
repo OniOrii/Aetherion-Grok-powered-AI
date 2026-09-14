@@ -11,6 +11,12 @@ Older packaged history stays under version headings. Aetherion work from Septemb
 
 _Nothing waiting. New work is dated the day it ships._
 
+## [2026-09-14]
+
+### Added
+
+- `/help` with topic pages (overview, chat, voice, games, coins, server) and a dropdown to switch pages.
+
 ## [2026-09-13]
 
 ### Added

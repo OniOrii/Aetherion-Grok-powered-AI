@@ -17,6 +17,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for dated history. Every shipped change is lo
 - Reads images from attachments, embeds, and recent reply-chain pictures.
 - Can search the web, generate or edit images, generate video (when enabled), and speak text out loud.
 - Default spoken voice is **Zagan**. Other Grok voices: Ara, Eve, Rex, Sal, Leo.
+- `/help` explains commands with topic pages.
 
 ### Live voice
 - `/join` while you are already in a voice channel. `/leave` to disconnect.
@@ -36,7 +37,7 @@ Play-money wallet in `data/ai_coins.json`. New players start with **500**. Bets 
 - `/balance` — your wallet.
 - `/daily` — **500** Aether Coins once per Eastern day.
 - `/leaderboard` — top wallets on this server.
-- `/givecoins` — Ori only, 1–10,000 coins to a member.
+- `/givecoins` — Ori only, 10–10,000 coins to a member.
 
 ### Games
 - `/blackjack` — fair dealer, Hit / Stand / Double, table art, Play Again.
@@ -55,11 +56,13 @@ Play-money wallet in `data/ai_coins.json`. New players start with **500**. Bets 
 - `/status` — Ori only, set Aetherion's status bubble.
 - `/audio` — TTS in the current text channel. Right-click a message → Apps → **Leer en voz alta**.
 - `/ping` — alive check.
+- `/help` — command guide with a topic dropdown.
 
 ## Slash command list
 
 | Command | Who | What |
 | --- | --- | --- |
+| `/help` | anyone | How the bot works |
 | `/join` `/leave` | anyone | Voice session |
 | `/play` `/pause` `/stop` | anyone | SoundCloud on that session |
 | `/blackjack` | anyone | Cards vs Aetherion |
@@ -114,12 +117,14 @@ Point the service at this repo. Set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`. After
 - Music: `/play query: song or soundcloud url`. Do not paste a YouTube link.
 - Games: `/blackjack`, `/slots`, `/cointoss`. Claim `/daily` once a day.
 - Admins: `/welcome`, `/datechannel`, `/reactionrole colors`, `/purge`.
+- `/help` for the in-Discord command guide.
 
 ## Layout
 
 High-level pieces under `src/groksito_discord/`:
 
 - `discord/slash_commands.py` — wires every slash module.
+- `discord/slash_help.py` — `/help` pages.
 - `discord/slash_blackjack.py`, `slash_slots.py`, `slash_cointoss.py` — games.
 - `discord/ai_coins.py` — wallets, daily drip, grants.
 - `discord/slash_music.py` + `media/voice_music.py` — SoundCloud only.
