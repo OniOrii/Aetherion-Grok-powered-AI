@@ -6,22 +6,24 @@ from dataclasses import dataclass
 import secrets
 from typing import Mapping
 
+AETHER = "\u2726"
+
 SYMBOLS: dict[str, str] = {
     "comet": "\u2604\ufe0f",
-    "void": "\U0001F311",
-    "shard": "\U0001F4A0",
+    "void": "\U0001F30C",
+    "shard": "\U0001F9FF",
     "moon": "\U0001F319",
-    "star": "\u2B50",
-    "coin": "\U0001FA99",
+    "star": "\u2728",
+    "coin": "\U0001F52E",
 }
 
 LABELS: dict[str, str] = {
     "comet": "Comet",
-    "void": "Void",
-    "shard": "Shard",
+    "void": "Rift",
+    "shard": "Ward",
     "moon": "Moon",
-    "star": "Star",
-    "coin": "Aether Coin",
+    "star": "Stardust",
+    "coin": "Aether Core",
 }
 
 SPIN_GLYPH = "\u2728"
@@ -151,27 +153,32 @@ def blur_grid(machine: Machine) -> list[list[str]]:
     return [[_pick(machine.weights) for _ in range(3)] for _ in range(3)]
 
 
+def coins(amount: int | str) -> str:
+    return f"{AETHER} {amount}"
+
+
 def format_cells(grid: list[list[str]], *, tag: str, spinning: bool = False) -> str:
-    """Three even rows. Middle row carries the multiplier on the right."""
+    """Armed-style: one bracket pair per row, payline marked, centered."""
+    pad = "\u2003\u2003"
     rows = []
     for i, row in enumerate(grid):
         glyphs = [SPIN_GLYPH if spinning else SYMBOLS[s] for s in row]
-        cells = "  ".join(f"[ {g} ]" for g in glyphs)
+        inner = "   ".join(glyphs)
         if i == 1:
-            rows.append(f"{cells}    {tag}")
+            rows.append(f"**\u00bb**{pad}[ {inner} ]    `{tag}`")
         else:
-            rows.append(cells)
+            rows.append(f"{pad}   [ {inner} ]")
     return "\n".join(rows)
 
 
 def format_grid(result: SpinResult) -> str:
-    tag = f"**{result.multiplier:g}x**" if result.multiplier > 0 else "**0x**"
+    tag = f"{result.multiplier:g}x" if result.multiplier > 0 else "0x"
     return format_cells(result.grid, tag=tag)
 
 
 def spinning_cells() -> str:
     dummy = [["coin"] * 3 for _ in range(3)]
-    return format_cells(dummy, tag="**\u2026**", spinning=True)
+    return format_cells(dummy, tag="\u2026", spinning=True)
 
 
 def payouts_text(machine: Machine) -> str:
