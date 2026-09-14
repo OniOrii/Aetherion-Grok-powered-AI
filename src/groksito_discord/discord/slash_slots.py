@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 
 import discord
@@ -9,6 +10,7 @@ import discord
 from . import ai_coins
 from .slash_blackjack import has_live_hand
 from .slots import (
+    AETHER,
     COSMOS,
     DEFAULT_MACHINE,
     MACHINES,
@@ -16,12 +18,14 @@ from .slots import (
     SLOTS_MAX_BET,
     SLOTS_MIN_BET,
     blur_grid,
+    coins,
     format_cells,
     format_grid,
     payouts_text,
     spin,
     spinning_cells,
 )
+from .slots_art import cabinet_jpeg
 
 logger = logging.getLogger("aetherion.slash_slots")
 
@@ -32,6 +36,7 @@ EMBED_SPIN = 0xC9A227
 EMBED_WIN = 0x3D9B64
 EMBED_LOSE = 0xC45C4A
 EMBED_PUSH = 0x8A8F98
+THUMB_NAME = "cabinet.jpg"
 
 
 def has_live_hand_safe(user_id: int) -> bool:
@@ -45,6 +50,13 @@ def _set_disabled(view: discord.ui.View, disabled: bool) -> None:
     for child in view.children:
         if isinstance(child, (discord.ui.Button, discord.ui.Select)):
             child.disabled = disabled
+
+
+def _cabinet_file(machine_key: str) -> discord.File | None:
+    raw = cabinet_jpeg(machine_key)
+    if not raw:
+        return None
+    return discord.File(io.BytesIO(raw), filename=THUMB_NAME)
 
 
 class BetModal(discord.ui.Modal, title="Change bet"):
@@ -78,7 +90,7 @@ class BetModal(discord.ui.Modal, title="Change bet"):
         )
         session["bet"] = bet
         await interaction.response.send_message(
-            f"Next spin is **{bet} Aether Coins**.", ephemeral=True
+            f"Next spin is **{coins(bet)}**.", ephemeral=True
         )
 
 
@@ -142,23 +154,28 @@ class SlotsView(discord.ui.View):
         session = _sessions.get(self.user_id) or {"machine": DEFAULT_MACHINE}
         machine = MACHINES.get(str(session.get("machine") or DEFAULT_MACHINE), COSMOS)
         embed = discord.Embed(title=f"{machine.emoji}  {machine.name}", description=payouts_text(machine), color=machine.color)
-        embed.set_footer(text=f"Bet {SLOTS_MIN_BET}\u2013{SLOTS_MAX_BET} Aether Coins")
+        embed.set_footer(text=f"Bet {coins(SLOTS_MIN_BET)} \u2013 {coins(SLOTS_MAX_BET)}")
+        thumb = _cabinet_file(machine.key)
+        if thumb:
+            embed.set_thumbnail(url=f"attachment://{THUMB_NAME}")
+            await interaction.response.send_message(embed=embed, file=thumb, ephemeral=True)
+            return
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 def _cabinet_embed(*, machine, player_name: str, pocket: int, winnings_text: str, net_text: str, grid: str, bet: int, color: int) -> discord.Embed:
     body = (
-        f"{grid}\n\n"
-        f"Pocket {pocket:,}\n"
-        f"Winnings {winnings_text}\n"
-        f"Net {net_text}"
+        f"Pocket: {coins(f'**{pocket:,}**')}\n"
+        f"Winnings: {coins(f'**{winnings_text}**')}\n"
+        f"Net: {coins(f'**{net_text}**')}\n\n"
+        f"{grid}"
     )
     embed = discord.Embed(
-        title=f"{machine.emoji}  {player_name}'s {machine.name}",
+        title=f"{player_name}'s {machine.name}",
         description=body,
         color=color,
     )
-    embed.set_footer(text=f"Bet {bet:,}  \u00b7  Min {SLOTS_MIN_BET:,}  \u00b7  Max {SLOTS_MAX_BET:,}")
+    embed.set_footer(text=f"Bet: {coins(f'{bet:,}')}  |  Min: {coins(f'{SLOTS_MIN_BET:,}')}  |  Max: {coins(f'{SLOTS_MAX_BET:,}')}")
     return embed
 
 
@@ -182,14 +199,25 @@ def _final_embed(result, *, balance: int, player_name: str) -> discord.Embed:
     )
 
 
-async def _publish(interaction: discord.Interaction, *, embed, view, as_edit: bool) -> None:
+async def _publish(interaction: discord.Interaction, *, embed, view, as_edit: bool, thumb: discord.File | None) -> None:
+    if thumb is not None:
+        embed.set_thumbnail(url=f"attachment://{THUMB_NAME}")
     if not interaction.response.is_done():
         if as_edit:
-            await interaction.response.edit_message(embed=embed, view=view)
+            kwargs = {"embed": embed, "view": view}
+            if thumb is not None:
+                kwargs["attachments"] = [thumb]
+            await interaction.response.edit_message(**kwargs)
         else:
-            await interaction.response.send_message(embed=embed, view=view)
+            kwargs = {"embed": embed, "view": view}
+            if thumb is not None:
+                kwargs["file"] = thumb
+            await interaction.response.send_message(**kwargs)
         return
-    await interaction.edit_original_response(embed=embed, view=view)
+    kwargs = {"embed": embed, "view": view}
+    if thumb is not None:
+        kwargs["attachments"] = [thumb]
+    await interaction.edit_original_response(**kwargs)
 
 
 async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_key: str, bet: int, edit: bool, view: SlotsView | None) -> None:
@@ -217,7 +245,7 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
         return
     pocket = ai_coins.get_balance(user_id)
     if bet > pocket:
-        msg = f"You only have {pocket} Aether Coins."
+        msg = f"You only have {coins(pocket)}."
         if interaction.response.is_done():
             await interaction.followup.send(msg, ephemeral=True)
         else:
@@ -236,14 +264,14 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
             winnings_text="Spinning\u2026", net_text=f"-{bet:,}",
             grid=spinning_cells(), bet=bet, color=EMBED_SPIN,
         )
-        await _publish(interaction, embed=spinning, view=send_view, as_edit=edit)
+        await _publish(interaction, embed=spinning, view=send_view, as_edit=edit, thumb=_cabinet_file(machine.key))
         await asyncio.sleep(0.85)
         blur = _cabinet_embed(
             machine=machine, player_name=name, pocket=pocket,
             winnings_text="Spinning\u2026", net_text=f"-{bet:,}",
-            grid=format_cells(blur_grid(machine), tag="**\u2026**"), bet=bet, color=EMBED_SPIN,
+            grid=format_cells(blur_grid(machine), tag="\u2026"), bet=bet, color=EMBED_SPIN,
         )
-        await interaction.edit_original_response(embed=blur, view=send_view)
+        await _publish(interaction, embed=blur, view=send_view, as_edit=True, thumb=_cabinet_file(machine.key))
         await asyncio.sleep(0.75)
         result = spin(machine, bet)
         ok, balance, err = ai_coins.resolve_wager(
@@ -257,7 +285,7 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
         _sessions[user_id] = {"bet": result.bet, "machine": machine.key}
         _set_disabled(send_view, False)
         final = _final_embed(result, balance=balance, player_name=name)
-        await interaction.edit_original_response(embed=final, view=send_view)
+        await _publish(interaction, embed=final, view=send_view, as_edit=True, thumb=_cabinet_file(machine.key))
     except Exception:
         logger.exception("slots spin failed user=%s", user_id)
         try:
