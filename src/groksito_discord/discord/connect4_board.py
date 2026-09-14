@@ -89,12 +89,20 @@ def _winning_cells(board: list[list[int]], piece: int) -> set[tuple[int, int]]:
     return hits
 
 
+def fall_path(landing_row: int) -> list[int]:
+    """Board rows a disc travels through, top to landing."""
+    if landing_row < 0:
+        return []
+    return list(range(ROWS - 1, landing_row - 1, -1))
+
+
 def render_board_png(
     board: list[list[int]],
     *,
     subtitle: str = "",
     last: tuple[int, int] | None = None,
     winner: int = 0,
+    falling: tuple[int, int, int] | None = None,
 ) -> bytes:
     grid_w = COLS * CELL
     grid_h = ROWS * CELL
@@ -120,6 +128,8 @@ def render_board_png(
             board_row = ROWS - 1 - row_from_top
             cy = gy0 + row_from_top * CELL + CELL // 2
             piece = board[board_row][col]
+            if falling and falling[1] == col and falling[2] == board_row:
+                piece = falling[0]
             d.ellipse((cx - HOLE_R - 2, cy - HOLE_R - 2, cx + HOLE_R + 2, cy + HOLE_R + 2), fill=HOLE)
             if piece == EMPTY:
                 d.ellipse((cx - HOLE_R + 4, cy - HOLE_R + 4, cx + HOLE_R - 4, cy + HOLE_R - 4), fill=(12, 14, 24))
