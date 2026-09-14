@@ -29,13 +29,18 @@ _Nothing waiting. New work is dated the day it ships._
 - `/slots` cabinet now animates (spark reel → blur → land) and uses a tighter Pocket / Winnings / Net embed.
 - Play-money currency is now **Aether Coins** (was AI Coins).
 - Blackjack table is a starfield with real suit glyphs.
-- Slots paytables and blackjack win credits are about **2%** kinder to the player.
+- Aether Coin bets and grants go by **10s**. Daily drip is 20. Blackjack minimum is 10.
+- `/cointoss` flips end-over-end (up/down), lands flat, and only shows HEADS / TAILS on the face.
 
 ### Fixed
 
 - Dealer blackjack no longer ends the hand on the deal.
 - Reaction roles survive a Railway/Docker restart that wipes the save file.
 - `/slots` cabinet thumbnail now draws a real PNG instead of a broken JPEG.
+
+### Removed
+
+- The short-lived ~2% kinder payout bump on slots and blackjack.
 
 ## [2026-09-12]
 
