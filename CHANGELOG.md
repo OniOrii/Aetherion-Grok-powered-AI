@@ -17,6 +17,8 @@ _Nothing waiting. New work is dated the day it ships._
 
 - `/help` with topic pages (overview, chat, voice, games, coins, server) and a dropdown to switch pages.
 - `/connect4` \u2014 two-player Connect Four. Challenge a member, both stake the same Aether Coin bet, winner takes the pot. Draw returns both stakes.
+- `/connect4` can be played against **Aetherion** (leave opponent empty). Painted cosmos board, house AI, Play Again.
+- Connect Four discs now fall down the column each turn. Aetherion pauses to choose, then drops with the same animation.
 
 ## [2026-09-13]
 
