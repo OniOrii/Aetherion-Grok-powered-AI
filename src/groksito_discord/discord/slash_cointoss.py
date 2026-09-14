@@ -8,7 +8,7 @@ import logging
 import discord
 
 from . import ai_coins
-from .coin_art import FLIP_BEATS, render_flip_frame, render_result, render_thumb
+from .coin_art import FLIP_BEATS, FLIP_SLEEP, render_flip_frame, render_result, render_thumb
 from .coin_toss import (
     HEADS,
     SIDE_MULTI,
@@ -222,7 +222,7 @@ async def _run_toss(
                 thumb=None,
             )
             first = False
-            await asyncio.sleep(0.38)
+            await asyncio.sleep(FLIP_SLEEP)
         land_body = "It lands on its side." if result.landed == "side" else "The Aether coin lands."
         land = _toss_embed(
             pocket=pocket,
@@ -239,7 +239,7 @@ async def _run_toss(
             image=_png(IMAGE_NAME, render_result(result.landed)),
             thumb=None,
         )
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.35)
         ok, balance, err = ai_coins.resolve_wager(
             user_id, result.bet, result.winnings, min_bet=TOSS_MIN_BET, max_bet=TOSS_MAX_BET
         )
