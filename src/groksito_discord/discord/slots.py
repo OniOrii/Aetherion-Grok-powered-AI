@@ -8,6 +8,7 @@ from typing import Mapping
 
 AETHER = "\u2726"
 
+# Fallback set if a machine has no glyphs.
 SYMBOLS: dict[str, str] = {
     "comet": "\u2604\ufe0f",
     "void": "\U0001F30C",
@@ -39,13 +40,14 @@ class Machine:
     color: int
     weights: Mapping[str, int]
     pays: Paytable
+    glyphs: Mapping[str, str]
 
 
 NEBULA = Machine(
     key="nebula",
     name="Nebula",
     blurb="Soft lights. Hits often, pays small.",
-    emoji="\U0001F49C",
+    emoji="\U0001F52E",
     color=0x6B5B95,
     weights={"comet": 22, "void": 20, "shard": 18, "moon": 16, "star": 14, "coin": 10},
     pays={
@@ -56,13 +58,21 @@ NEBULA = Machine(
         "star": (24.0, 4.0),
         "coin": (32.0, 4.8),
     },
+    glyphs={
+        "comet": "\U0001F386",
+        "void": "\U0001F30C",
+        "shard": "\U0001F48E",
+        "moon": "\U0001F52E",
+        "star": "\U0001F49C",
+        "coin": "\U0001F9FF",
+    },
 )
 
 COSMOS = Machine(
     key="cosmos",
     name="Cosmos Wheel",
     blurb="The house wheel. Balanced spin.",
-    emoji="\U0001F30C",
+    emoji="\U0001FA90",
     color=0xC9A227,
     weights={"comet": 22, "void": 19, "shard": 17, "moon": 16, "star": 15, "coin": 11},
     pays={
@@ -72,6 +82,14 @@ COSMOS = Machine(
         "moon": (20.0, 3.4),
         "star": (28.0, 4.0),
         "coin": (44.0, 5.0),
+    },
+    glyphs={
+        "comet": "\u2604\ufe0f",
+        "void": "\U0001FA90",
+        "shard": "\U0001F31F",
+        "moon": "\U0001F315",
+        "star": "\u2728",
+        "coin": "\U0001FA99",
     },
 )
 
@@ -89,6 +107,14 @@ HORIZON = Machine(
         "moon": (32.0, 2.8),
         "star": (56.0, 4.0),
         "coin": (140.0, 6.0),
+    },
+    glyphs={
+        "comet": "\u26A1",
+        "void": "\U0001F573\ufe0f",
+        "shard": "\u26AB",
+        "moon": "\U0001F311",
+        "star": "\U0001F608",
+        "coin": "\U0001F300",
     },
 )
 
@@ -157,12 +183,19 @@ def coins(amount: int | str) -> str:
     return f"{AETHER} {amount}"
 
 
-def format_cells(grid: list[list[str]], *, tag: str, spinning: bool = False) -> str:
+def format_cells(
+    grid: list[list[str]],
+    *,
+    tag: str,
+    spinning: bool = False,
+    glyphs: Mapping[str, str] | None = None,
+) -> str:
+    table = glyphs or SYMBOLS
     pad = "\u2003\u2003"
     rows = []
     for i, row in enumerate(grid):
-        glyphs = [SPIN_GLYPH if spinning else SYMBOLS[s] for s in row]
-        inner = "   ".join(glyphs)
+        marks = [SPIN_GLYPH if spinning else table.get(s, SYMBOLS.get(s, "?")) for s in row]
+        inner = "   ".join(marks)
         if i == 1:
             rows.append(f"**\u00bb**{pad}[ {inner} ]    `{tag}`")
         else:
@@ -172,7 +205,7 @@ def format_cells(grid: list[list[str]], *, tag: str, spinning: bool = False) -> 
 
 def format_grid(result: SpinResult) -> str:
     tag = f"{result.multiplier:g}x" if result.multiplier > 0 else "0x"
-    return format_cells(result.grid, tag=tag)
+    return format_cells(result.grid, tag=tag, glyphs=result.machine.glyphs)
 
 
 def spinning_cells() -> str:
@@ -181,6 +214,7 @@ def spinning_cells() -> str:
 
 
 def payouts_text(machine: Machine) -> str:
+    table = machine.glyphs or SYMBOLS
     lines = [
         f"{machine.emoji} **{machine.name}**",
         machine.blurb,
@@ -192,10 +226,12 @@ def payouts_text(machine: Machine) -> str:
     order = ["coin", "star", "moon", "shard", "void", "comet"]
     for key in order:
         three, _pair = machine.pays[key]
-        lines.append(f"{SYMBOLS[key]} {SYMBOLS[key]} {SYMBOLS[key]}  \u2014  {three:g}x  ({LABELS[key]})")
+        g = table.get(key, SYMBOLS[key])
+        lines.append(f"{g} {g} {g}  \u2014  {three:g}x  ({LABELS[key]})")
     lines.append("")
     lines.append("**Any pair** on the middle line")
     for key in order:
         _three, pair = machine.pays[key]
-        lines.append(f"{SYMBOLS[key]} {SYMBOLS[key]} \u00b7  \u2014  {pair:g}x")
+        g = table.get(key, SYMBOLS[key])
+        lines.append(f"{g} {g} \u00b7  \u2014  {pair:g}x")
     return "\n".join(lines)
