@@ -49,12 +49,12 @@ NEBULA = Machine(
     color=0x6B5B95,
     weights={"comet": 22, "void": 20, "shard": 18, "moon": 16, "star": 14, "coin": 10},
     pays={
-        "comet": (4.0, 1.4),
-        "void": (5.0, 1.5),
-        "shard": (7.0, 1.6),
-        "moon": (9.0, 1.8),
-        "star": (12.0, 2.0),
-        "coin": (16.0, 2.4),
+        "comet": (8.0, 2.8),
+        "void": (10.0, 3.0),
+        "shard": (14.0, 3.2),
+        "moon": (18.0, 3.6),
+        "star": (24.0, 4.0),
+        "coin": (32.0, 4.8),
     },
 )
 
@@ -66,12 +66,12 @@ COSMOS = Machine(
     color=0xC9A227,
     weights={"comet": 22, "void": 19, "shard": 17, "moon": 16, "star": 15, "coin": 11},
     pays={
-        "comet": (5.0, 1.2),
-        "void": (6.0, 1.3),
-        "shard": (8.0, 1.5),
-        "moon": (10.0, 1.7),
-        "star": (14.0, 2.0),
-        "coin": (22.0, 2.5),
+        "comet": (10.0, 2.4),
+        "void": (12.0, 2.6),
+        "shard": (16.0, 3.0),
+        "moon": (20.0, 3.4),
+        "star": (28.0, 4.0),
+        "coin": (44.0, 5.0),
     },
 )
 
@@ -83,12 +83,12 @@ HORIZON = Machine(
     color=0x3B1F4A,
     weights={"comet": 32, "void": 24, "shard": 18, "moon": 12, "star": 9, "coin": 5},
     pays={
-        "comet": (5.0, 0.8),
-        "void": (7.0, 0.9),
-        "shard": (10.0, 1.1),
-        "moon": (16.0, 1.4),
-        "star": (28.0, 2.0),
-        "coin": (70.0, 3.0),
+        "comet": (10.0, 1.6),
+        "void": (14.0, 1.8),
+        "shard": (20.0, 2.2),
+        "moon": (32.0, 2.8),
+        "star": (56.0, 4.0),
+        "coin": (140.0, 6.0),
     },
 )
 
