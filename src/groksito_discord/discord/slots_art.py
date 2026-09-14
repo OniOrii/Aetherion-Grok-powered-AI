@@ -15,13 +15,21 @@ _KEYS = ("cosmos", "nebula", "horizon")
 _cache: dict[str, bytes] = {}
 
 
+def _payload(key: str) -> str:
+    chunks = sorted(_ASSET_DIR.glob(f"{key}.*.b64"), key=lambda p: p.name)
+    if not chunks:
+        single = _ASSET_DIR / f"{key}.b64"
+        if single.is_file():
+            chunks = [single]
+    return "".join(path.read_text(encoding="ascii").split() for path in chunks)
+
+
 def _decode_asset(key: str) -> bytes | None:
-    path = _ASSET_DIR / f"{key}.b64"
-    if not path.is_file():
-        logger.warning("cabinet asset missing %s", path)
+    payload = _payload(key)
+    if not payload:
+        logger.warning("cabinet asset missing key=%s", key)
         return None
     try:
-        payload = "".join(path.read_text(encoding="ascii").split())
         raw = base64.b64decode(payload, validate=False)
         im = Image.open(io.BytesIO(raw)).convert("RGB")
         buf = io.BytesIO()
