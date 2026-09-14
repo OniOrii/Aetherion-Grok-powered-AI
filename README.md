@@ -4,131 +4,96 @@
 ![Discord](https://img.shields.io/badge/Discord-Bot-7289da.svg)
 ![xAI](https://img.shields.io/badge/xAI-Grok-ff6b6b.svg)
 
-**Aetherion** is a standalone Discord bot that brings Grok (xAI) natively into Discord servers — text, media, live voice, and music in the same voice channel. It is a fully conversational experience powered directly by Grok models, with vision, tool use, direct image/video/audio generation, a voice-channel listener that talks back, and SoundCloud playback on that same connection.
-
-The bot is designed around "maximum nativeness": minimal custom memory or context injection, trusting Grok's long context window, native web search, vision, and reasoning. It adds just enough Discord integration to be useful in a real server: slash commands, a date dock, welcome banners, a DAVE-aware voice session, and play/pause/stop.
+**Aetherion** is a standalone Discord bot that brings Grok (xAI) into a real server: text chat, vision, image/video/audio generation, live voice, SoundCloud music on the same voice connection, and play-money games with **Aether Coins**.
 
 Forked from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito-discord-bot) and rebuilt as Aetherion by [@OniOrii](https://github.com/OniOrii).
 
-See [CHANGELOG.md](./CHANGELOG.md) for what landed recently.
+See [CHANGELOG.md](./CHANGELOG.md) for dated history. Every shipped change is logged there.
 
-## ✨ Features
+## What it can do
 
-- **Conversational Grok in Discord**
-  - Activates on direct mentions, replies to the bot, or strong directed signals in reply chains.
-  - Native vision: processes images from attachments, embeds, and recent referenced messages/URLs.
-  - On-demand recent conversation summaries via tool (no automatic heavy context stuffing).
-  - Prompt construction optimized for cache efficiency: stable `SYSTEM_PROMPT` prefix + minimal gated dynamic context only on addressed turns.
+### Chat with Grok
+- Activates on a mention, a reply to Aetherion, or a clearly directed message.
+- Reads images from attachments, embeds, and recent reply-chain pictures.
+- Can search the web, generate or edit images, generate video (when enabled), and speak text out loud.
+- Default spoken voice is **Zagan**. Other Grok voices: Ara, Eve, Rex, Sal, Leo.
 
-- **Live voice in a Discord VC**
-  - `/join` while you are already in a voice channel. `/leave` to disconnect.
-  - Joins with stock `discord.VoiceClient` so discord.py can finish the DAVE handshake, then decrypts inbound Opus with `davey`.
-  - Listens only to the member who last ran `/join`.
-  - Wake word required: say **Aetherion** (STT aliases like Ethereum, Iberian, Ethereon, Atherion, Aetherian, A Theory on, Athena, Thea, Iryan, Theorion, Atheorion still count).
-  - Pipeline: silence-gated PCM → xAI STT → Grok (`/v1/responses` + `web_search`) → Ara TTS back into the channel.
-  - Ignores new speech until the current reply finishes playing.
-  - Strips URLs and `[[1]](...)` citations so it does not read links out loud.
-  - Clock is injected as America/Detroit so "what time is it" is not a guess.
+### Live voice
+- `/join` while you are already in a voice channel. `/leave` to disconnect.
+- Listens to the member who last ran `/join`.
+- Wake word: say **Aetherion**, then the question, then pause.
+- Replies play back in the same channel. New speech is ignored until the current reply finishes.
 
-- **Music in the same VC (no Lavalink)**
-  - Voice: **Aetherion play Astronaut in the Ocean**, **Aetherion stop**, **Aetherion pause**.
-  - Slash: `/play query:...`, `/pause` (run again to resume), `/stop`.
-  - Resolves the first SoundCloud match (song name or a soundcloud.com link) and streams audio with ffmpeg on the existing VoiceClient.
-  - `/play` will join your current voice channel if the bot is not already there.
-  - Best results: paste a SoundCloud track URL, or say a title that exists on SoundCloud. YouTube links are not used.
+### Music (SoundCloud only)
+- Slash: `/play query:...`, `/pause`, `/stop`.
+- Voice: **Aetherion play …**, **Aetherion pause**, **Aetherion stop**.
+- Resolves a SoundCloud title or a `soundcloud.com` link and streams it with ffmpeg.
+- YouTube, YouTube Music, Mixcloud, and Audiomack links are rejected on purpose.
 
-- **Date dock**
-  - `/datechannel` (Manage Server) pins a locked voice channel that shows today's date.
-  - Renames it at 12:00 AM Eastern to `📅️ | Saturday, Sep 6th` (example).
-  - After startup it sleeps until the next midnight instead of polling every 10 minutes.
-  - Saved per guild in `data/date_channels.json`.
+### Aether Coins
+Play-money wallet in `data/ai_coins.json`. New players start with **500**. Bets and grants move in **tens**.
 
-- **Welcome banners**
-  - `/welcome` (Manage Server) sets the text channel for new-member banners.
-  - Posts when someone joins; stored per guild.
+- `/balance` — your wallet.
+- `/daily` — **500** Aether Coins once per Eastern day.
+- `/leaderboard` — top wallets on this server.
+- `/givecoins` — Ori only, 1–10,000 coins to a member.
 
-- **Direct Media Generation (Grok-native)**
-  - Image generation (`generate_image`) with Grok Imagine — supports stylized and suggestive content per Grok's model policy.
-  - Image editing (`edit_image`).
-  - Video generation (`generate_video`): text-to-video and image-to-video (toggleable).
-  - TTS audio (`generate_audio`): voices include ara, eve, rex, sal, leo. Dedicated `/audio` slash command and context menu "🔊 Leer en voz alta". Voice-channel replies use **Ara** by default.
+### Games
+- `/blackjack` — fair dealer, Hit / Stand / Double, table art, Play Again.
+  - Bet **10–1,000**.
+- `/slots` — Cosmos Wheel, Nebula, Event Horizon.
+  - Bet **100–10,000**. Corner cabinet thumbnail. Spin Again / Change Bet.
+- `/cointoss` — Heads or Tails, falling coin animation.
+  - Odds **48% / 48% / 2% side**. Side pays **2.5x**. Bet **10–10,000**.
 
-- **Discord Interaction Tools**
-  - The model controls response style via tools: `reply_to_user`, `react_to_message`, `create_thread`.
-  - On-demand Discord asset tools: `get_user_avatar` and `get_top_server_emoji`.
-  - Full support for referenced messages, reply chains, and image harvesting.
+### Server tools
+- `/reactionrole post|add|remove|list|colors` — exclusive color roles (Administrators).
+- `/welcome` — welcome-banner channel (Administrators).
+- `/datechannel` — voice channel renamed at midnight Eastern (Administrators).
+- `/purge` — delete up to 100 recent messages (Administrators).
+- `/edit` — Ori only, rewrite text Aetherion already posted.
+- `/status` — Ori only, set Aetherion's status bubble.
+- `/audio` — TTS in the current text channel. Right-click a message → Apps → **Leer en voz alta**.
+- `/ping` — alive check.
 
-- **Slash commands**
-  - `/join` / `/leave` — voice session.
-  - `/play` / `/pause` / `/stop` — music on that session.
-  - `/datechannel` — daily date dock (Manage Server).
-  - `/welcome` — welcome banner channel (Manage Server).
-  - `/audio` — generate TTS in the current text channel.
-  - `/ping` — alive check.
+## Slash command list
 
-- **xAI Authentication Options**
-  - Classic `XAI_API_KEY` (stable default).
-  - Experimental browser OAuth for SuperGrok / X Premium+ users (`--login-oauth`).
-  - `auto` mode prefers fresh OAuth tokens with seamless fallback to API key.
-  - Same bearer token used for Responses API + image/video/TTS/STT.
+| Command | Who | What |
+| --- | --- | --- |
+| `/join` `/leave` | anyone | Voice session |
+| `/play` `/pause` `/stop` | anyone | SoundCloud on that session |
+| `/blackjack` | anyone | Cards vs Aetherion |
+| `/slots` | anyone | Three machines |
+| `/cointoss` | anyone | Coin flip |
+| `/balance` `/daily` `/leaderboard` | anyone | Wallet |
+| `/givecoins` | Ori | Grant coins |
+| `/audio` | anyone | Speak text in-channel |
+| `/ping` | anyone | Awake check |
+| `/welcome` `/datechannel` `/purge` `/reactionrole` | Administrators | Server setup |
+| `/edit` `/status` | Ori | Bot text and presence |
 
-- **Independent Web Dashboard**
-  - Separate FastAPI + Jinja2 application (`docker compose up web` or uvicorn).
-  - Status & health, guilds, usage/quotas, configuration editor (safe keys only).
-  - Shares `data/` and `.env` via volumes in Docker.
+## Install and run
 
-- **Security & Operations**
-  - Guild whitelist (`ALLOWED_GUILD_IDS`) — bot ignores everything else.
-  - Per-user rate limiting (6 requests / 60s) before LLM calls.
-  - Strict activation policy in text; wake word in voice.
-  - All secrets via environment variables. OAuth tokens in `./oauth/` (gitignored).
-  - Structured logging + correlation IDs. Health snapshots feed the dashboard.
-
-- **Docker, Railway & self-hosting**
-  - Multi-stage Dockerfile (bot image + slim web dashboard image).
-  - `docker-compose.yml` with separate services and volume mounts for `data/` and `oauth/`.
-  - Railway-friendly: one service, env vars, `davey` and `yt-dlp` in requirements.
-  - `--check`, `--status`, `--auth-status`, `--test-auth` CLI commands for safe validation.
-
-## 🚀 Installation & Running
-
-### Prerequisites
+### Need
 - Python 3.11+
-- Discord Bot token (https://discord.com/developers/applications)
-- xAI authentication: an `XAI_API_KEY` (console.x.ai) **or** a SuperGrok / X Premium+ account for OAuth
-- `davey` for encrypted voice (`pip install davey` — already in project requirements)
-- `yt-dlp` for `/play` (already in project requirements)
-- ffmpeg for VC playback, music streams, and video (bundled in the Docker image)
-- (Optional) Docker or Railway for 24/7
+- Discord bot token
+- `XAI_API_KEY` (or SuperGrok / X Premium+ OAuth)
+- `davey` for encrypted voice
+- `yt-dlp` + ffmpeg for SoundCloud playback (yt-dlp is the downloader; it does **not** play YouTube here)
 
-### Quick Start (Local)
+### Local
 
 ```bash
-# 1. Clone
 git clone https://github.com/OniOrii/Aetherion-Grok-powered-AI.git
 cd Aetherion-Grok-powered-AI
-
-# 2. Create .env
 cp .env.example .env
-# Edit .env — at minimum: DISCORD_BOT_TOKEN and XAI_API_KEY
-
-# 3. Editable install + validate
+# Set DISCORD_BOT_TOKEN and XAI_API_KEY
 python -m pip install -e .
 groksito --check
-# or: python -m groksito_discord --check
-
-# 4. (Optional) OAuth instead of / in addition to API key
-groksito --login-oauth
-
-# 5. Run
 groksito
-# or: python -m groksito_discord
 ```
 
-Useful CLI flags:
-- `--check` / `--status` — validate config without connecting
-- `--auth-status`, `--test-auth` — verify xAI credentials
-- `--login-oauth`, `--logout-oauth`
+Useful flags: `--check`, `--status`, `--auth-status`, `--test-auth`, `--login-oauth`, `--logout-oauth`.
 
 ### Docker
 
@@ -140,68 +105,37 @@ Dashboard: http://localhost:8010
 
 ### Railway
 
-Point the service at this repo, set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`, keep `davey` and `yt-dlp` in the install. After each GitHub push, wait until the deployment is **Active** before testing `/join` or `/play` — an old build will not have the latest voice or music code.
+Point the service at this repo. Set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`. After a GitHub push, wait until the deployment is **Active** before testing commands.
 
-## 📖 Usage
+## Usage
 
-- Mention `@Aetherion` or reply directly to the bot → it activates in text.
-- Voice chat: join a VC, run `/join`, say **Aetherion** then the question, pause. `/leave` when done.
-- Music: `/play query: song or soundcloud url` while you are in a VC, or say **Aetherion play …**. `/pause` / `/stop` or say **Aetherion stop**.
-- `/datechannel` on a voice channel → that channel becomes the daily date dock (Eastern midnight).
-- `/welcome` on a text channel → new-member banners land there.
-- `/audio` or right-click a message → Apps → "🔊 Leer en voz alta" for TTS in-channel.
-- `/ping` to confirm the bot is awake.
+- Mention `@Aetherion` or reply to it in text.
+- Voice: join a VC, `/join`, say **Aetherion** then the question.
+- Music: `/play query: song or soundcloud url`. Do not paste a YouTube link.
+- Games: `/blackjack`, `/slots`, `/cointoss`. Claim `/daily` once a day.
+- Admins: `/welcome`, `/datechannel`, `/reactionrole colors`, `/purge`.
 
-Example interactions are natural English/Spanish conversation. The bot is intentionally low-ceremony.
+## Layout
 
-## 🏗️ Architecture & Internals
+High-level pieces under `src/groksito_discord/`:
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for component breakdown, data flow, the hybrid tool system, media stack, OAuth handling, and extension points.
+- `discord/slash_commands.py` — wires every slash module.
+- `discord/slash_blackjack.py`, `slash_slots.py`, `slash_cointoss.py` — games.
+- `discord/ai_coins.py` — wallets, daily drip, grants.
+- `discord/slash_music.py` + `media/voice_music.py` — SoundCloud only.
+- `media/voice_session.py` — DAVE decrypt, wake word, STT, TTS.
+- `discord/reaction_roles.py`, `welcome.py`, `date_dock.py` — server utilities.
+- `core/conversation.py` — when Grok answers in text.
+- `web/` — optional FastAPI dashboard.
 
-High-level pieces live under `src/groksito_discord/`:
-- `main.py` — CLI entry (`groksito` / `aetherion` console scripts).
-- `discord/client.py` — Gateway connection, slash command wiring, heartbeats, rate limits.
-- `discord/slash_commands.py` — `/join`, `/leave`, `/datechannel`, `/welcome`, `/audio`, `/ping`.
-- `discord/slash_music.py` — `/play`, `/pause`, `/stop`.
-- `discord/date_dock.py` — Eastern-midnight voice-channel rename loop.
-- `discord/welcome.py` — new-member banners.
-- `core/conversation.py` — activation policy, vision harvest, referenced-message context.
-- `llm/client.py` + `llm/llm_input.py` — Responses API orchestration and input building.
-- `llm/tools.py` + `llm/media_tools.py` — tiered custom tools and media intent gates.
-- `media/voice_session.py` / `media/voice_impl.py` — DAVE decrypt, wake word, STT, web search, Ara TTS, playback lock.
-- `media/voice_music.py` — SoundCloud resolve + ffmpeg play on the same VoiceClient.
-- `media/*_handler.py` + `media/delivery.py` — image/video/audio generation and direct delivery.
-- `discord/integrations/gamemeca.py` — optional ranking cache used internally.
-- `core/grok_oauth.py` — OAuth PKCE + token management.
-- `context/` — short-term per-channel history (`data/pantsu_context.json`; legacy filename).
-- `web/` — independent FastAPI dashboard.
+Runtime files live in `data/` (wallets, date dock, welcome channel, context). OAuth tokens live in `oauth/`. Neither folder is committed except `data/.gitkeep`.
 
-## 🛠️ Development & Configuration
+More internals: [ARCHITECTURE.md](./ARCHITECTURE.md). OAuth: [GROK_OAUTH.md](./GROK_OAUTH.md).
 
-- All runtime configuration is in `.env` (Pydantic settings).
-- Key flags: `GROK_AUTH_MODE`, `ALLOWED_GUILD_IDS`, `ENABLE_VIDEO_GENERATION`, TTS voice/language.
-- Voice needs `davey` installed in the running environment or DAVE decrypt never starts.
-- Music needs `yt-dlp` and ffmpeg in the running environment.
-- The web `/config` page edits only whitelisted safe keys and creates timestamped backups on every save.
-- Add new custom tools by extending the schemas/handlers in `llm/tools.py`.
-- Tests live in `tests/`. Run with `pytest`.
-- Full verification: `python scripts/check.py` (add `--skip-docker` to skip image builds).
-
-Never commit `.env` or `oauth/xai_oauth_tokens.json`.
-
-### Repository layout
-
-Committed project roots: `src/`, `tests/`, `web/`, `data/.gitkeep`, Docker files, and root docs (`README.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, `GROK_OAUTH.md`).
-
-- `data/` — runtime state (heartbeats, context, `date_channels.json`, welcome channel ids). Gitignored except `data/.gitkeep`.
-- `oauth/` — OAuth tokens from `--login-oauth` (gitignored).
-
-## 👍 Credits
+## Credits
 
 - Built and maintained by [@OniOrii](https://github.com/OniOrii) as **Aetherion**.
 - Started from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito-discord-bot).
 - Grok models and APIs by xAI.
 
----
-
-**Status**: Active. Self-hostable with Docker or Railway. Talks in voice and can play SoundCloud audio on the same connection.
+**Status:** Active. Self-hostable with Docker or Railway. Talks in voice, plays SoundCloud on that same connection, and runs blackjack / slots / coin toss on Aether Coins.

@@ -37,6 +37,7 @@ _Nothing waiting. New work is dated the day it ships._
 - Slot reel rows keep `|` dividers between symbols and wider row spacing.
 - `/slots` uses a **corner thumbnail** for each cabinet (Cosmos, Nebula, Event Horizon). The large full-width embed image was removed because it kept breaking.
 - Coin toss uses **8** mid-air frames.
+- README now matches live commands (games, Aether Coins, reaction roles, admin tools) and states music is SoundCloud-only.
 
 ### Fixed
 
@@ -49,6 +50,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 - The short-lived ~2% kinder payout bump on slots and blackjack.
 - Unused photo-cabinet leftovers (`cabinet_cosmos.py`, `assets/slots/*.b64`).
+- README claims that YouTube playback exists. `/play` still rejects YouTube links.
 
 ## [2026-09-12]
 
