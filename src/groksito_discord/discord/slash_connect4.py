@@ -1,6 +1,7 @@
 """Connect Four: challenge a member or play Aetherion. Aether Coin stakes."""
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 from dataclasses import dataclass, field
@@ -15,6 +16,7 @@ from .connect4_board import (
     P2,
     ROWS,
     choose_column,
+    fall_path,
     render_board_png,
 )
 
@@ -22,6 +24,8 @@ logger = logging.getLogger("aetherion.slash_connect4")
 
 DISC = {EMPTY: "\u26ab", P1: "\U0001f534", P2: "\U0001f7e1"}
 TABLE_NAME = "connect4.png"
+FALL_SLEEP = 0.20
+THINK_SLEEP = 0.65
 
 EMBED_WAIT = 0xC9A227
 EMBED_PLAY = 0x3D6B9B
@@ -61,6 +65,7 @@ class Match:
     p2_name: str
     bet: int
     vs_bot: bool = False
+    busy: bool = False
     held: bool = False
     turn: int = P1
     board: list[list[int]] = field(default_factory=lambda: [[EMPTY] * COLS for _ in range(ROWS)])
@@ -236,21 +241,67 @@ def _embed(match: Match, *, waiting: bool = False, balance: int | None = None) -
     return embed
 
 
-def _table_file(match: Match) -> discord.File | None:
+def _subtitle(match: Match, extra: str = "") -> str:
+    if extra:
+        return extra
+    if match.finished:
+        return match.reason or ""
+    if match.turn == P1:
+        return "Your move."
+    return f"{match.p2_name} is choosing a column..."
+
+
+def _table_file(
+    match: Match,
+    *,
+    falling: tuple[int, int, int] | None = None,
+    subtitle: str | None = None,
+) -> discord.File | None:
     try:
         last = None
-        if match.last_row >= 0:
+        if falling is None and match.last_row >= 0:
             last = (match.last_row, match.last_col)
         raw = render_board_png(
             match.board,
-            subtitle=match.reason or ("Your move." if match.turn == P1 else f"{match.p2_name}'s move."),
+            subtitle=_subtitle(match) if subtitle is None else subtitle,
             last=last,
             winner=match.winner if match.finished else 0,
+            falling=falling,
         )
         return discord.File(io.BytesIO(raw), filename=TABLE_NAME)
     except Exception:
         logger.exception("connect4 board render failed")
         return None
+
+
+async def _animate_fall(
+    interaction: discord.Interaction,
+    match: Match,
+    view: discord.ui.View,
+    *,
+    piece: int,
+    col: int,
+    landing_row: int,
+    caption: str,
+) -> None:
+    parked = match.board[landing_row][col]
+    match.board[landing_row][col] = EMPTY
+    path = fall_path(landing_row)
+    if not path:
+        path = [landing_row]
+    try:
+        for hover in path:
+            table = _table_file(
+                match,
+                falling=(piece, col, hover),
+                subtitle=caption,
+            )
+            embed = _embed(match, balance=ai_coins.get_balance(match.p1))
+            embed.set_footer(text=caption)
+            await _publish(interaction, embed=embed, view=view, table=table, edit=True)
+            await asyncio.sleep(FALL_SLEEP)
+    finally:
+        match.board[landing_row][col] = parked
 
 
 async def _publish(
@@ -360,16 +411,52 @@ class PlayView(discord.ui.View):
             if piece != match.turn:
                 await interaction.response.send_message("Wait for your turn.", ephemeral=True)
                 return
+            if getattr(match, "busy", False):
+                await interaction.response.send_message("Wait for the disc to land.", ephemeral=True)
+                return
             if match.drop(col, piece) is None:
                 await interaction.response.send_message("That column is full.", ephemeral=True)
                 return
+            match.busy = True
+            self._sync_columns(match)
+            for item in self.children:
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
+            land_row = match.last_row
+            land_col = match.last_col
+            who = match.name_of(piece)
+            await _animate_fall(
+                interaction,
+                match,
+                self,
+                piece=piece,
+                col=land_col,
+                landing_row=land_row,
+                caption=f"{who} drops in column {land_col + 1}.",
+            )
             _after_drop(match, piece)
             if not match.finished and match.vs_bot and match.turn == P2:
+                think = _table_file(match, subtitle="Aetherion is choosing a column...")
+                think_embed = _embed(match, balance=ai_coins.get_balance(match.p1))
+                think_embed.set_footer(text="Aetherion is choosing a column...")
+                await _publish(interaction, embed=think_embed, view=self, table=think, edit=True)
+                await asyncio.sleep(THINK_SLEEP)
                 _bot_move(match)
+                if match.last_row >= 0:
+                    await _animate_fall(
+                        interaction,
+                        match,
+                        self,
+                        piece=P2,
+                        col=match.last_col,
+                        landing_row=match.last_row,
+                        caption="Aetherion drops.",
+                    )
             next_view: discord.ui.View | None = self
             if match.finished:
                 next_view = self._end_view(match)
             else:
+                match.busy = False
                 self._sync_columns(match)
             pocket = ai_coins.get_balance(match.p1)
             table = _table_file(match)
@@ -382,6 +469,9 @@ class PlayView(discord.ui.View):
         match = self._match()
         if match is None or match.finished:
             await interaction.response.send_message("This table is already over.", ephemeral=True)
+            return
+        if getattr(match, "busy", False):
+            await interaction.response.send_message("Wait for the disc to land.", ephemeral=True)
             return
         piece = match.piece_of(interaction.user.id)
         if piece == EMPTY:
