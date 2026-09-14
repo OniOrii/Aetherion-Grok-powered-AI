@@ -193,43 +193,9 @@ def format_cells(
     rows = []
     for i, row in enumerate(grid):
         marks = [SPIN_GLYPH if spinning else table.get(s, SYMBOLS.get(s, "?")) for s in row]
-        body = "[ {} | {} | {} ]".format(*marks)
+        body = "[  {}    {}    {}  ]".format(*marks)
         if i == 1:
-            rows.append(f"{body}  `{tag}`")
+            rows.append(f"{body}   `{tag}`")
         else:
             rows.append(body)
-    return "\n".join(rows)
-
-
-def format_grid(result: SpinResult) -> str:
-    tag = f"{result.multiplier:g}x" if result.multiplier > 0 else "0x"
-    return format_cells(result.grid, tag=tag, glyphs=result.machine.glyphs)
-
-
-def spinning_cells() -> str:
-    dummy = [["coin"] * 3 for _ in range(3)]
-    return format_cells(dummy, tag="\u2026", spinning=True)
-
-
-def payouts_text(machine: Machine) -> str:
-    table = machine.glyphs or SYMBOLS
-    lines = [
-        f"{machine.emoji} **{machine.name}**",
-        machine.blurb,
-        "",
-        "Pays the middle line. Three of a kind, or any two matching.",
-        "",
-        "**Three of a kind**",
-    ]
-    order = ["coin", "star", "moon", "shard", "void", "comet"]
-    for key in order:
-        three, _pair = machine.pays[key]
-        g = table.get(key, SYMBOLS[key])
-        lines.append(f"{g} {g} {g}  \u2014  {three:g}x  ({LABELS[key]})")
-    lines.append("")
-    lines.append("**Any pair** on the middle line")
-    for key in order:
-        _three, pair = machine.pays[key]
-        g = table.get(key, SYMBOLS[key])
-        lines.append(f"{g} {g} \u00b7  \u2014  {pair:g}x")
-    return "\n".join(lines)
+    return "\n\n".join(rows)
