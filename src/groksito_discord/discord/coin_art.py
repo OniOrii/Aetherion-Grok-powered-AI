@@ -26,7 +26,7 @@ W, H = 300, 540
 COIN = 136
 FLAT = 0.58
 FLOOR = H - 28
-FLIP_SLEEP = 0.16
+FLIP_SLEEP = 0.18
 
 
 def _font(size: int) -> ImageFont.ImageFont:
@@ -184,18 +184,13 @@ def render_thumb(face: str) -> bytes:
     return buf.getvalue()
 
 
-# Mid-air only. Land pose is a separate frame in slash_cointoss.
 FLIP_BEATS: list[tuple[float, float]] = [
-    (8.0, 0.00),
-    (38.0, 0.08),
-    (72.0, 0.16),
-    (108.0, 0.24),
-    (142.0, 0.32),
-    (178.0, 0.40),
-    (214.0, 0.48),
-    (248.0, 0.56),
-    (284.0, 0.64),
-    (318.0, 0.72),
-    (352.0, 0.80),
-    (20.0, 0.88),
+    (10.0, 0.00),
+    (55.0, 0.13),
+    (100.0, 0.26),
+    (145.0, 0.39),
+    (190.0, 0.52),
+    (235.0, 0.65),
+    (280.0, 0.78),
+    (325.0, 0.90),
 ]
