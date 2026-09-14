@@ -203,6 +203,7 @@ async def _run_toss(
     _set_disabled(send_view, True)
     _busy.add(user_id)
     try:
+        result = flip(pick, bet)
         first = True
         for tilt, y_frac in FLIP_BEATS:
             frame = _toss_embed(
@@ -222,7 +223,23 @@ async def _run_toss(
             )
             first = False
             await asyncio.sleep(0.38)
-        result = flip(pick, bet)
+        land_body = "It lands on its side." if result.landed == "side" else "The Aether coin lands."
+        land = _toss_embed(
+            pocket=pocket,
+            winnings_text="Flipping\u2026",
+            body=land_body,
+            bet=bet,
+            color=EMBED_FLIP,
+        )
+        await _publish(
+            interaction,
+            embed=land,
+            view=send_view,
+            as_edit=True,
+            image=_png(IMAGE_NAME, render_result(result.landed)),
+            thumb=None,
+        )
+        await asyncio.sleep(0.5)
         ok, balance, err = ai_coins.resolve_wager(
             user_id, result.bet, result.winnings, min_bet=TOSS_MIN_BET, max_bet=TOSS_MAX_BET
         )
