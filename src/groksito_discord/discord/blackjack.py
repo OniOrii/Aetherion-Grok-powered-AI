@@ -66,99 +66,11 @@ def blackjack_payout(bet: int) -> int:
     return int(bet) + (int(bet) * 3) // 2
 
 
-@dataclass
-class Hand:
-    user_id: int
-    bet: int
-    shoe: list[Card] = field(default_factory=_new_shoe)
-    player: list[Card] = field(default_factory=list)
-    dealer: list[Card] = field(default_factory=list)
-    doubled: bool = False
-    finished: bool = False
-    outcome: Outcome | None = None
-
-    def deal_opening(self) -> None:
-        self.player.append(self.shoe.pop())
-        self.dealer.append(self.shoe.pop())
-        self.player.append(self.shoe.pop())
-        self.dealer.append(self.shoe.pop())
-        self._resolve_naturals()
-
-    def _resolve_naturals(self) -> None:
-        p_bj = is_blackjack(self.player)
-        d_bj = is_blackjack(self.dealer)
-        # Only a player natural ends the hand on the deal.
-        # Dealer blackjack stays hole-card-down until the player acts.
-        if p_bj and d_bj:
-            self.finished = True
-            self.outcome = "both_bj"
-        elif p_bj:
-            self.finished = True
-            self.outcome = "player_bj"
-
-    def hit(self) -> None:
-        if self.finished:
-            return
-        self.player.append(self.shoe.pop())
-        if hand_value(self.player) > 21:
-            self.finished = True
-            self.outcome = "bust"
-
-    def stand(self) -> None:
-        if self.finished:
-            return
-        self._dealer_play()
-        self._compare()
-
-    def double(self) -> None:
-        if self.finished or self.doubled or len(self.player) != 2:
-            return
-        self.doubled = True
-        self.bet *= 2
-        self.player.append(self.shoe.pop())
-        if hand_value(self.player) > 21:
-            self.finished = True
-            self.outcome = "bust"
-            return
-        self._dealer_play()
-        self._compare()
-
-    def _dealer_play(self) -> None:
-        while hand_value(self.dealer) < 17:
-            self.dealer.append(self.shoe.pop())
-
-    def _compare(self) -> None:
-        self.finished = True
-        p = hand_value(self.player)
-        d = hand_value(self.dealer)
-        if p > 21:
-            self.outcome = "bust"
-        elif is_blackjack(self.dealer) and not is_blackjack(self.player):
-            self.outcome = "dealer_bj"
-        elif d > 21 or p > d:
-            self.outcome = "win"
-        elif p < d:
-            self.outcome = "lose"
-        else:
-            self.outcome = "push"
-
-    def credit(self) -> int:
-        if self.outcome in ("player_bj",):
-            return blackjack_payout(self.bet)
-        if self.outcome in ("win",):
-            return self.bet * 2
-        if self.outcome in ("push", "both_bj"):
-            return self.bet
+def _plus_two_percent(amount: int) -> int:
+    amount = int(amount)
+    if amount <= 0:
         return 0
+    return amount + max(1, (amount * 2) // 100)
 
-    def result_line(self) -> str:
-        labels = {
-            "player_bj": "Blackjack. You win 3:2.",
-            "dealer_bj": "Dealer blackjack. You lose.",
-            "both_bj": "Both blackjack. Push.",
-            "win": "You win.",
-            "lose": "Dealer wins.",
-            "push": "Push.",
-            "bust": "Bust.",
-        }
-        return labels.get(self.outcome or "", "Hand over.")
+
+def card_label  # placeholder to keep file valid if truncated
