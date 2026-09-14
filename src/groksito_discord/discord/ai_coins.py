@@ -23,16 +23,28 @@ logger = logging.getLogger("aetherion.ai_coins")
 
 EASTERN = ZoneInfo("America/Detroit")
 STARTING_BALANCE = 500
-DAILY_DRIP = 25
-MIN_BET = 1
+DAILY_DRIP = 20
+STEP = 10
+MIN_BET = 10
 DEFAULT_BET = 10
 MAX_BET = 1000
-MIN_GRANT = 1
+MIN_GRANT = 10
 MAX_GRANT = 10000
 CURRENCY = "Aether Coins"
 CURRENCY_ONE = "Aether Coin"
 
 _lock = threading.Lock()
+
+
+def amount_error(amount: int, min_v: int, max_v: int, word: str = "Bet") -> str:
+    amount = int(amount)
+    if amount % STEP:
+        return f"{word}s go by {STEP}s."
+    if amount < min_v:
+        return f"Minimum {word.lower()} is {min_v} Aether Coins."
+    if amount > max_v:
+        return f"Maximum {word.lower()} is {max_v} Aether Coins."
+    return ""
 
 
 def _store_path() -> Path:
@@ -142,10 +154,9 @@ def claim_daily(user_id: int) -> tuple[int, int, bool]:
 
 def hold_bet(user_id: int, amount: int) -> tuple[bool, int, str]:
     amount = int(amount)
-    if amount < MIN_BET:
-        return False, 0, f"Minimum bet is {MIN_BET} Aether Coin."
-    if amount > MAX_BET:
-        return False, 0, f"Maximum bet is {MAX_BET} Aether Coins."
+    err = amount_error(amount, MIN_BET, MAX_BET)
+    if err:
+        return False, 0, err
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
@@ -192,8 +203,9 @@ def settle_hand(user_id: int, credit: int) -> int:
 
 def grant_coins(user_id: int, amount: int) -> tuple[bool, int, str]:
     amount = int(amount)
-    if amount < MIN_GRANT or amount > MAX_GRANT:
-        return False, 0, f"Grant must be {MIN_GRANT}\u2013{MAX_GRANT} Aether Coins."
+    err = amount_error(amount, MIN_GRANT, MAX_GRANT, word="Grant")
+    if err:
+        return False, 0, err
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
@@ -239,10 +251,9 @@ def resolve_wager(
 ) -> tuple[bool, int, str]:
     stake = int(stake)
     payout = max(0, int(payout))
-    if stake < min_bet:
-        return False, 0, f"Minimum bet is {min_bet} Aether Coins."
-    if stake > max_bet:
-        return False, 0, f"Maximum bet is {max_bet} Aether Coins."
+    err = amount_error(stake, min_bet, max_bet)
+    if err:
+        return False, 0, err
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
