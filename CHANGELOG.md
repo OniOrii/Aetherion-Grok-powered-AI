@@ -35,8 +35,8 @@ _Nothing waiting. New work is dated the day it ships._
 - `/cointoss` uses a smaller coin that falls the full frame. Odds are **48% heads / 48% tails / 2% side**.
 - Coin toss background is a sharp starfield with no planet. Side landings use their own standing-rim frame after the flip.
 - Slot reel rows keep `|` dividers between symbols and wider row spacing.
-- Each cabinet portrait is a real 3-reel machine with that cabinet's icons (Cosmos planet/star/coin, Nebula crystal/orb, Event Horizon hole/moon/swirl).
-- Slots cabinet thumbnail stays put after the first attach so the corner image does not flicker on every embed edit.
+- `/slots` uses a **full-width embed image** for the cabinet (no tiny corner thumb). Each machine has its own art: Cosmos, Nebula, Event Horizon.
+- Machine titles read `✦ Name ✦`. Cabinets paint a detailed Aether Coin mark (reeded disc + four-point star) on both sides of the nameplate.
 - Coin toss uses **8** mid-air frames.
 
 ### Fixed
