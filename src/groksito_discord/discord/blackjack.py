@@ -66,13 +66,6 @@ def blackjack_payout(bet: int) -> int:
     return int(bet) + (int(bet) * 3) // 2
 
 
-def _plus_two_percent(amount: int) -> int:
-    amount = int(amount)
-    if amount <= 0:
-        return 0
-    return amount + max(1, (amount * 2) // 100)
-
-
 @dataclass
 class Hand:
     user_id: int
@@ -94,8 +87,6 @@ class Hand:
     def _resolve_naturals(self) -> None:
         p_bj = is_blackjack(self.player)
         d_bj = is_blackjack(self.dealer)
-        # Only a player natural ends the hand on the deal.
-        # Dealer blackjack stays hole-card-down until the player acts.
         if p_bj and d_bj:
             self.finished = True
             self.outcome = "both_bj"
@@ -151,9 +142,9 @@ class Hand:
 
     def credit(self) -> int:
         if self.outcome in ("player_bj",):
-            return _plus_two_percent(blackjack_payout(self.bet))
+            return blackjack_payout(self.bet)
         if self.outcome in ("win",):
-            return _plus_two_percent(self.bet * 2)
+            return self.bet * 2
         if self.outcome in ("push", "both_bj"):
             return self.bet
         return 0
