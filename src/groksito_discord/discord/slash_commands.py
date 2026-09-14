@@ -24,6 +24,7 @@ from .slash_status import register_status
 from .slash_blackjack import register_blackjack
 from .slash_slots import register_slots
 from .slash_cointoss import register_cointoss
+from .slash_help import register_help
 
 logger = logging.getLogger("aetherion.slash")
 
@@ -40,6 +41,7 @@ def is_guild_allowed(guild_id):
 
 def register(tree, client) -> None:
     from .client import rate_limiter
+    register_help(tree, is_guild_allowed)
     register_music(tree, is_guild_allowed)
     register_purge(tree, is_guild_allowed)
     register_reactionrole(tree, is_guild_allowed)
@@ -192,7 +194,7 @@ def register(tree, client) -> None:
             text=final_text, voice=selected_voice, language=selected_lang, request_id=request_id
         )
         if result and "SUCCESS" in result:
-            style_note = f" \u00b7 estilo **{selected_style}**" if selected_style else ""
+            style_note = f" · estilo **{selected_style}**" if selected_style else ""
             await interaction.followup.send(
                 f"Audio generado con la voz **{selected_voice}**{style_note} y enviado al canal.",
                 ephemeral=True,
