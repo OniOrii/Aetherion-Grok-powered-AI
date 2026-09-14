@@ -21,6 +21,7 @@ _Nothing waiting. New work is dated the day it ships._
 - `/slots` — Cosmos Wheel, Nebula, Event Horizon. Bet 100–10,000. Same wallet as blackjack.
 - `/leaderboard` and Ori-only `/givecoins`.
 - Blackjack table art and Ori-only `/edit`.
+- Blackjack **Play Again** + **Change Bet** after each hand (same last stake, no retyping `/blackjack`).
 
 ### Changed
 
@@ -32,6 +33,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 - Dealer blackjack no longer ends the hand on the deal.
 - Reaction roles survive a Railway/Docker restart that wipes the save file.
+- `/slots` cabinet thumbnail now draws a real PNG instead of a broken JPEG.
 
 ## [2026-09-12]
 

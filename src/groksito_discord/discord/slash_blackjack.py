@@ -14,6 +14,7 @@ from groksito_discord.llm.persona import creator_is_author
 logger = logging.getLogger("aetherion.slash_blackjack")
 
 _games: dict[int, Hand] = {}
+_last_bet: dict[int, int] = {}
 
 
 def has_live_hand(user_id: int) -> bool:
@@ -84,6 +85,90 @@ def _attach_image(embed: discord.Embed, table: discord.File | None) -> discord.E
     return embed
 
 
+async def _publish(
+    interaction: discord.Interaction,
+    *,
+    embed: discord.Embed,
+    view: discord.ui.View | None,
+    table: discord.File | None,
+    edit: bool,
+    content: str | None = None,
+) -> discord.Message | None:
+    kwargs: dict = {"embed": embed, "view": view, "content": content}
+    if not interaction.response.is_done():
+        if edit:
+            if table is not None:
+                kwargs["attachments"] = [table]
+            await interaction.response.edit_message(**kwargs)
+        else:
+            if table is not None:
+                kwargs["file"] = table
+            await interaction.response.send_message(**kwargs)
+        try:
+            return await interaction.original_response()
+        except Exception:
+            return None
+    if table is not None:
+        kwargs["attachments"] = [table]
+    await interaction.edit_original_response(**kwargs)
+    try:
+        return await interaction.original_response()
+    except Exception:
+        return None
+
+
+class BetModal(discord.ui.Modal, title="Change bet"):
+    amount = discord.ui.TextInput(
+        label="Aether Coins",
+        placeholder=f"{ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}",
+        required=True,
+        max_length=5,
+    )
+
+    def __init__(self, user_id: int):
+        super().__init__()
+        self.user_id = user_id
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        raw = str(self.amount.value or "").replace(",", "").strip()
+        try:
+            bet = int(raw)
+        except ValueError:
+            await interaction.response.send_message("Bet has to be a whole number.", ephemeral=True)
+            return
+        if bet < ai_coins.MIN_BET or bet > ai_coins.MAX_BET:
+            await interaction.response.send_message(
+                f"Bet must be {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET} Aether Coins.",
+                ephemeral=True,
+            )
+            return
+        _last_bet[self.user_id] = bet
+        await interaction.response.send_message(
+            f"Next hand is **{bet} Aether Coins**.", ephemeral=True
+        )
+
+
+class ReplayView(discord.ui.View):
+    def __init__(self, user_id: int):
+        super().__init__(timeout=180)
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("This is not your table.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="Play Again", style=discord.ButtonStyle.primary)
+    async def play_again(self, interaction: discord.Interaction, button: discord.ui.Button):
+        bet = int(_last_bet.get(self.user_id) or ai_coins.DEFAULT_BET)
+        await _start_hand(interaction, user_id=self.user_id, bet=bet, edit=True)
+
+    @discord.ui.button(label="Change Bet", style=discord.ButtonStyle.secondary)
+    async def change_bet(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(BetModal(self.user_id))
+
+
 class BlackjackView(discord.ui.View):
     def __init__(self, user_id: int, can_double: bool):
         super().__init__(timeout=180)
@@ -109,13 +194,14 @@ class BlackjackView(discord.ui.View):
         try:
             hand.stand()
             balance = ai_coins.settle_hand(self.user_id, hand.credit())
+            _last_bet[self.user_id] = hand.bet
             _games.pop(self.user_id, None)
             if self.message is not None:
                 table = _table_file(hand, reveal=True)
                 embed = _attach_image(_embed_for(hand, balance=balance, reveal=True), table)
                 kwargs = {
                     "embed": embed,
-                    "view": None,
+                    "view": ReplayView(self.user_id),
                     "content": "Hand timed out. Stood automatically.",
                 }
                 if table is not None:
@@ -159,22 +245,89 @@ async def _act(interaction: discord.Interaction, view: BlackjackView, action: st
     reveal = hand.finished
     if hand.finished:
         balance = ai_coins.settle_hand(view.user_id, hand.credit())
+        _last_bet[view.user_id] = hand.bet if not hand.doubled else hand.bet // 2
+        # Keep the original stake for Play Again, not the doubled one.
+        if hand.doubled:
+            _last_bet[view.user_id] = max(ai_coins.MIN_BET, hand.bet // 2)
+        else:
+            _last_bet[view.user_id] = hand.bet
         _games.pop(view.user_id, None)
         view.stop()
-        view_to_send = None
+        next_view: discord.ui.View | None = ReplayView(view.user_id)
     else:
         balance = ai_coins.get_balance(view.user_id)
         for item in view.children:
             if isinstance(item, discord.ui.Button) and item.custom_id == "bj_double":
                 item.disabled = True
-        view_to_send = view
+        next_view = view
 
     table = _table_file(hand, reveal=reveal)
     embed = _attach_image(_embed_for(hand, balance=balance, reveal=reveal), table)
-    kwargs = {"embed": embed, "view": view_to_send}
-    if table is not None:
-        kwargs["attachments"] = [table]
-    await interaction.response.edit_message(**kwargs)
+    await _publish(interaction, embed=embed, view=next_view, table=table, edit=True)
+
+
+async def _start_hand(
+    interaction: discord.Interaction,
+    *,
+    user_id: int,
+    bet: int,
+    edit: bool,
+) -> None:
+    if has_live_hand(user_id):
+        msg = "Finish the hand already on the table first."
+        if interaction.response.is_done():
+            await interaction.followup.send(msg, ephemeral=True)
+        else:
+            await interaction.response.send_message(msg, ephemeral=True)
+        return
+
+    _games.pop(user_id, None)
+    refunded = ai_coins.refund_stale_pending(user_id)
+    ok, _remaining, err = ai_coins.hold_bet(user_id, bet)
+    if not ok:
+        if interaction.response.is_done():
+            await interaction.followup.send(err, ephemeral=True)
+        else:
+            await interaction.response.send_message(err, ephemeral=True)
+        return
+
+    _last_bet[user_id] = int(bet)
+    hand = Hand(user_id=user_id, bet=int(bet))
+    hand.deal_opening()
+    note = (
+        f"Returned {refunded} Aether Coins from a hand that died in a restart."
+        if refunded
+        else None
+    )
+
+    if hand.finished:
+        pocket = ai_coins.settle_hand(user_id, hand.credit())
+        table = _table_file(hand, reveal=True)
+        embed = _attach_image(_embed_for(hand, balance=pocket, reveal=True), table)
+        message = await _publish(
+            interaction,
+            embed=embed,
+            view=ReplayView(user_id),
+            table=table,
+            edit=edit,
+            content=note,
+        )
+        return
+
+    _games[user_id] = hand
+    pocket = ai_coins.get_balance(user_id)
+    view = BlackjackView(user_id, can_double=_can_double(hand, pocket))
+    table = _table_file(hand, reveal=False)
+    embed = _attach_image(_embed_for(hand, balance=pocket, reveal=False), table)
+    message = await _publish(
+        interaction,
+        embed=embed,
+        view=view,
+        table=table,
+        edit=edit,
+        content=note,
+    )
+    view.message = message
 
 
 def register_blackjack(tree, is_guild_allowed) -> None:
@@ -191,50 +344,9 @@ def register_blackjack(tree, is_guild_allowed) -> None:
             return
 
         user_id = interaction.user.id
-        if user_id in _games and not _games[user_id].finished:
-            await interaction.response.send_message(
-                "Finish the hand already on the table first.", ephemeral=True
-            )
-            return
-        _games.pop(user_id, None)
-        refunded = ai_coins.refund_stale_pending(user_id)
-
-        ok, _remaining, err = ai_coins.hold_bet(user_id, bet)
-        if not ok:
-            await interaction.response.send_message(err, ephemeral=True)
-            return
-
-        hand = Hand(user_id=user_id, bet=int(bet))
-        hand.deal_opening()
-        pocket = ai_coins.get_balance(user_id)
-        note = (
-            f"Returned {refunded} Aether Coins from a hand that died in a restart."
-            if refunded
-            else None
-        )
-
-        if hand.finished:
-            pocket = ai_coins.settle_hand(user_id, hand.credit())
-            table = _table_file(hand, reveal=True)
-            embed = _attach_image(_embed_for(hand, balance=pocket, reveal=True), table)
-            kwargs = {"content": note, "embed": embed}
-            if table is not None:
-                kwargs["file"] = table
-            await interaction.response.send_message(**kwargs)
-            return
-
-        _games[user_id] = hand
-        view = BlackjackView(user_id, can_double=_can_double(hand, pocket))
-        table = _table_file(hand, reveal=False)
-        embed = _attach_image(_embed_for(hand, balance=pocket, reveal=False), table)
-        kwargs = {"content": note, "embed": embed, "view": view}
-        if table is not None:
-            kwargs["file"] = table
-        await interaction.response.send_message(**kwargs)
-        try:
-            view.message = await interaction.original_response()
-        except Exception:
-            logger.exception("blackjack failed to capture table message user=%s", user_id)
+        if bet == ai_coins.DEFAULT_BET and user_id in _last_bet:
+            bet = int(_last_bet[user_id])
+        await _start_hand(interaction, user_id=user_id, bet=int(bet), edit=False)
 
     @tree.command(name="balance", description="See your Aether Coin wallet")
     async def balance_slash(interaction: discord.Interaction):
