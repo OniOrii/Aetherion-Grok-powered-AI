@@ -152,7 +152,8 @@ def render_table_png(
     actor_id: int | None = None,
     reveal: bool = False,
 ) -> bytes:
-    width, height = 980, 720
+    width, height = 980, 760
+    caption_h = 82
     img = _space_field(width, height)
     d = ImageDraw.Draw(img)
     d.rounded_rectangle((10, 10, width - 11, height - 11), radius=30, outline=GOLD_DIM, width=2)
@@ -181,8 +182,8 @@ def render_table_png(
     slots = (
         (16, 34),
         (width - 16 - SEAT_W, 34),
-        (16, height - 16 - SEAT_H),
-        (width - 16 - SEAT_W, height - 16 - SEAT_H),
+        (16, height - caption_h - 10 - SEAT_H),
+        (width - 16 - SEAT_W, height - caption_h - 10 - SEAT_H),
     )
     for i, seat in enumerate(seats[:4]):
         sx, sy = slots[i]
@@ -214,9 +215,34 @@ def render_table_png(
         _paste_cards(img, cx, sy + 56, backs=0 if show else 2, faces=hole if show else [], w=SEAT_CARD_W, h=SEAT_CARD_H)
 
     if subtitle:
-        text = str(subtitle)[:72]
-        d.rounded_rectangle((70, height - 58, width - 70, height - 16), radius=12, fill=(8, 10, 18), outline=GOLD_DIM, width=1)
-        d.text((width // 2, height - 37), text, font=_font(22), fill=GOLD, anchor="mm")
+        font = _font(18)
+        box_l, box_r = 48, width - 48
+        max_w = box_r - box_l - 28
+        words = str(subtitle).split()
+        lines, cur = [], ""
+        for word in words:
+            trial = (cur + " " + word).strip()
+            if d.textlength(trial, font=font) <= max_w:
+                cur = trial
+            else:
+                if cur:
+                    lines.append(cur)
+                cur = word
+        if cur:
+            lines.append(cur)
+        if len(lines) > 2:
+            extra = " ".join(lines[1:])
+            while extra and d.textlength(extra + "\u2026", font=font) > max_w:
+                extra = extra[:-1].rstrip()
+            lines = [lines[0], (extra + "\u2026") if extra else lines[1][:40] + "\u2026"]
+        bar_top = height - caption_h + 8
+        d.rounded_rectangle((box_l, bar_top, box_r, height - 16), radius=14, fill=(8, 10, 18), outline=GOLD_DIM, width=1)
+        mid = bar_top + ((height - 16) - bar_top) // 2
+        if len(lines) == 1:
+            d.text((width // 2, mid), lines[0], font=font, fill=GOLD, anchor="mm")
+        else:
+            d.text((width // 2, mid - 12), lines[0], font=font, fill=GOLD, anchor="mm")
+            d.text((width // 2, mid + 12), lines[1], font=font, fill=GOLD, anchor="mm")
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
     return buf.getvalue()
