@@ -71,6 +71,11 @@ def _finish(match, *, winner: int = 0, reason: str = "") -> None:
     _settle(match)
     c4._last_bet[match.p1] = match.bet
     _unbind(match)
+    try:
+        from ..context.embed_text import remember_connect4
+        remember_connect4(match)
+    except Exception:
+        c4.logger.debug("connect4 memory skip", exc_info=True)
 
 
 def _after_drop(match, piece: int) -> None:
