@@ -214,7 +214,9 @@ def render_table_png(
         _paste_cards(img, cx, sy + 56, backs=0 if show else 2, faces=hole if show else [], w=SEAT_CARD_W, h=SEAT_CARD_H)
 
     if subtitle:
-        d.text((width // 2, height - 28), subtitle[:64], font=_font(15), fill=GOLD, anchor="mm")
+        text = str(subtitle)[:72]
+        d.rounded_rectangle((70, height - 58, width - 70, height - 16), radius=12, fill=(8, 10, 18), outline=GOLD_DIM, width=1)
+        d.text((width // 2, height - 37), text, font=_font(22), fill=GOLD, anchor="mm")
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
     return buf.getvalue()
