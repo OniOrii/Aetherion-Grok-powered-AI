@@ -84,30 +84,38 @@ async def _send_start_holes(interaction, table):
             continue
         try:
             raw = render_hole_png(seat.hole)
-            file = discord.File(io.BytesIO(raw), filename=HOLE_NAME)
-            embed = discord.Embed(title="Your hole cards", description="  ".join(_card_label(c) for c in seat.hole), color=EMBED_PLAY)
-            embed.set_image(url=f"attachment://{HOLE_NAME}")
+            labels = "  ".join(_card_label(c) for c in seat.hole)
             if seat.user_id == interaction.user.id:
+                file = discord.File(io.BytesIO(raw), filename=HOLE_NAME)
+                embed = discord.Embed(title="Your hole cards", description=labels, color=EMBED_PLAY)
+                embed.set_image(url=f"attachment://{HOLE_NAME}")
                 await interaction.followup.send(content="Only you can see this.", embed=embed, file=file, ephemeral=True)
                 continue
-            user = interaction.guild.get_member(seat.user_id) if interaction.guild else None
+            user = None
+            if interaction.guild is not None:
+                user = interaction.guild.get_member(seat.user_id)
             if user is None:
                 user = interaction.client.get_user(seat.user_id)
             if user is None:
                 try:
                     user = await interaction.client.fetch_user(seat.user_id)
                 except Exception:
+                    logger.info("poker hole user missing id=%s", seat.user_id)
                     continue
+            file = discord.File(io.BytesIO(raw), filename=HOLE_NAME)
+            embed = discord.Embed(title="Your hole cards", description=labels, color=EMBED_PLAY)
+            embed.set_image(url=f"attachment://{HOLE_NAME}")
             try:
-                await user.send(content="Your Aetherion hole cards. Keep them private.", embed=embed, file=file)
+                dm = user.dm_channel or await user.create_dm()
+                await dm.send(content="Your Aetherion hole cards. Keep them private.", embed=embed, file=file)
             except Exception:
-                logger.info("poker hole DM blocked user=%s use My cards", seat.user_id)
+                logger.info("poker hole DM blocked user=%s — use My cards", seat.user_id)
         except Exception:
             logger.exception("poker hole card send failed user=%s", seat.user_id)
 
 async def _reveal_runout(interaction, table, view):
     while _needs_board_run(table):
-        await asyncio.sleep(0.9)
+        await asyncio.sleep(1.2)
         if table.street == "river":
             _showdown(table)
             break
@@ -217,7 +225,8 @@ class LobbyView(discord.ui.View):
             play.message = None
         await _send_start_holes(interaction, table)
         await _run_bots(interaction, table, play)
-        await _reveal_runout(interaction, table, play)
+        if not table.finished:
+            await _reveal_runout(interaction, table, play)
         if table.finished:
             await _publish(interaction, embed=_embed(table), view=ReplayView(table.host_id), table=_table_file(table), edit=True)
         else:
