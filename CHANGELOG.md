@@ -21,6 +21,7 @@ _Nothing waiting. New work is dated the day it ships._
 ### Fixed
 
 - Replies to Aetherion now read the message that was replied to, including Connect Four embeds and other game boards, plus recent chat with that user.
+- Connect Four no longer flickers the whole board on each drop. The painted table is cached, only the falling chip is drawn, and Discord keeps one connect4.gif attachment instead of swapping GIF then PNG every turn.
 
 ## [2026-09-14]
 
