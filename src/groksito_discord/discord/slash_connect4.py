@@ -190,7 +190,7 @@ def _after_drop(match: Match, piece: int) -> None:
         _finish(
             match,
             winner=piece,
-            reason=f"{match.name_of(piece)} connects four and takes {match.bet * 2} Aether Coins.",
+            reason=f"{match.name_of(piece)} connects four and takes {ai_coins.coins(match.bet * 2)}.",
         )
     elif match.is_full():
         _finish(match, winner=0, reason="Draw. Stakes returned.")
@@ -233,9 +233,9 @@ def _embed(match: Match, *, waiting: bool = False, balance: int | None = None) -
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name=f"{DISC[P1]} Red", value=match.p1_name, inline=True)
     embed.add_field(name=f"{DISC[P2]} Gold", value=match.p2_name, inline=True)
-    embed.add_field(name="Pot" if not match.vs_bot else "Stake", value=f"{pot} Aether Coins", inline=True)
+    embed.add_field(name="Pot" if not match.vs_bot else "Stake", value=ai_coins.coins(f"**{pot:,}**"), inline=True)
     if balance is not None:
-        embed.add_field(name="Wallet", value=f"{balance} Aether Coins", inline=True)
+        embed.add_field(name="Wallet", value=ai_coins.coins(f"**{balance:,}**"), inline=True)
     embed.set_image(url=f"attachment://{TABLE_NAME}")
     embed.set_footer(text=status)
     return embed
@@ -697,12 +697,12 @@ def register_connect4(tree, is_guild_allowed) -> None:
         p2_bal = ai_coins.get_balance(opponent.id)
         if bet > p1_bal:
             await interaction.response.send_message(
-                f"You only have {p1_bal} Aether Coins.", ephemeral=True
+                f"You only have {ai_coins.coins(p1_bal)}.", ephemeral=True
             )
             return
         if bet > p2_bal:
             await interaction.response.send_message(
-                f"**{opponent.display_name}** only has {p2_bal} Aether Coins.", ephemeral=True
+                f"**{opponent.display_name}** only has {ai_coins.coins(p2_bal)}.", ephemeral=True
             )
             return
 
@@ -727,6 +727,6 @@ def register_connect4(tree, is_guild_allowed) -> None:
             view=view,
             table=table,
             edit=False,
-            content=f"{opponent.mention} \u2014 **{challenger.display_name}** wants Connect Four for **{bet}** Aether Coins each.",
+            content=f"{opponent.mention} \u2014 **{challenger.display_name}** wants Connect Four for {ai_coins.coins(f'**{bet:,}**')} each.",
         )
         view.message = message
