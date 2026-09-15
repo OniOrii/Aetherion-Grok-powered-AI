@@ -27,10 +27,12 @@ _Nothing waiting. New work is dated the day it ships._
 ### Changed
 
 - Poker table uses a felt oval, wider seats, and hole cards that sit side by side instead of overlapping.
+- `/poker` Raise opens a box so you type the amount. End of hand names the winner, the hand, both hole cards, and stacks.
 
 ### Fixed
 
 - `/poker` no longer posts 10/10 blinds on a 10-coin buy-in. That all-inned both seats and made every button say you cannot act.
+- `/poker` no longer leaves the last call line on the winner screen.
 
 ## [2026-09-13]
 
