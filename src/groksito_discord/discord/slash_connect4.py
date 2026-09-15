@@ -1,14 +1,9 @@
 """Connect Four: challenge a member or play Aetherion. Aether Coin stakes."""
 from __future__ import annotations
 
-import asyncio
-import io
 import logging
 from dataclasses import dataclass, field
 
-import discord
-
-from . import ai_coins
 from .connect4_board import (
     COLS,
     EMPTY,
@@ -16,8 +11,6 @@ from .connect4_board import (
     P2,
     ROWS,
     choose_column,
-    render_fall_gif,
-    render_still_gif,
 )
 
 logger = logging.getLogger("aetherion.slash_connect4")
@@ -120,3 +113,29 @@ class Match:
                 if r + 3 < ROWS and c - 3 >= 0 and all(b[r + i][c - i] == piece for i in range(4)):
                     return True
         return False
+
+
+from .slash_connect4_flow import (  # noqa: E402
+    _after_drop,
+    _animate_fall,
+    _bind,
+    _bot_move,
+    _embed,
+    _finish,
+    _hold_start,
+    _publish,
+    _settle,
+    _subtitle,
+    _table_file,
+    _unbind,
+)
+from .slash_connect4_views import PlayView, ReplayView  # noqa: E402
+from .slash_connect4_reg import register_connect4  # noqa: E402
+
+__all__ = [
+    "Match",
+    "PlayView",
+    "ReplayView",
+    "register_connect4",
+    "choose_column",
+]
