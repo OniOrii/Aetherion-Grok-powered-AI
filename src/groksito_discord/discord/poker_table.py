@@ -25,14 +25,14 @@ RANK_SYM = {1: "A", 11: "J", 12: "Q", 13: "K", 14: "A"}
 
 CARD_W = 62
 CARD_H = 88
-SEAT_CARD_W = 84
-SEAT_CARD_H = 118
+SEAT_CARD_W = 104
+SEAT_CARD_H = 146
 HOLE_W = 118
 HOLE_H = 164
 RADIUS = 11
 GAP = 8
-SEAT_W = 252
-SEAT_H = 182
+SEAT_W = 268
+SEAT_H = 214
 
 _FONT_CANDIDATES = (
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -168,7 +168,7 @@ def render_table_png(
 
     board_w = 5 * CARD_W + 4 * GAP
     bx = (width - board_w) // 2
-    by = 312
+    by = 322
     d.rounded_rectangle((bx - 22, by - 22, bx + board_w + 14, by + CARD_H + 22), radius=18, outline=GOLD, width=2)
     d.text((width // 2, by - 10), "BOARD", font=_font(12), fill=GOLD_DIM, anchor="mm")
     for i in range(5):
@@ -179,10 +179,10 @@ def render_table_png(
             img.paste(face, (x, by), face)
 
     slots = (
-        (18, 44),
-        (width - 18 - SEAT_W, 44),
-        (18, height - 18 - SEAT_H),
-        (width - 18 - SEAT_W, height - 18 - SEAT_H),
+        (16, 34),
+        (width - 16 - SEAT_W, 34),
+        (16, height - 16 - SEAT_H),
+        (width - 16 - SEAT_W, height - 16 - SEAT_H),
     )
     for i, seat in enumerate(seats[:4]):
         sx, sy = slots[i]
@@ -211,7 +211,7 @@ def render_table_png(
         show = reveal and hole and not seat.get("folded")
         pair_w = SEAT_CARD_W * 2 + GAP
         cx = sx + (SEAT_W - pair_w) // 2
-        _paste_cards(img, cx, sy + 54, backs=0 if show else 2, faces=hole if show else [], w=SEAT_CARD_W, h=SEAT_CARD_H)
+        _paste_cards(img, cx, sy + 56, backs=0 if show else 2, faces=hole if show else [], w=SEAT_CARD_W, h=SEAT_CARD_H)
 
     if subtitle:
         d.text((width // 2, height - 28), subtitle[:64], font=_font(15), fill=GOLD, anchor="mm")
