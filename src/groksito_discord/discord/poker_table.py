@@ -25,12 +25,14 @@ RANK_SYM = {1: "A", 11: "J", 12: "Q", 13: "K", 14: "A"}
 
 CARD_W = 62
 CARD_H = 88
+SEAT_CARD_W = 84
+SEAT_CARD_H = 118
 HOLE_W = 118
 HOLE_H = 164
 RADIUS = 11
 GAP = 8
-SEAT_W = 220
-SEAT_H = 156
+SEAT_W = 252
+SEAT_H = 182
 
 _FONT_CANDIDATES = (
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -79,10 +81,11 @@ def _card_face(rank: int, suit: str, w: int = CARD_W, h: int = CARD_H) -> Image.
     _rounded(d, (1, 1, w - 2, h - 2), RADIUS, CREAM, outline=(214, 206, 188), width=2)
     color = RED if suit in ("H", "D") else BLACK
     face = RANK_SYM.get(rank, str(rank))
-    d.text((9, 5), face, font=_font(18), fill=color, anchor="lt")
-    _draw_suit(d, 14, 36, 7, suit, color)
-    _draw_suit(d, w // 2, h // 2 + 6, 18, suit, color)
-    d.text((w - 9, h - 7), face, font=_font(18), fill=color, anchor="rb")
+    rs = 18 if w <= 70 else 24
+    d.text((9, 5), face, font=_font(rs), fill=color, anchor="lt")
+    _draw_suit(d, 14, 36 if w <= 70 else 42, 7 if w <= 70 else 10, suit, color)
+    _draw_suit(d, w // 2, h // 2 + 6, 18 if w <= 70 else 24, suit, color)
+    d.text((w - 9, h - 7), face, font=_font(rs), fill=color, anchor="rb")
     return img
 
 
@@ -107,15 +110,17 @@ def _shadow(card: Image.Image) -> Image.Image:
     return base
 
 
-def _paste_cards(img: Image.Image, x: int, y: int, *, backs: int = 0, faces=None) -> None:
+def _paste_cards(img: Image.Image, x: int, y: int, *, backs: int = 0, faces=None, w: int | None = None, h: int | None = None) -> None:
     faces = list(faces or [])
+    w = CARD_W if w is None else w
+    h = CARD_H if h is None else h
     total = max(backs, len(faces), 1)
-    step = CARD_W + GAP
+    step = w + GAP
     for i in range(total):
         if i < len(faces) and faces[i] is not None:
-            face = _card_face(*faces[i])
+            face = _card_face(*faces[i], w, h)
         else:
-            face = _card_back()
+            face = _card_back(w, h)
         stamped = _shadow(face)
         img.paste(stamped, (x + i * step, y), stamped)
 
@@ -174,10 +179,10 @@ def render_table_png(
             img.paste(face, (x, by), face)
 
     slots = (
-        (24, 62),
-        (width - 24 - SEAT_W, 62),
-        (24, height - 24 - SEAT_H),
-        (width - 24 - SEAT_W, height - 24 - SEAT_H),
+        (18, 44),
+        (width - 18 - SEAT_W, 44),
+        (18, height - 18 - SEAT_H),
+        (width - 18 - SEAT_W, height - 18 - SEAT_H),
     )
     for i, seat in enumerate(seats[:4]):
         sx, sy = slots[i]
@@ -204,9 +209,9 @@ def render_table_png(
             d.text((sx + SEAT_W - 16, sy + 34), f"bet {bet}", font=_font(13), fill=GOLD, anchor="rt")
         hole = list(seat.get("hole") or [])
         show = reveal and hole and not seat.get("folded")
-        pair_w = CARD_W * 2 + GAP
+        pair_w = SEAT_CARD_W * 2 + GAP
         cx = sx + (SEAT_W - pair_w) // 2
-        _paste_cards(img, cx, sy + 58, backs=0 if show else 2, faces=hole if show else [])
+        _paste_cards(img, cx, sy + 54, backs=0 if show else 2, faces=hole if show else [], w=SEAT_CARD_W, h=SEAT_CARD_H)
 
     if subtitle:
         d.text((width // 2, height - 28), subtitle[:64], font=_font(15), fill=GOLD, anchor="mm")
