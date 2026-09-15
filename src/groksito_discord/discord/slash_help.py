@@ -16,10 +16,10 @@ PAGES = ("overview", "chat", "voice", "games", "coins", "server")
 def _embed(page: str) -> discord.Embed:
     key = page if page in PAGES else "overview"
     embed = discord.Embed(color=HELP_COLOR)
-    embed.set_footer(text="Aetherion \u00b7 pick a topic below or run /help topic:")
+    embed.set_footer(text="\u2726 Aetherion \u00b7 pick a topic below, or run /help topic:")
 
     if key == "chat":
-        embed.title = "Aetherion \u00b7 Chat"
+        embed.title = "\u2726 Aetherion \u00b7 Chat"
         embed.description = (
             "Aetherion is Grok in Discord. Mention **@Aetherion** or reply to it.\n\n"
             "It can read pictures you attach, search the web, and generate or edit images. "
@@ -31,7 +31,7 @@ def _embed(page: str) -> discord.Embed:
         return embed
 
     if key == "voice":
-        embed.title = "Aetherion \u00b7 Voice & music"
+        embed.title = "\u2726 Aetherion \u00b7 Voice & music"
         embed.description = (
             "Join a voice channel first, then run `/join`. `/leave` disconnects.\n\n"
             "Aetherion listens to the person who last used `/join`. "
@@ -45,7 +45,7 @@ def _embed(page: str) -> discord.Embed:
         return embed
 
     if key == "games":
-        embed.title = "Aetherion \u00b7 Games"
+        embed.title = "\u2726 Aetherion \u00b7 Games"
         embed.description = (
             "Play-money only. Same **Aether Coins** wallet for every game.\n\n"
             f"`/blackjack` \u2014 fair dealer. Hit, Stand, Double. Bet {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}.\n"
@@ -60,7 +60,7 @@ def _embed(page: str) -> discord.Embed:
         return embed
 
     if key == "coins":
-        embed.title = "Aetherion \u00b7 Aether Coins"
+        embed.title = "\u2726 Aetherion \u00b7 Aether Coins"
         embed.description = (
             "Play-money. No cash-out. Bets and grants move in tens.\n\n"
             f"New players start with **{ai_coins.STARTING_BALANCE}** Aether Coins.\n"
@@ -74,7 +74,7 @@ def _embed(page: str) -> discord.Embed:
         return embed
 
     if key == "server":
-        embed.title = "Aetherion \u00b7 Server tools"
+        embed.title = "\u2726 Aetherion \u00b7 Server tools"
         embed.description = (
             "Administrators:\n"
             "`/reactionrole colors` \u2014 post the color-role panel.\n"
@@ -87,13 +87,13 @@ def _embed(page: str) -> discord.Embed:
         )
         return embed
 
-    embed.title = "Aetherion \u00b7 Help"
+    embed.title = "\u2726 Aetherion \u00b7 Help"
     embed.description = (
         "Grok in Discord \u2014 chat, vision, live voice, SoundCloud, and Aether Coin games.\n"
         "Mention **@Aetherion** or reply to it. Use the menu for a topic."
     )
     embed.add_field(
-        name="Talk & voice",
+        name="\U0001F399\ufe0f  Talk & voice",
         value=(
             "`/join` `/leave` \u2014 voice chat\n"
             "`/play` `/pause` `/stop` \u2014 SoundCloud\n"
@@ -102,7 +102,7 @@ def _embed(page: str) -> discord.Embed:
         inline=True,
     )
     embed.add_field(
-        name="Games & coins",
+        name="\u2726  Games & coins",
         value=(
             "`/blackjack` `/slots` `/cointoss` `/connect4` `/poker`\n"
             "`/balance` `/daily` `/leaderboard`"
@@ -110,7 +110,7 @@ def _embed(page: str) -> discord.Embed:
         inline=True,
     )
     embed.add_field(
-        name="Server",
+        name="\U0001F6E1\ufe0f  Server",
         value=(
             "`/reactionrole` color roles\n"
             "`/welcome` `/datechannel` `/purge`"
@@ -162,7 +162,7 @@ class HelpView(discord.ui.View):
 
 
 def register_help(tree, is_guild_allowed) -> None:
-    @tree.command(name="help", description="How Aetherion works, and every command")
+    @tree.command(name="help", description="How Aetherion works, and every command.")
     @discord.app_commands.describe(topic="Jump straight to a help page")
     @discord.app_commands.choices(
         topic=[
