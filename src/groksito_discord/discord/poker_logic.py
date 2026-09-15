@@ -439,35 +439,71 @@ def _apply_action(table, seat, action, raise_to=None):
     seat.acted = True
     return f"{seat.name} checks."
 
+def _made_rank(hole, board):
+    """Pair or better from this seat only. 0 = high card."""
+    if not hole:
+        return 0
+    if len(board) < 3:
+        return 1 if hole[0][0] == hole[1][0] else 0
+    return int(best_hand(hole, board)[0])
+
+
+def _raise_commits(table, seat):
+    """True when a normal raise would put this seat all-in."""
+    to_call = max(0, table.current_bet - seat.bet)
+    if seat.stack <= to_call:
+        return True
+    min_to, max_to = _raise_bounds(table, seat)
+    step = _raise_step(table.buyin)
+    pot_raise = table.current_bet + max(step, (table.pot // 10) * 10 or step)
+    target = max(min_to, min(max_to, pot_raise))
+    return (target - seat.bet) >= seat.stack or target >= max_to
+
+
 def _bot_action(table, seat):
     """Act from this seat's hole cards + the board. Opponent hole cards stay hidden."""
     to_call = max(0, table.current_bet - seat.bet)
     strength = _strength(seat.hole, table.board)
+    made = _made_rank(seat.hole, table.board)
+    drawing = bool(table.board) and _draw_bonus(seat.hole, table.board) >= 0.10
     pot_odds = (to_call / (table.pot + to_call)) if to_call else 0.0
     roll = _rng.random()
     stack = max(1, seat.stack)
     commit = to_call / stack
+    shove = _raise_commits(table, seat)
+    pair_plus = made >= 1
+    two_plus = made >= 2
+    monster = made >= 3 or strength >= 0.78
+    preflop = len(table.board) < 3
+    premium_pre = preflop and strength >= 0.72
+
     if to_call == 0:
-        if strength >= 0.68 and roll < 0.80:
-            return "raise"
-        if strength >= 0.46 and roll < 0.48:
-            return "raise"
-        if strength <= 0.28 and roll < 0.14:
+        if monster or two_plus or premium_pre:
+            if shove and not (monster or premium_pre or two_plus):
+                return "check"
+            return "raise" if roll < 0.82 else "check"
+        if pair_plus and strength >= 0.48 and not shove:
+            return "raise" if roll < 0.45 else "check"
+        if not shove and strength <= 0.26 and roll < 0.08:
             return "raise"
         return "check"
-    if strength < 0.20 and commit > 0.28 and roll < 0.86:
+
+    calling_allin = to_call >= stack * 0.85
+    if calling_allin or shove:
+        if monster or two_plus or premium_pre:
+            return "call"
+        if pair_plus and strength >= 0.58:
+            return "call"
         return "fold"
-    if strength < 0.26 and commit > 0.55:
+    if not pair_plus and not drawing and not preflop and commit > 0.18:
         return "fold"
-    if strength >= 0.72 and seat.stack > to_call and roll < 0.70:
+    if not pair_plus and preflop and strength < 0.40 and commit > 0.25:
+        return "fold"
+    if strength < 0.22 and commit > 0.22:
+        return "fold"
+    if (monster or two_plus) and roll < 0.55:
         return "raise"
-    if strength >= 0.52 and seat.stack > to_call and roll < 0.34:
-        return "raise"
-    if strength <= 0.30 and commit < 0.22 and roll < 0.12:
-        return "raise"
-    if strength + 0.12 >= pot_odds or strength >= 0.38 or commit <= 0.16:
-        return "call"
-    if roll < 0.18 and strength >= 0.24:
+    if pair_plus or drawing or strength >= 0.42 or commit <= 0.12:
         return "call"
     return "fold"
 
