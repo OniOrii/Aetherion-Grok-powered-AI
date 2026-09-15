@@ -119,6 +119,7 @@ async def _run_bots(interaction, table, view):
         _after_action(table)
         if not table.finished:
             table.reason = line
+        await _publish(interaction, embed=_embed(table), view=view, table=_table_file(table), edit=True)
 
 class RaiseModal(discord.ui.Modal, title="Raise"):
     def __init__(self, view, min_to, max_to):
@@ -300,6 +301,15 @@ class PlayView(discord.ui.View):
             await _ack(interaction)
             table.reason = _apply_action(table, seat, action, raise_to=raise_to)
             _after_action(table)
+            view = self
+            if table.finished:
+                self.stop()
+                replay = ReplayView(table.host_id)
+                replay.message = self.message
+                view = replay
+            await _publish(interaction, embed=_embed(table), view=view, table=_table_file(table), edit=True)
+            if table.finished:
+                return
             await _run_bots(interaction, table, self)
             if _needs_board_run(table):
                 await _reveal_runout(interaction, table, self)
