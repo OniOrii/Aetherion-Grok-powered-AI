@@ -28,7 +28,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 - Poker table uses a felt oval, wider seats, and hole cards that sit side by side instead of overlapping.
 - `/poker` Raise opens a box so you type the amount. End of hand names the winner, the hand, both hole cards, and stacks.
-- Poker seat hole cards are larger. Community cards stay the same size so they do not overlap.
+- Poker seat hole cards are larger again so they read at a glance. Community cards stay the same size so they do not overlap.
 
 ### Fixed
 
