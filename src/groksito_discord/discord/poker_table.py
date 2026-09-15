@@ -23,14 +23,14 @@ MUTED = (170, 176, 188)
 SUIT_SYM = {"S": "\u2660", "H": "\u2665", "D": "\u2666", "C": "\u2663"}
 RANK_SYM = {1: "A", 11: "J", 12: "Q", 13: "K", 14: "A"}
 
-CARD_W = 74
-CARD_H = 104
+CARD_W = 62
+CARD_H = 88
 HOLE_W = 118
 HOLE_H = 164
 RADIUS = 11
-GAP = 12
-SEAT_W = 268
-SEAT_H = 188
+GAP = 8
+SEAT_W = 220
+SEAT_H = 156
 
 _FONT_CANDIDATES = (
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -147,37 +147,37 @@ def render_table_png(
     actor_id: int | None = None,
     reveal: bool = False,
 ) -> bytes:
-    width, height = 980, 700
+    width, height = 980, 720
     img = _space_field(width, height)
     d = ImageDraw.Draw(img)
     d.rounded_rectangle((10, 10, width - 11, height - 11), radius=30, outline=GOLD_DIM, width=2)
     d.rounded_rectangle((16, 16, width - 17, height - 17), radius=26, outline=(80, 70, 40), width=1)
-    d.text((width // 2, 36), "AETHERION  \u00b7  TEXAS HOLD'EM", font=_font(22), fill=GOLD, anchor="mm")
-    d.text((width // 2, 62), f"{street.upper()}   \u00b7   POT  {pot}", font=_font(16), fill=CREAM, anchor="mm")
+    d.text((width // 2, 28), "AETHERION  \u00b7  TEXAS HOLD'EM", font=_font(20), fill=GOLD, anchor="mm")
+    d.text((width // 2, 50), f"{street.upper()}   \u00b7   POT  {pot}", font=_font(15), fill=CREAM, anchor="mm")
 
     felt = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     fd = ImageDraw.Draw(felt)
-    fd.ellipse((90, 150, width - 90, height - 150), fill=FELT, outline=GOLD_DIM, width=2)
+    fd.ellipse((120, 190, width - 120, height - 190), fill=FELT, outline=GOLD_DIM, width=2)
     img = Image.alpha_composite(img.convert("RGBA"), felt).convert("RGB")
     d = ImageDraw.Draw(img)
 
     board_w = 5 * CARD_W + 4 * GAP
     bx = (width - board_w) // 2
-    by = 268
-    d.rounded_rectangle((bx - 22, by - 20, bx + board_w + 14, by + CARD_H + 26), radius=18, outline=GOLD, width=2)
-    d.text((width // 2, by - 8), "BOARD", font=_font(12), fill=GOLD_DIM, anchor="mm")
+    by = 312
+    d.rounded_rectangle((bx - 22, by - 22, bx + board_w + 14, by + CARD_H + 22), radius=18, outline=GOLD, width=2)
+    d.text((width // 2, by - 10), "BOARD", font=_font(12), fill=GOLD_DIM, anchor="mm")
     for i in range(5):
+        x = bx + i * (CARD_W + GAP)
+        d.rounded_rectangle((x, by, x + CARD_W, by + CARD_H), radius=8, outline=GOLD_DIM, width=1)
         if i < len(board):
             face = _shadow(_card_face(*board[i]))
-        else:
-            face = _shadow(_card_back())
-        img.paste(face, (bx + i * (CARD_W + GAP), by), face)
+            img.paste(face, (x, by), face)
 
     slots = (
-        (36, 86),
-        (width - 36 - SEAT_W, 86),
-        (36, height - 36 - SEAT_H),
-        (width - 36 - SEAT_W, height - 36 - SEAT_H),
+        (24, 62),
+        (width - 24 - SEAT_W, 62),
+        (24, height - 24 - SEAT_H),
+        (width - 24 - SEAT_W, height - 24 - SEAT_H),
     )
     for i, seat in enumerate(seats[:4]):
         sx, sy = slots[i]
