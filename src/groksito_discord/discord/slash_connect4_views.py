@@ -77,6 +77,13 @@ class PlayView(discord.ui.View):
             return ReplayView(match.p1)
         return self
 
+    async def _show_finished(self, interaction: discord.Interaction, match) -> None:
+        next_view = self._end_view(match)
+        pocket = ai_coins.get_balance(match.p1)
+        embed = flow._embed(match, balance=pocket)
+        table = flow._table_file(match)
+        await flow._publish(interaction, embed=embed, view=next_view, table=table, edit=True)
+
     def _make_drop(self, col: int):
         async def drop(interaction: discord.Interaction) -> None:
             match = self._match()
@@ -94,7 +101,6 @@ class PlayView(discord.ui.View):
                 await interaction.response.send_message("That column is full.", ephemeral=True)
                 return
             match.busy = True
-            self._sync_columns(match)
             for item in self.children:
                 if isinstance(item, discord.ui.Button):
                     item.disabled = True
@@ -111,32 +117,31 @@ class PlayView(discord.ui.View):
                 caption=f"{who} drops in column {land_col + 1}.",
             )
             flow._after_drop(match, piece)
-            if not match.finished and match.vs_bot and match.turn == c4.P2:
-                think_embed = flow._embed(match, balance=ai_coins.get_balance(match.p1))
-                think_embed.set_footer(text="Aetherion is choosing a column...")
-                await flow._publish(interaction, embed=think_embed, view=self, table=None, edit=True)
+            if match.finished:
+                await self._show_finished(interaction, match)
+                return
+            if match.vs_bot and match.turn == c4.P2:
                 await asyncio.sleep(c4.THINK_SLEEP)
                 flow._bot_move(match)
                 if match.last_row >= 0:
+                    if not match.finished:
+                        match.busy = False
+                        self._sync_columns(match)
                     await flow._animate_fall(
                         interaction,
                         match,
-                        self,
+                        self if not match.finished else self._end_view(match),
                         piece=c4.P2,
                         col=match.last_col,
                         landing_row=match.last_row,
                         caption="Aetherion drops.",
                     )
-            next_view = self
-            if match.finished:
-                next_view = self._end_view(match)
-            else:
-                match.busy = False
-                self._sync_columns(match)
-            pocket = ai_coins.get_balance(match.p1)
-            embed = flow._embed(match, balance=pocket)
-            table = flow._table_file(match) if match.finished else None
-            await flow._publish(interaction, embed=embed, view=next_view, table=table, edit=True)
+                if match.finished:
+                    await self._show_finished(interaction, match)
+                    return
+                return
+            match.busy = False
+            self._sync_columns(match)
         return drop
 
     async def _forfeit(self, interaction: discord.Interaction) -> None:
