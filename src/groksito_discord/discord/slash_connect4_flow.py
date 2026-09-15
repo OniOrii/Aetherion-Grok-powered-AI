@@ -105,22 +105,22 @@ def _embed(match, *, waiting: bool = False, balance: int | None = None) -> disco
     pot = match.bet if match.vs_bot else match.bet * 2
     if waiting:
         color = c4.EMBED_WAIT
-        title = "Connect Four \u00b7 challenge"
+        title = "\u2726 Connect Four \u00b7 Challenge"
         status = f"{match.p2_name} \u2014 Accept or Decline."
     elif match.finished:
         if match.winner:
             color = c4.EMBED_WIN if match.winner == c4.P1 else c4.EMBED_DEAD
-            title = "Connect Four \u00b7 four in a row"
+            title = "\u2726 Connect Four \u00b7 Four in a row"
         elif match.reason and "Draw" not in match.reason:
             color = c4.EMBED_DEAD
-            title = "Connect Four \u00b7 over"
+            title = "\u2726 Connect Four \u00b7 Over"
         else:
             color = c4.EMBED_DRAW
-            title = "Connect Four \u00b7 draw"
+            title = "\u2726 Connect Four \u00b7 Draw"
         status = match.reason
     else:
         color = c4.EMBED_PLAY
-        title = "Connect Four"
+        title = "\u2726 Connect Four"
         status = f"{c4.DISC[match.turn]} {match.name_of(match.turn)} to drop."
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name=f"{c4.DISC[c4.P1]} Red", value=match.p1_name, inline=True)
