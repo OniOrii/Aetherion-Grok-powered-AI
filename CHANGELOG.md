@@ -33,6 +33,8 @@ _Nothing waiting. New work is dated the day it ships._
 
 - `/poker` no longer posts 10/10 blinds on a 10-coin buy-in. That all-inned both seats and made every button say you cannot act.
 - `/poker` no longer leaves the last call line on the winner screen.
+- `/poker` Deal no longer shows every seat's hole cards to the host. Each player taps **My cards** for their own hand.
+- `/poker` no longer ends the hand after one call round. Flop, turn, and river each get their own betting round unless everyone is all-in.
 
 ## [2026-09-13]
 
