@@ -152,9 +152,10 @@ def claim_daily(user_id: int) -> tuple[int, int, bool]:
         return int(row["balance"]), DAILY_DRIP, False
 
 
-def hold_bet(user_id: int, amount: int) -> tuple[bool, int, str]:
+def hold_bet(user_id: int, amount: int, *, max_bet: int | None = None) -> tuple[bool, int, str]:
     amount = int(amount)
-    err = amount_error(amount, MIN_BET, MAX_BET)
+    cap = MAX_BET if max_bet is None else int(max_bet)
+    err = amount_error(amount, MIN_BET, cap)
     if err:
         return False, 0, err
     with _lock:
