@@ -138,10 +138,12 @@ class PlayView(discord.ui.View):
                     )
                 if match.finished:
                     await self._show_finished(interaction, match)
-                    return
                 return
             match.busy = False
             self._sync_columns(match)
+            pocket = ai_coins.get_balance(match.p1)
+            embed = flow._embed(match, balance=pocket)
+            await flow._publish(interaction, embed=embed, view=self, table=None, edit=True)
         return drop
 
     async def _forfeit(self, interaction: discord.Interaction) -> None:
