@@ -32,6 +32,13 @@ MIN_GRANT = 10
 MAX_GRANT = 10000
 CURRENCY = "Aether Coins"
 CURRENCY_ONE = "Aether Coin"
+SYMBOL = "\u2726"
+
+
+def coins(amount: int | str) -> str:
+    """Same mark slots uses next to an Aether Coin amount."""
+    return f"{SYMBOL} {amount}"
+
 
 _lock = threading.Lock()
 
