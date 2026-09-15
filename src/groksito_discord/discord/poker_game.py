@@ -54,29 +54,47 @@ def _table_file(table, subtitle=""):
         logger.exception("poker table render failed")
         return None
 
+async def _ack(interaction):
+    if interaction is None or interaction.response.is_done():
+        return
+    try:
+        await interaction.response.defer()
+    except Exception:
+        pass
+
 async def _publish(interaction, *, embed, view, table=None, edit=True, ephemeral=False):
     kwargs = {"embed": embed, "view": view}
-    if not interaction.response.is_done():
-        if table is not None:
-            if edit:
-                kwargs["attachments"] = [table]
-            else:
-                kwargs["file"] = table
+    if table is not None:
         if edit:
-            await interaction.response.edit_message(**kwargs)
+            kwargs["attachments"] = [table]
         else:
-            await interaction.response.send_message(**kwargs, ephemeral=ephemeral)
+            kwargs["file"] = table
+    message = getattr(view, "message", None) if view is not None else None
+    if edit and message is not None:
+        try:
+            await message.edit(embed=embed, view=view, attachments=[table] if table is not None else [])
+            await _ack(interaction)
+            return message
+        except Exception:
+            logger.exception("poker table message edit failed")
+    try:
+        if interaction is None:
+            return message
+        if not interaction.response.is_done():
+            if edit:
+                await interaction.response.edit_message(**{k: v for k, v in kwargs.items() if k != "file"})
+            else:
+                await interaction.response.send_message(**kwargs, ephemeral=ephemeral)
+        else:
+            await interaction.edit_original_response(embed=embed, view=view, attachments=[table] if table is not None else [])
         try:
             return await interaction.original_response()
         except Exception:
-            return None
-    if table is not None:
-        kwargs["attachments"] = [table]
-    await interaction.edit_original_response(**kwargs)
-    try:
-        return await interaction.original_response()
+            return message
     except Exception:
-        return None
+        logger.exception("poker publish failed")
+        await _ack(interaction)
+        return message
 
 async def _reveal_runout(interaction, table, view):
     while _needs_board_run(table):
@@ -183,16 +201,19 @@ class LobbyView(discord.ui.View):
             return
         _deal_holes(table)
         play = PlayView(table.id)
+        play.message = self.message
         await _publish(interaction, embed=_embed(table), view=play, table=_table_file(table, "Tap My cards for your hand."), edit=True)
         try:
-            play.message = await interaction.original_response()
+            play.message = await interaction.original_response() or play.message
         except Exception:
-            play.message = None
+            pass
         await _run_bots(interaction, table, play)
         if not table.finished:
             await _reveal_runout(interaction, table, play)
         if table.finished:
-            await _publish(interaction, embed=_embed(table), view=ReplayView(table.host_id), table=_table_file(table), edit=True)
+            replay = ReplayView(table.host_id)
+            replay.message = play.message
+            await _publish(interaction, embed=_embed(table), view=replay, table=_table_file(table), edit=True)
         else:
             await _publish(interaction, embed=_embed(table), view=play, table=_table_file(table), edit=True)
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
@@ -229,6 +250,7 @@ class ReplayView(discord.ui.View):
     def __init__(self, user_id):
         super().__init__(timeout=180)
         self.user_id = user_id
+        self.message = None
     async def interaction_check(self, interaction):
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("This table is not yours.", ephemeral=True)
@@ -274,16 +296,24 @@ class PlayView(discord.ui.View):
             await interaction.response.send_message("Wait for your turn.", ephemeral=True)
             return
         table.busy = True
-        table.reason = _apply_action(table, seat, action, raise_to=raise_to)
-        _after_action(table)
-        await _run_bots(interaction, table, self)
-        await _reveal_runout(interaction, table, self)
-        table.busy = False
-        view = self
-        if table.finished:
-            self.stop()
-            view = ReplayView(table.host_id)
-        await _publish(interaction, embed=_embed(table), view=view, table=_table_file(table), edit=True)
+        try:
+            await _ack(interaction)
+            table.reason = _apply_action(table, seat, action, raise_to=raise_to)
+            _after_action(table)
+            await _run_bots(interaction, table, self)
+            if _needs_board_run(table):
+                await _reveal_runout(interaction, table, self)
+            view = self
+            if table.finished:
+                self.stop()
+                replay = ReplayView(table.host_id)
+                replay.message = self.message
+                view = replay
+            await _publish(interaction, embed=_embed(table), view=view, table=_table_file(table), edit=True)
+        except Exception:
+            logger.exception("poker act failed action=%s user=%s", action, interaction.user.id)
+        finally:
+            table.busy = False
     @discord.ui.button(label="Fold", style=discord.ButtonStyle.danger, row=0)
     async def fold(self, interaction, button):
         await self._act(interaction, "fold")
