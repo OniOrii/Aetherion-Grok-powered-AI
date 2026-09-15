@@ -18,6 +18,7 @@ EMBED_WAIT = 0xC9A227
 EMBED_PLAY = 0x3D6B9B
 EMBED_WIN = 0x3D9B64
 EMBED_DEAD = 0xC45C4A
+DEFAULT_BUYIN = 200
 RANKS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 SUITS = ["S", "H", "D", "C"]
 RANK_SYM = {11: "J", 12: "Q", 13: "K", 14: "A"}
@@ -102,7 +103,17 @@ def _strength(hole, board):
     return min(0.99, 0.08 + score[0] / 8 * 0.82 + (score[1] if len(score) > 1 else 0) / 140)
 
 def _blinds(buyin):
-    return (0, 0) if buyin < 40 else (10, 20)
+    """Small / big blind. Tiny buy-ins stay blindless so 10-coin tables do not all-in on the post."""
+    if buyin < 40:
+        return (0, 0)
+    sb = 20 if buyin >= 80 else 10
+    scaled = (buyin // 20 // 10) * 10
+    if scaled >= 20:
+        sb = scaled
+    bb = sb * 2
+    if bb >= buyin:
+        return (10, 20)
+    return (sb, bb)
 
 def _raise_step(buyin):
     return _blinds(buyin)[1] or 10
@@ -349,7 +360,11 @@ def _apply_action(table, seat, action, raise_to=None):
         return f"{seat.name} calls {pay}." if pay else f"{seat.name} checks."
     if action == "raise":
         min_to, max_to = _raise_bounds(table, seat)
-        target = raise_to if raise_to is not None else min_to
+        if raise_to is None:
+            pot_size = table.current_bet + max(_raise_step(table.buyin), (table.pot // 10) * 10 or _raise_step(table.buyin))
+            target = max(min_to, min(max_to, pot_size))
+        else:
+            target = raise_to
         target = max(10, (int(target) // 10) * 10)
         target = max(min_to, min(max_to, target))
         need = target - seat.bet
@@ -386,19 +401,25 @@ def _bot_action(table, seat):
     strength = _strength(seat.hole, table.board)
     pot_odds = (to_call / (table.pot + to_call)) if to_call else 0.0
     roll = _rng.random()
+    stack = max(1, seat.stack)
+    commit = to_call / stack
     if to_call == 0:
-        if strength > 0.74 and roll < 0.42:
+        if strength >= 0.55 and roll < 0.72:
             return "raise"
-        if strength < 0.30 and roll < 0.10:
+        if strength >= 0.36 and roll < 0.45:
+            return "raise"
+        if roll < 0.20:
             return "raise"
         return "check"
-    if strength < 0.20 and to_call > max(20, seat.stack // 3):
+    if strength < 0.16 and commit > 0.40 and roll < 0.80:
         return "fold"
-    if strength > 0.80 and seat.stack > to_call and roll < 0.38:
+    if strength >= 0.58 and seat.stack > to_call and roll < 0.58:
         return "raise"
-    if strength + 0.10 >= pot_odds or strength > 0.40:
+    if strength >= 0.42 and seat.stack > to_call and roll < 0.30:
+        return "raise"
+    if strength + 0.16 >= pot_odds or strength >= 0.30 or commit <= 0.22:
         return "call"
-    if roll < 0.12 and strength > 0.22:
+    if roll < 0.28:
         return "call"
     return "fold"
 
