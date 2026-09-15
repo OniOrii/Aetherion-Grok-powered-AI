@@ -28,13 +28,15 @@ _Nothing waiting. New work is dated the day it ships._
 
 - Poker table uses a felt oval, wider seats, and hole cards that sit side by side instead of overlapping.
 - `/poker` Raise opens a box so you type the amount. End of hand names the winner, the hand, both hole cards, and stacks.
+- Poker seat hole cards are larger. Community cards stay the same size so they do not overlap.
 
 ### Fixed
 
 - `/poker` no longer posts 10/10 blinds on a 10-coin buy-in. That all-inned both seats and made every button say you cannot act.
 - `/poker` no longer leaves the last call line on the winner screen.
-- `/poker` Deal no longer shows every seat's hole cards to the host. Each player taps **My cards** for their own hand.
+- `/poker` Deal no longer shows every seat's hole cards to the host. Each other player is DMed their own hand. My cards stays as backup.
 - `/poker` no longer ends the hand after one call round. Flop, turn, and river each get their own betting round unless everyone is all-in.
+- `/poker` all-in pots now flip flop, turn, and river one street at a time instead of jumping straight to the winner.
 
 ## [2026-09-13]
 
