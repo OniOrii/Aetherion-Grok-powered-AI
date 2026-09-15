@@ -35,10 +35,10 @@ def _embed(table, *, waiting=False):
     embed = discord.Embed(title=title, color=color)
     if table.finished and status:
         embed.description = status
-    names = "\n".join(f"{'\u00b7 ' if (not table.finished and i == table.actor and table.street != 'lobby') else ''}{s.name} \u2014 {s.stack}" for i, s in enumerate(table.seats)) or "Empty"
+    names = "\n".join(f"{'\u00b7 ' if (not table.finished and i == table.actor and table.street != 'lobby') else ''}{s.name} \u2014 {ai_coins.coins(s.stack)}" for i, s in enumerate(table.seats)) or "Empty"
     embed.add_field(name=f"Seats {len(table.seats)}/{MAX_SEATS}", value=names, inline=True)
-    embed.add_field(name="Buy-in", value=f"{table.buyin} Aether Coins", inline=True)
-    embed.add_field(name="Pot", value=f"{table.pot} Aether Coins", inline=True)
+    embed.add_field(name="Buy-in", value=ai_coins.coins(f"**{table.buyin:,}**"), inline=True)
+    embed.add_field(name="Pot", value=ai_coins.coins(f"**{table.pot:,}**"), inline=True)
     embed.set_image(url=f"attachment://{TABLE_NAME}")
     embed.set_footer(text=status)
     return embed
