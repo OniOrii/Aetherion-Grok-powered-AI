@@ -44,3 +44,8 @@ def bind_persona() -> None:
         llm_input.SYSTEM_PROMPT = prompt_builder.SYSTEM_PROMPT
     except Exception:
         pass
+    try:
+        from ..context.embed_text import patch_runtime_hooks
+        patch_runtime_hooks()
+    except Exception:
+        pass
