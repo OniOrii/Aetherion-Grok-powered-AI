@@ -11,6 +11,12 @@ Older packaged history stays under version headings. Aetherion work from Septemb
 
 _Nothing waiting. New work is dated the day it ships._
 
+## [2026-09-15]
+
+### Changed
+
+- Poker caption bar sits below the bottom hands. Winner text wraps onto two lines instead of running off the bar.
+
 ## [2026-09-14]
 
 ### Added
