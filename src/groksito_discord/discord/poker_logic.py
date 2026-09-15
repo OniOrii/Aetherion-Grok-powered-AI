@@ -13,7 +13,7 @@ BOT_NAME = "Aetherion"
 MAX_SEATS = 4
 TABLE_NAME = "poker.png"
 HOLE_NAME = "hole.png"
-THINK_SLEEP = 0.7
+THINK_SLEEP = 0.35
 EMBED_WAIT = 0xC9A227
 EMBED_PLAY = 0x3D6B9B
 EMBED_WIN = 0x3D9B64
@@ -88,19 +88,62 @@ def best_hand(hole, board):
         return _hand_score((pool + [(0, "S")] * 5)[:5])
     return max(_hand_score(combo) for combo in combinations(pool, 5))
 
+def _preflop_strength(hole):
+    """Only the two hole cards. No opponent cards."""
+    a, b = hole[0][0], hole[1][0]
+    hi, lo = max(a, b), min(a, b)
+    suited = hole[0][1] == hole[1][1]
+    if a == b:
+        return min(0.97, 0.52 + (hi - 2) / 12 * 0.45)
+    score = (hi - 2) / 12 * 0.40 + (lo - 2) / 12 * 0.16
+    if suited:
+        score += 0.08
+    gap = hi - lo
+    if gap == 1:
+        score += 0.07
+    elif gap == 2:
+        score += 0.03
+    elif gap >= 5:
+        score -= 0.07
+    if hi == 14 and lo >= 10:
+        score += 0.10
+    if hi == 14 and lo >= 13:
+        score += 0.06
+    return max(0.06, min(0.92, score))
+
+
+def _draw_bonus(hole, board):
+    """Flush / straight draws from hole + board only."""
+    pool = list(hole) + list(board)
+    suits = {}
+    for _r, s in pool:
+        suits[s] = suits.get(s, 0) + 1
+    bonus = 0.0
+    hole_suits = {hole[0][1], hole[1][1]}
+    for s, n in suits.items():
+        if n == 4 and s in hole_suits:
+            bonus += 0.12
+    ranks = sorted({c[0] for c in pool})
+    if 14 in ranks:
+        ranks = [1] + ranks
+    for start in range(1, 11):
+        window = range(start, start + 5)
+        have = sum(1 for r in window if r in ranks)
+        if have == 4:
+            bonus += 0.08
+            break
+    return min(0.18, bonus)
+
+
 def _strength(hole, board):
+    """How good this seat's cards look. Never uses another seat's hole cards."""
     if not hole:
         return 0.0
     if len(board) < 3:
-        a, b = hole[0][0], hole[1][0]
-        hi, lo = max(a, b), min(a, b)
-        pair = 0.62 if a == b else 0.0
-        suited = 0.08 if hole[0][1] == hole[1][1] else 0.0
-        connected = 0.06 if abs(a - b) in (1, 2) else 0.0
-        high = (hi - 2) / 12 * 0.38
-        return min(0.96, pair + suited + connected + high + (0.04 if lo >= 10 else 0))
+        return _preflop_strength(hole)
     score = best_hand(hole, board)
-    return min(0.99, 0.08 + score[0] / 8 * 0.82 + (score[1] if len(score) > 1 else 0) / 140)
+    made = min(0.96, 0.10 + score[0] / 8 * 0.78 + (score[1] if len(score) > 1 else 0) / 160)
+    return min(0.98, made + _draw_bonus(hole, board))
 
 def _blinds(buyin):
     """Small / big blind. Tiny buy-ins stay blindless so 10-coin tables do not all-in on the post."""
@@ -324,7 +367,7 @@ def _showdown(table):
     others = [s for s in ranked if s not in winners]
     beaten = ""
     if others:
-        beaten = " Beat " + " · ".join(f"{s.name} {_hole_text(s)} ({HAND_NAMES[best_hand(s.hole, table.board)[0]]})" for s in others)
+        beaten = " Beat " + " \u00b7 ".join(f"{s.name} {_hole_text(s)} ({HAND_NAMES[best_hand(s.hole, table.board)[0]]})" for s in others)
     holes = " ".join(_hole_text(w) for w in winners)
     _award_pot(table, winners)
     _finish(table, f"{names} wins with {label} ({holes}).{beaten}", [w.user_id for w in winners])
@@ -397,6 +440,7 @@ def _apply_action(table, seat, action, raise_to=None):
     return f"{seat.name} checks."
 
 def _bot_action(table, seat):
+    """Act from this seat's hole cards + the board. Opponent hole cards stay hidden."""
     to_call = max(0, table.current_bet - seat.bet)
     strength = _strength(seat.hole, table.board)
     pot_odds = (to_call / (table.pot + to_call)) if to_call else 0.0
@@ -404,22 +448,26 @@ def _bot_action(table, seat):
     stack = max(1, seat.stack)
     commit = to_call / stack
     if to_call == 0:
-        if strength >= 0.55 and roll < 0.72:
+        if strength >= 0.68 and roll < 0.80:
             return "raise"
-        if strength >= 0.36 and roll < 0.45:
+        if strength >= 0.46 and roll < 0.48:
             return "raise"
-        if roll < 0.20:
+        if strength <= 0.28 and roll < 0.14:
             return "raise"
         return "check"
-    if strength < 0.16 and commit > 0.40 and roll < 0.80:
+    if strength < 0.20 and commit > 0.28 and roll < 0.86:
         return "fold"
-    if strength >= 0.58 and seat.stack > to_call and roll < 0.58:
+    if strength < 0.26 and commit > 0.55:
+        return "fold"
+    if strength >= 0.72 and seat.stack > to_call and roll < 0.70:
         return "raise"
-    if strength >= 0.42 and seat.stack > to_call and roll < 0.30:
+    if strength >= 0.52 and seat.stack > to_call and roll < 0.34:
         return "raise"
-    if strength + 0.16 >= pot_odds or strength >= 0.30 or commit <= 0.22:
+    if strength <= 0.30 and commit < 0.22 and roll < 0.12:
+        return "raise"
+    if strength + 0.12 >= pot_odds or strength >= 0.38 or commit <= 0.16:
         return "call"
-    if roll < 0.28:
+    if roll < 0.18 and strength >= 0.24:
         return "call"
     return "fold"
 
