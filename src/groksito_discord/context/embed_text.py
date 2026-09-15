@@ -96,14 +96,19 @@ def patch_runtime_hooks() -> None:
         logger.debug("reply embed hook skipped", exc_info=True)
 
     try:
-        from ..discord import slash_connect4
+        from ..discord import slash_connect4_flow
 
-        orig_finish = slash_connect4._finish
+        orig_finish = slash_connect4_flow._finish
 
         def wrapped_finish(match: Any, *, winner: int = 0, reason: str = "") -> None:
             orig_finish(match, winner=winner, reason=reason)
             remember_connect4(match)
 
-        slash_connect4._finish = wrapped_finish
+        slash_connect4_flow._finish = wrapped_finish
+        try:
+            from ..discord import slash_connect4
+            slash_connect4._finish = wrapped_finish
+        except Exception:
+            pass
     except Exception:
         logger.debug("connect4 memory hook skipped", exc_info=True)
