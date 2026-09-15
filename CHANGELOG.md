@@ -29,6 +29,7 @@ _Nothing waiting. New work is dated the day it ships._
 - Poker table uses a felt oval, wider seats, and hole cards that sit side by side instead of overlapping.
 - `/poker` Raise opens a box so you type the amount. End of hand names the winner, the hand, both hole cards, and stacks.
 - Poker seat hole cards are larger again so they read at a glance. Community cards stay the same size so they do not overlap.
+- Poker action line on the felt ("OniOrii is all-in.") is larger and sits in a caption bar.
 
 ### Fixed
 
@@ -37,6 +38,7 @@ _Nothing waiting. New work is dated the day it ships._
 - `/poker` Deal no longer DMs hole cards. Every seat taps **My cards** for a private hand.
 - `/poker` no longer ends the hand after one call round. Flop, turn, and river each get their own betting round unless everyone is all-in.
 - `/poker` all-in pots now flip flop, turn, and river one street at a time instead of jumping straight to the winner.
+- `/poker` no longer gets stuck on "Wait a second" after an all-in. The table message is edited directly, and the busy lock always clears.
 
 ## [2026-09-13]
 
