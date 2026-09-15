@@ -159,7 +159,7 @@ def render_table_png(
     d.rounded_rectangle((10, 10, width - 11, height - 11), radius=30, outline=GOLD_DIM, width=2)
     d.rounded_rectangle((16, 16, width - 17, height - 17), radius=26, outline=(80, 70, 40), width=1)
     d.text((width // 2, 28), "AETHERION  \u00b7  TEXAS HOLD'EM", font=_font(20), fill=GOLD, anchor="mm")
-    d.text((width // 2, 50), f"{street.upper()}   \u00b7   POT  {pot}", font=_font(15), fill=CREAM, anchor="mm")
+    d.text((width // 2, 50), f"{street.upper()}   \u00b7   POT  \u2726 {pot}", font=_font(15), fill=CREAM, anchor="mm")
 
     felt = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     fd = ImageDraw.Draw(felt)
@@ -201,13 +201,13 @@ def render_table_png(
         if seat.get("folded"):
             status = "FOLDED"
         elif seat.get("all_in"):
-            status = f"ALL-IN  {seat.get('stack', 0)}"
+            status = f"ALL-IN  \u2726 {seat.get('stack', 0)}"
         else:
-            status = f"stack {seat.get('stack', 0)}"
+            status = f"stack \u2726 {seat.get('stack', 0)}"
         d.text((sx + 16, sy + 34), status, font=_font(13), fill=MUTED)
         bet = int(seat.get("bet") or 0)
         if bet:
-            d.text((sx + SEAT_W - 16, sy + 34), f"bet {bet}", font=_font(13), fill=GOLD, anchor="rt")
+            d.text((sx + SEAT_W - 16, sy + 34), f"bet \u2726 {bet}", font=_font(13), fill=GOLD, anchor="rt")
         hole = list(seat.get("hole") or [])
         show = reveal and hole and not seat.get("folded")
         pair_w = SEAT_CARD_W * 2 + GAP
