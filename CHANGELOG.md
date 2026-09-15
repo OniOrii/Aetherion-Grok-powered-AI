@@ -21,6 +21,7 @@ _Nothing waiting. New work is dated the day it ships._
 - Aetherion raises and calls more in `/poker` instead of checking every street or folding every raise. House raises size to the pot.
 - New players start with **5,000** Aether Coins. `/daily` grants **2,000**.
 - Aetherion has a house wallet that starts at **1,000,000**. Wins against players add to it, losses subtract, and it appears on `/leaderboard`.
+- Aetherion plays `/poker` from its own hole cards and the board only. It can value-bet, fold junk, or bluff. It cannot see anyone else's hole cards.
 
 ### Fixed
 
@@ -28,6 +29,7 @@ _Nothing waiting. New work is dated the day it ships._
 - Replies to a finished Connect Four board now keep the result text (embed title, fields, footer) and the match outcome, so "impossible to win against you" is treated as talk about that game instead of a new dare.
 - Connect Four no longer flickers the whole board on each drop. The painted table is cached, only the falling chip is drawn, and Discord keeps one connect4.gif attachment instead of swapping GIF then PNG every turn.
 - Connect Four no longer replays the falling chip before the next turn. After a drop the bot waits without editing the message, so Discord does not restart the GIF.
+- `/poker` All-in updates the table right away instead of waiting through Aetherion's think and the board run.
 
 ## [2026-09-14]
 
