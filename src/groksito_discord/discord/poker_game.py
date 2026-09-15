@@ -11,7 +11,7 @@ from . import ai_coins
 from .poker_table import render_hole_png, render_table_png
 from .poker_logic import (
     BOT_ID, BOT_NAME, MAX_SEATS, TABLE_NAME, HOLE_NAME, THINK_SLEEP,
-    EMBED_WAIT, EMBED_PLAY, EMBED_WIN, EMBED_DEAD,
+    EMBED_WAIT, EMBED_PLAY, EMBED_WIN, EMBED_DEAD, DEFAULT_BUYIN,
     _tables, _last_bet, _new_id, _card_label, _hold_seat, _refund_seat, _finish,
     _deal_holes, _raise_bounds, _apply_action, _bot_action, _after_action,
     _needs_board_run, _player_busy, _bind, Seat, Table, _showdown, _advance_street,
@@ -258,7 +258,7 @@ class ReplayView(discord.ui.View):
         return True
     @discord.ui.button(label="Play Again", style=discord.ButtonStyle.primary)
     async def play_again(self, interaction, button):
-        bet = int(_last_bet.get(self.user_id) or ai_coins.DEFAULT_BET)
+        bet = int(_last_bet.get(self.user_id) or DEFAULT_BUYIN)
         await _open_table(interaction, user_id=self.user_id, name=interaction.user.display_name, bet=bet, seat_bot=True, edit=True)
 
 class PlayView(discord.ui.View):
@@ -410,8 +410,8 @@ async def _open_table(interaction, *, user_id, name, bet, seat_bot, edit):
 
 def register_poker(tree, is_guild_allowed):
     @tree.command(name="poker", description="Texas Hold'em, 2-4 seats. Friends and/or Aetherion. Aether Coins.")
-    @discord.app_commands.describe(bet="Buy-in the host sets for every seat (10-10000, tens)", vs_aetherion="Seat Aetherion now. Friends can still join.")
-    async def poker_slash(interaction, bet: int = ai_coins.DEFAULT_BET, vs_aetherion: bool = False):
+    @discord.app_commands.describe(bet="Buy-in the host sets for every seat (10-10000, tens). Default 200.", vs_aetherion="Seat Aetherion now. Friends can still join.")
+    async def poker_slash(interaction, bet: int = DEFAULT_BUYIN, vs_aetherion: bool = False):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message("Aetherion is not available on this server.", ephemeral=True)
             return
