@@ -64,8 +64,8 @@ def _embed_for(hand: Hand, *, balance: int, reveal: bool) -> discord.Embed:
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="You", value=str(player_total), inline=True)
     embed.add_field(name="Aetherion", value=dealer_total_text, inline=True)
-    embed.add_field(name="Bet", value=f"{hand.bet} Aether Coins", inline=True)
-    embed.add_field(name="Wallet", value=f"{balance} Aether Coins", inline=True)
+    embed.add_field(name="Bet", value=ai_coins.coins(f"**{hand.bet:,}**"), inline=True)
+    embed.add_field(name="Wallet", value=ai_coins.coins(f"**{balance:,}**"), inline=True)
     embed.set_footer(text=footer)
     return embed
 
@@ -144,7 +144,7 @@ class BetModal(discord.ui.Modal, title="Change bet"):
             return
         _last_bet[self.user_id] = bet
         await interaction.response.send_message(
-            f"Next hand is **{bet} Aether Coins**.", ephemeral=True
+            f"Next hand is {ai_coins.coins(f'**{bet:,}**')}.", ephemeral=True
         )
 
 
@@ -295,7 +295,7 @@ async def _start_hand(
     hand = Hand(user_id=user_id, bet=int(bet))
     hand.deal_opening()
     note = (
-        f"Returned {refunded} Aether Coins from a hand that died in a restart."
+        f"Returned {ai_coins.coins(refunded)} from a hand that died in a restart."
         if refunded
         else None
     )
@@ -362,7 +362,7 @@ def register_blackjack(tree, is_guild_allowed) -> None:
         bal = ai_coins.get_balance(interaction.user.id)
         extra = f" Returned {refunded} from a dead hand." if refunded else ""
         await interaction.response.send_message(
-            f"You have **{bal} Aether Coins**.{extra} New players start at {ai_coins.STARTING_BALANCE}.",
+            f"You have {ai_coins.coins(f'**{bal:,}**')}.{extra} New players start at {ai_coins.coins(ai_coins.STARTING_BALANCE)}.",
             ephemeral=True,
         )
 
@@ -379,12 +379,12 @@ def register_blackjack(tree, is_guild_allowed) -> None:
         bal, granted, already = ai_coins.claim_daily(interaction.user.id)
         if already:
             await interaction.response.send_message(
-                f"Already claimed today. Wallet: **{bal} Aether Coins**. Next drip after midnight Eastern.",
+                f"Already claimed today. Wallet: {ai_coins.coins(f'**{bal:,}**')}. Next drip after midnight Eastern.",
                 ephemeral=True,
             )
             return
         await interaction.response.send_message(
-            f"Claimed **{granted} Aether Coins**. Wallet: **{bal}**.",
+            f"Claimed {ai_coins.coins(f'**{granted:,}**')}. Wallet: {ai_coins.coins(f'**{bal:,}**')}.",
             ephemeral=True,
         )
 
@@ -429,7 +429,7 @@ def register_blackjack(tree, is_guild_allowed) -> None:
             for i, (wealth, uid, name) in enumerate(top, start=1):
                 mark = medals.get(i, f"`{i}.`")
                 you = " \u2190 you" if uid == interaction.user.id else ""
-                lines.append(f"{mark} **{name}** \u2014 {wealth} Aether Coins{you}")
+                lines.append(f"{mark} **{name}** \u2014 {ai_coins.coins(f'{wealth:,}')}{you}")
             embed.description = "\n".join(lines)
             yours = next((i for i, row in enumerate(ranked, start=1) if row[1] == interaction.user.id), None)
             if yours and yours > 10:
@@ -464,6 +464,6 @@ def register_blackjack(tree, is_guild_allowed) -> None:
             await interaction.response.send_message(err, ephemeral=True)
             return
         await interaction.response.send_message(
-            f"Granted **{amount} Aether Coins** to {member.mention}. Their wallet is now **{bal}**.",
+            f"Granted {ai_coins.coins(f'**{amount:,}**')} to {member.mention}. Their wallet is now {ai_coins.coins(f'**{bal:,}**')}.",
             ephemeral=True,
         )
