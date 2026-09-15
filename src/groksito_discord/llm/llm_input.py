@@ -46,6 +46,21 @@ _DO_NOT_REPEAT_NOTE = (
     "(Context only — do not repeat or paste the bracketed text in your reply.)"
 )
 
+_GAME_MARKERS = (
+    "connect four",
+    "connects four",
+    "blackjack",
+    "poker",
+    "slots",
+    "coin toss",
+    "cointoss",
+)
+
+
+def _looks_like_game_result(text: str) -> bool:
+    low = (text or "").lower()
+    return any(marker in low for marker in _GAME_MARKERS)
+
 
 def _is_bot_context(ctx: dict) -> bool:
     if ctx.get("is_bot"):
@@ -59,10 +74,18 @@ def _format_referenced_context_line(ref_summary: dict, *, is_reply_to_bot: bool)
     if not ref_content:
         ref_content = "(embed / game board with no extra caption)"
     if is_reply_to_bot and _is_bot_context(ref_summary):
+        game_note = ""
+        if _looks_like_game_result(ref_content):
+            game_note = (
+                "This is my previous response to a finished game. "
+                "The user is reacting to that result. Acknowledge the match. "
+                "Do not treat the reply as a fresh challenge or a new game.\n"
+            )
         return (
-            "The user tapped Reply on my last Discord message. That message is the topic "
+            "The user replied to my previous response. That Discord message is the topic "
             "(Connect Four, blackjack, poker, slots, coin toss, an embed, or a chat reply). "
-            "You already know what happened in it. Answer about that, do not treat the reply as a fresh challenge.\n"
+            "Answer about that message.\n"
+            f"{game_note}"
             f"[My last message] {ref_content}\n"
             f"{_DO_NOT_REPEAT_NOTE}"
         )
