@@ -1,1 +1,1 @@
-SEE_FILE:/home/workdir/artifacts/slash_poker_live.py
+from .poker_game import register_poker
