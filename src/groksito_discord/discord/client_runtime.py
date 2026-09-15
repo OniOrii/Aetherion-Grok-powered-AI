@@ -111,11 +111,7 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
     register_slash_commands(tree, _discord_client)
 
     from .. import context
-    from ..core.conversation import (
-        _resolve_referenced_and_activation,
-        _build_referenced_context,
-        _invoke_groksito,
-    )
+    from ..core import conversation as convo
 
     @_discord_client.event
     async def on_ready():
@@ -274,7 +270,7 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
                 image_urls=image_urls,
                 links=links,
             )
-            result = await _resolve_referenced_and_activation(
+            result = await convo._resolve_referenced_and_activation(
                 message=message,
                 client_user=_discord_client.user,
                 author_display=author_display,
@@ -303,14 +299,14 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
                     referenced = await message.channel.fetch_message(message.reference.message_id)
                 except Exception:
                     pass
-            referenced_context = await _build_referenced_context(referenced) if referenced else None
+            referenced_context = await convo._build_referenced_context(referenced) if referenced else None
             is_meta = False
             try:
                 is_meta = context.is_conversation_meta_question(message.content or "")
             except Exception:
                 pass
             async with message.channel.typing():
-                await _invoke_groksito(
+                await convo._invoke_groksito(
                     message=message,
                     referenced=referenced,
                     referenced_context=referenced_context,
