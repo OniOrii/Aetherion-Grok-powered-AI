@@ -9,7 +9,7 @@ from .slash_connect4_cmd import ChallengeView, start_vs_bot
 
 
 def register_connect4(tree, is_guild_allowed) -> None:
-    @tree.command(name="connect4", description="Connect Four vs Aetherion or a member, for Aether Coins")
+    @tree.command(name="connect4", description="Connect Four versus Aetherion or a member, for Aether Coins.")
     @discord.app_commands.describe(
         opponent="Leave empty to play Aetherion. Mention someone to challenge them.",
         bet=f"Stake in Aether Coins ({ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET})",
