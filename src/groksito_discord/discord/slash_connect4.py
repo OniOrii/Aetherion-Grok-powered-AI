@@ -16,15 +16,14 @@ from .connect4_board import (
     P2,
     ROWS,
     choose_column,
-    render_board_png,
     render_fall_gif,
+    render_still_gif,
 )
 
 logger = logging.getLogger("aetherion.slash_connect4")
 
 DISC = {EMPTY: "\u26ab", P1: "\U0001f534", P2: "\U0001f7e1"}
-TABLE_NAME = "connect4.png"
-TABLE_GIF = "connect4.gif"
+TABLE_NAME = "connect4.gif"
 THINK_SLEEP = 0.65
 
 EMBED_WAIT = 0xC9A227
@@ -261,12 +260,11 @@ def _table_file(
         last = None
         if falling is None and match.last_row >= 0:
             last = (match.last_row, match.last_col)
-        raw = render_board_png(
+        raw = render_still_gif(
             match.board,
             subtitle=_subtitle(match) if subtitle is None else subtitle,
             last=last,
             winner=match.winner if match.finished else 0,
-            falling=falling,
         )
         return discord.File(io.BytesIO(raw), filename=TABLE_NAME)
     except Exception:
@@ -294,18 +292,14 @@ async def _animate_fall(
             landing_row=landing_row,
             subtitle=caption,
         )
-        table = discord.File(io.BytesIO(raw), filename=TABLE_GIF)
+        table = discord.File(io.BytesIO(raw), filename=TABLE_NAME)
         embed = _embed(match, balance=ai_coins.get_balance(match.p1))
         embed.set_footer(text=caption)
-        embed.set_image(url=f"attachment://{TABLE_GIF}")
+        embed.set_image(url=f"attachment://{TABLE_NAME}")
         await _publish(interaction, embed=embed, view=view, table=table, edit=True)
         await asyncio.sleep(max(0.35, seconds))
     finally:
         match.board[landing_row][col] = parked
-    still = _table_file(match, subtitle=caption)
-    landed = _embed(match, balance=ai_coins.get_balance(match.p1))
-    landed.set_footer(text=caption)
-    await _publish(interaction, embed=landed, view=view, table=still, edit=True)
 
 
 async def _publish(
@@ -462,8 +456,8 @@ class PlayView(discord.ui.View):
                 match.busy = False
                 self._sync_columns(match)
             pocket = ai_coins.get_balance(match.p1)
-            table = _table_file(match)
             embed = _embed(match, balance=pocket)
+            table = _table_file(match) if match.finished else None
             await _publish(interaction, embed=embed, view=next_view, table=table, edit=True)
 
         return drop
@@ -514,219 +508,3 @@ class PlayView(discord.ui.View):
                 await self.message.edit(**kwargs)
             except Exception:
                 logger.exception("connect4 timeout edit failed id=%s", match.id)
-
-
-class ChallengeView(discord.ui.View):
-    def __init__(self, match_id: int):
-        super().__init__(timeout=90)
-        self.match_id = match_id
-        self.message: discord.Message | None = None
-
-    def _match(self) -> Match | None:
-        return _games.get(self.match_id)
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        match = self._match()
-        if match is None or match.finished:
-            await interaction.response.send_message("That challenge is gone.", ephemeral=True)
-            return False
-        if interaction.user.id not in (match.p1, match.p2):
-            await interaction.response.send_message("This challenge is not for you.", ephemeral=True)
-            return False
-        return True
-
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success)
-    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        match = self._match()
-        if match is None or match.finished:
-            await interaction.response.send_message("That challenge is gone.", ephemeral=True)
-            return
-        if interaction.user.id != match.p2:
-            await interaction.response.send_message("Only the challenged player can accept.", ephemeral=True)
-            return
-        err = _hold_start(match)
-        if err:
-            _finish(match, reason=err)
-            table = _table_file(match)
-            await _publish(interaction, embed=_embed(match), view=None, table=table, edit=True)
-            return
-        self.stop()
-        view = PlayView(match.id)
-        view._sync_columns(match)
-        table = _table_file(match)
-        embed = _embed(match, balance=ai_coins.get_balance(match.p1))
-        message = await _publish(interaction, embed=embed, view=view, table=table, edit=True)
-        view.message = message
-
-    @discord.ui.button(label="Decline", style=discord.ButtonStyle.secondary)
-    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        match = self._match()
-        if match is None or match.finished:
-            await interaction.response.send_message("That challenge is gone.", ephemeral=True)
-            return
-        who = match.p1_name if interaction.user.id == match.p1 else match.p2_name
-        _finish(match, reason=f"{who} called it off. No coins moved.")
-        self.stop()
-        table = _table_file(match)
-        await _publish(interaction, embed=_embed(match), view=None, table=table, edit=True)
-
-    async def on_timeout(self) -> None:
-        match = self._match()
-        if match is None or match.finished or match.held:
-            return
-        _finish(match, reason="Challenge timed out. No coins moved.")
-        if self.message is not None:
-            try:
-                table = _table_file(match)
-                kwargs = {"embed": _embed(match), "view": None}
-                if table is not None:
-                    kwargs["attachments"] = [table]
-                await self.message.edit(**kwargs)
-            except Exception:
-                logger.exception("connect4 challenge timeout edit failed id=%s", match.id)
-
-
-async def _start_vs_bot(
-    interaction: discord.Interaction,
-    *,
-    user_id: int,
-    name: str,
-    bet: int,
-    edit: bool,
-) -> None:
-    if _player_busy(user_id):
-        msg = "Finish your current Connect Four first."
-        if interaction.response.is_done():
-            await interaction.followup.send(msg, ephemeral=True)
-        else:
-            await interaction.response.send_message(msg, ephemeral=True)
-        return
-    match = Match(
-        id=_new_id(),
-        guild_id=interaction.guild.id if interaction.guild else 0,
-        channel_id=interaction.channel_id or 0,
-        p1=user_id,
-        p2=0,
-        p1_name=name,
-        p2_name="Aetherion",
-        bet=int(bet),
-        vs_bot=True,
-    )
-    err = _hold_start(match)
-    if err:
-        if interaction.response.is_done():
-            await interaction.followup.send(err, ephemeral=True)
-        else:
-            await interaction.response.send_message(err, ephemeral=True)
-        return
-    _bind(match)
-    _last_bet[user_id] = int(bet)
-    view = PlayView(match.id)
-    view._sync_columns(match)
-    table = _table_file(match)
-    embed = _embed(match, balance=ai_coins.get_balance(user_id))
-    message = await _publish(
-        interaction,
-        embed=embed,
-        view=view,
-        table=table,
-        edit=edit,
-        content=None,
-    )
-    view.message = message
-
-
-def register_connect4(tree, is_guild_allowed) -> None:
-    @tree.command(name="connect4", description="Connect Four vs Aetherion or a member, for Aether Coins")
-    @discord.app_commands.describe(
-        opponent="Leave empty to play Aetherion. Mention someone to challenge them.",
-        bet=f"Stake in Aether Coins ({ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET})",
-    )
-    @discord.app_commands.guild_only()
-    async def connect4_slash(
-        interaction: discord.Interaction,
-        opponent: discord.Member | None = None,
-        bet: int = ai_coins.DEFAULT_BET,
-    ):
-        if interaction.guild and not is_guild_allowed(interaction.guild.id):
-            await interaction.response.send_message(
-                "Aetherion is not available on this server.", ephemeral=True
-            )
-            return
-        if interaction.guild is None:
-            await interaction.response.send_message("Use this in a server.", ephemeral=True)
-            return
-
-        challenger = interaction.user
-        bot_user = interaction.client.user
-        vs_bot = opponent is None or (bot_user is not None and opponent.id == bot_user.id)
-
-        err = ai_coins.amount_error(bet, ai_coins.MIN_BET, ai_coins.MAX_BET)
-        if err:
-            await interaction.response.send_message(err, ephemeral=True)
-            return
-        if _player_busy(challenger.id):
-            await interaction.response.send_message("Finish your current Connect Four first.", ephemeral=True)
-            return
-
-        if vs_bot:
-            if bet == ai_coins.DEFAULT_BET and challenger.id in _last_bet:
-                bet = int(_last_bet[challenger.id])
-            await _start_vs_bot(
-                interaction,
-                user_id=challenger.id,
-                name=challenger.display_name,
-                bet=int(bet),
-                edit=False,
-            )
-            return
-
-        if opponent.id == challenger.id:
-            await interaction.response.send_message("Pick another player, or leave opponent empty to play Aetherion.", ephemeral=True)
-            return
-        if opponent.bot:
-            await interaction.response.send_message("Leave opponent empty to play Aetherion.", ephemeral=True)
-            return
-        if _player_busy(opponent.id):
-            await interaction.response.send_message(
-                f"**{opponent.display_name}** is already on a board.", ephemeral=True
-            )
-            return
-
-        p1_bal = ai_coins.get_balance(challenger.id)
-        p2_bal = ai_coins.get_balance(opponent.id)
-        if bet > p1_bal:
-            await interaction.response.send_message(
-                f"You only have {ai_coins.coins(p1_bal)}.", ephemeral=True
-            )
-            return
-        if bet > p2_bal:
-            await interaction.response.send_message(
-                f"**{opponent.display_name}** only has {ai_coins.coins(p2_bal)}.", ephemeral=True
-            )
-            return
-
-        match = Match(
-            id=_new_id(),
-            guild_id=interaction.guild.id,
-            channel_id=interaction.channel_id or 0,
-            p1=challenger.id,
-            p2=opponent.id,
-            p1_name=challenger.display_name,
-            p2_name=opponent.display_name,
-            bet=int(bet),
-            vs_bot=False,
-        )
-        _bind(match)
-        view = ChallengeView(match.id)
-        table = _table_file(match)
-        embed = _embed(match, waiting=True)
-        message = await _publish(
-            interaction,
-            embed=embed,
-            view=view,
-            table=table,
-            edit=False,
-            content=f"{opponent.mention} \u2014 **{challenger.display_name}** wants Connect Four for {ai_coins.coins(f'**{bet:,}**')} each.",
-        )
-        view.message = message
