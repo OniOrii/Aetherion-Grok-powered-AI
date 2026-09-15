@@ -246,7 +246,6 @@ async def _act(interaction: discord.Interaction, view: BlackjackView, action: st
     if hand.finished:
         balance = ai_coins.settle_hand(view.user_id, hand.credit())
         _last_bet[view.user_id] = hand.bet if not hand.doubled else hand.bet // 2
-        # Keep the original stake for Play Again, not the doubled one.
         if hand.doubled:
             _last_bet[view.user_id] = max(ai_coins.MIN_BET, hand.bet // 2)
         else:
@@ -304,7 +303,7 @@ async def _start_hand(
         pocket = ai_coins.settle_hand(user_id, hand.credit())
         table = _table_file(hand, reveal=True)
         embed = _attach_image(_embed_for(hand, balance=pocket, reveal=True), table)
-        message = await _publish(
+        await _publish(
             interaction,
             embed=embed,
             view=ReplayView(user_id),
@@ -405,6 +404,12 @@ def register_blackjack(tree, is_guild_allowed) -> None:
         rows = ai_coins.snapshot_wallets()
         ranked: list[tuple[int, int, str]] = []
         for uid, bal, pending in rows:
+            wealth = bal + pending
+            if uid == ai_coins.HOUSE_ID:
+                bot = interaction.client.user
+                name = bot.display_name if bot is not None else ai_coins.HOUSE_NAME
+                ranked.append((wealth, uid, name))
+                continue
             member = guild.get_member(uid)
             if member is None:
                 try:
@@ -413,7 +418,6 @@ def register_blackjack(tree, is_guild_allowed) -> None:
                     member = None
             if member is None:
                 continue
-            wealth = bal + pending
             ranked.append((wealth, uid, member.display_name))
         ranked.sort(key=lambda item: (-item[0], item[1]))
         top = ranked[:10]
@@ -429,7 +433,8 @@ def register_blackjack(tree, is_guild_allowed) -> None:
             for i, (wealth, uid, name) in enumerate(top, start=1):
                 mark = medals.get(i, f"`{i}.`")
                 you = " \u2190 you" if uid == interaction.user.id else ""
-                lines.append(f"{mark} **{name}** \u2014 {ai_coins.coins(f'{wealth:,}')}{you}")
+                house = " \u00b7 house" if uid == ai_coins.HOUSE_ID else ""
+                lines.append(f"{mark} **{name}** \u2014 {ai_coins.coins(f'{wealth:,}')}{house}{you}")
             embed.description = "\n".join(lines)
             yours = next((i for i, row in enumerate(ranked, start=1) if row[1] == interaction.user.id), None)
             if yours and yours > 10:
