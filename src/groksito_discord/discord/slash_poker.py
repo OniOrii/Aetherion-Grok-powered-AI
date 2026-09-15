@@ -183,7 +183,7 @@ def _hold_seat(seat, amount):
         seat.held = True
         return ""
     ai_coins.refund_stale_pending(seat.user_id)
-    ok, _bal, err = ai_coins.hold_bet(seat.user_id, amount)
+    ok, _bal, err = ai_coins.hold_bet(seat.user_id, amount, max_bet=ai_coins.MAX_GRANT)
     if not ok:
         return err
     seat.held = True
@@ -261,19 +261,20 @@ def _deal_holes(table):
     _post_blinds(table)
     for seat in table.seats:
         seat.acted = False
-    if table.seats and (table.seats[table.actor].all_in or _street_over(table)):
-        _after_action(table)
+
+def _can_act(table):
+    return [s for s in table.live() if not s.all_in]
 
 def _street_over(table):
     live = table.live()
     if len(live) <= 1:
         return True
-    needy = [s for s in live if not s.all_in]
+    needy = _can_act(table)
     if not needy:
         return True
     if any(s.bet < table.current_bet and not s.all_in for s in live):
         return False
-    return all(s.acted or s.all_in for s in needy)
+    return all(s.acted for s in needy)
 
 def _advance_street(table):
     for s in table.seats:
@@ -294,8 +295,6 @@ def _advance_street(table):
         return
     nxt = _next_index(table, table.dealer)
     table.actor = nxt if nxt is not None else 0
-    if _street_over(table):
-        _advance_street(table)
 
 def _award_pot(table, winners):
     if not winners:
@@ -335,7 +334,6 @@ def _raise_bounds(table, seat):
 
 def _apply_action(table, seat, action, raise_to=None):
     to_call = max(0, table.current_bet - seat.bet)
-    step = _raise_step(table.buyin)
     if action == "fold":
         seat.folded = True
         seat.acted = True
@@ -411,16 +409,28 @@ def _bot_action(table, seat):
         return "call"
     return "fold"
 
+def _all_in_runout(table):
+    while not table.finished and table.street != "showdown":
+        if table.street == "river":
+            _showdown(table)
+            return
+        _advance_street(table)
+    if not table.finished:
+        _showdown(table)
+
 def _after_action(table):
     if table.finished:
         return
     if _one_left(table):
         _showdown(table)
         return
+    if not _can_act(table):
+        _all_in_runout(table)
+        return
     if not _street_over(table):
         nxt = _next_index(table, table.actor)
         if nxt is None:
-            _showdown(table)
+            _all_in_runout(table)
             return
         table.actor = nxt
         return
@@ -428,11 +438,6 @@ def _after_action(table):
         _showdown(table)
         return
     _advance_street(table)
-    while not table.finished and table.street != "showdown" and _street_over(table):
-        if table.street == "river":
-            _showdown(table)
-            return
-        _advance_street(table)
 
 def _embed(table, *, waiting=False):
     if waiting or table.street == "lobby":
@@ -494,24 +499,13 @@ async def _publish(interaction, *, embed, view, table=None, edit=True, ephemeral
         return None
 
 async def _dm_holes(interaction, table):
-    for seat in table.humans():
-        try:
-            raw = render_hole_png(seat.hole)
-            file = discord.File(io.BytesIO(raw), filename=HOLE_NAME)
-            embed = discord.Embed(title="Your hole cards", description="  ".join(_card_label(c) for c in seat.hole), color=EMBED_PLAY)
-            embed.set_image(url=f"attachment://{HOLE_NAME}")
-            await interaction.followup.send(content=f"{seat.name}, only you can see this.", embed=embed, file=file, ephemeral=True)
-        except Exception:
-            logger.exception("poker hole card send failed user=%s", seat.user_id)
+    return
 
 async def _run_bots(interaction, table, view):
     guard = 0
     while not table.finished and table.street != "lobby" and table.seats and table.seats[table.actor].is_bot and guard < 16:
         guard += 1
         seat = table.seats[table.actor]
-        think = _embed(table)
-        think.set_footer(text="Aetherion is deciding...")
-        await _publish(interaction, embed=think, view=view, table=_table_file(table, "Aetherion is deciding..."), edit=True)
         await asyncio.sleep(THINK_SLEEP)
         line = _apply_action(table, seat, _bot_action(table, seat))
         _after_action(table)
@@ -604,7 +598,13 @@ class LobbyView(discord.ui.View):
             play.message = await interaction.original_response()
         except Exception:
             play.message = None
-        await _dm_holes(interaction, table)
+        dealer_seat = table.seat_of(interaction.user.id)
+        if dealer_seat and dealer_seat.hole:
+            raw = render_hole_png(dealer_seat.hole)
+            file = discord.File(io.BytesIO(raw), filename=HOLE_NAME)
+            hole = discord.Embed(title="Your hole cards", description="  ".join(_card_label(c) for c in dealer_seat.hole), color=EMBED_PLAY)
+            hole.set_image(url=f"attachment://{HOLE_NAME}")
+            await interaction.followup.send(content="Only you can see this. Other seats tap My cards.", embed=hole, file=file, ephemeral=True)
         await _run_bots(interaction, table, play)
         if table.finished:
             await _publish(interaction, embed=_embed(table), view=ReplayView(table.host_id), table=_table_file(table), edit=True)
@@ -758,7 +758,7 @@ class PlayView(discord.ui.View):
                 logger.exception("poker turn timeout failed")
 
 async def _open_table(interaction, *, user_id, name, bet, seat_bot, edit):
-    err = ai_coins.amount_error(bet, ai_coins.MIN_BET, ai_coins.MAX_BET)
+    err = ai_coins.amount_error(bet, ai_coins.MIN_BET, ai_coins.MAX_GRANT)
     if err:
         if not interaction.response.is_done():
             await interaction.response.send_message(err, ephemeral=True)
@@ -794,7 +794,7 @@ async def _open_table(interaction, *, user_id, name, bet, seat_bot, edit):
 
 def register_poker(tree, is_guild_allowed):
     @tree.command(name="poker", description="Texas Hold'em, 2-4 seats. Friends and/or Aetherion. Aether Coins.")
-    @discord.app_commands.describe(bet="Buy-in for every seat (10-1000, tens)", vs_aetherion="Seat Aetherion now. Friends can still join.")
+    @discord.app_commands.describe(bet="Buy-in the host sets for every seat (10-10000, tens)", vs_aetherion="Seat Aetherion now. Friends can still join.")
     async def poker_slash(interaction, bet: int = ai_coins.DEFAULT_BET, vs_aetherion: bool = False):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message("Aetherion is not available on this server.", ephemeral=True)
