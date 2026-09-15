@@ -42,7 +42,7 @@ async def ensure_voice(interaction: discord.Interaction):
 
 
 def register_music(tree, is_guild_allowed) -> None:
-    @tree.command(name="play", description="Play a song in your voice channel")
+    @tree.command(name="play", description="Play a song in your voice channel.")
     @discord.app_commands.describe(query="Song name or a SoundCloud link")
     async def play_slash(interaction: discord.Interaction, query: str):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
@@ -66,9 +66,10 @@ def register_music(tree, is_guild_allowed) -> None:
         except Exception as e:
             await interaction.followup.send(f"Found it but could not play it: {e}", ephemeral=True)
             return
-        await interaction.followup.send(f"Playing **{track['title']}**.", ephemeral=True)
+        embed = discord.Embed(title="\u2726 Now playing", description=f"**{track['title']}**", color=0xC9A227)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @tree.command(name="pause", description="Pause or resume the current song")
+    @tree.command(name="pause", description="Pause or resume the current song.")
     async def pause_slash(interaction: discord.Interaction):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message("Aetherion is not available in this server.", ephemeral=True)
@@ -87,7 +88,7 @@ def register_music(tree, is_guild_allowed) -> None:
             return
         await interaction.response.send_message("Nothing is playing.", ephemeral=True)
 
-    @tree.command(name="stop", description="Stop the current song")
+    @tree.command(name="stop", description="Stop the current song.")
     async def stop_slash(interaction: discord.Interaction):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message("Aetherion is not available in this server.", ephemeral=True)
