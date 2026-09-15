@@ -21,11 +21,11 @@ logger = logging.getLogger("aetherion.slash_poker")
 
 def _embed(table, *, waiting=False):
     if waiting or table.street == "lobby":
-        color, title, status = EMBED_WAIT, "Poker \u00b7 table", table.reason or "Join a seat, then Deal when 2-4 people are ready."
+        color, title, status = EMBED_WAIT, "\u2726 Poker \u00b7 Table", table.reason or "Join a seat, then Deal when 2-4 people are ready."
     elif table.finished:
-        color, title, status = (EMBED_WIN if table.winner_ids else EMBED_DEAD), "Poker \u00b7 hand over", table.reason or "Pot awarded."
+        color, title, status = (EMBED_WIN if table.winner_ids else EMBED_DEAD), "\u2726 Poker \u00b7 Hand over", table.reason or "Pot awarded."
     else:
-        color, title = EMBED_PLAY, "Poker \u00b7 Texas Hold'em"
+        color, title = EMBED_PLAY, "\u2726 Poker \u00b7 Texas Hold'em"
         actor = table.seats[table.actor] if table.seats else None
         if actor:
             to_call = max(0, table.current_bet - actor.bet)
@@ -360,7 +360,7 @@ class PlayView(discord.ui.View):
             return
         raw = render_hole_png(seat.hole)
         file = discord.File(io.BytesIO(raw), filename=HOLE_NAME)
-        embed = discord.Embed(title="Your hole cards", description="  ".join(_card_label(c) for c in seat.hole), color=EMBED_PLAY)
+        embed = discord.Embed(title="\u2726 Your hole cards", description="  ".join(_card_label(c) for c in seat.hole), color=EMBED_PLAY)
         embed.set_image(url=f"attachment://{HOLE_NAME}")
         await interaction.response.send_message(embed=embed, file=file, ephemeral=True)
     async def on_timeout(self):
@@ -419,7 +419,7 @@ async def _open_table(interaction, *, user_id, name, bet, seat_bot, edit):
         view.message = None
 
 def register_poker(tree, is_guild_allowed):
-    @tree.command(name="poker", description="Texas Hold'em, 2-4 seats. Friends and/or Aetherion. Aether Coins.")
+    @tree.command(name="poker", description="Texas Hold'em. Two to four seats. Friends and/or Aetherion.")
     @discord.app_commands.describe(bet="Buy-in the host sets for every seat (10-10000, tens). Default 200.", vs_aetherion="Seat Aetherion now. Friends can still join.")
     async def poker_slash(interaction, bet: int = DEFAULT_BUYIN, vs_aetherion: bool = False):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
