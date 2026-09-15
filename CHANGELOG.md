@@ -17,6 +17,8 @@ _Nothing waiting. New work is dated the day it ships._
 
 - Poker caption bar sits below the bottom hands. Winner text wraps onto two lines instead of running off the bar.
 - The Aether Coin mark used on `/slots` (`\u2726`) now sits next to coin amounts on blackjack, connect four, poker, `/balance`, `/daily`, `/leaderboard`, and `/givecoins`.
+- `/poker` default buy-in is 200. Blinds scale with the buy-in (20/40 at 200, larger on bigger stacks). 10-coin tables stay blindless so they do not all-in on the post.
+- Aetherion raises and calls more in `/poker` instead of checking every street or folding every raise. House raises size to the pot.
 
 ### Fixed
 
