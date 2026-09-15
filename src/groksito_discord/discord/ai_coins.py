@@ -5,7 +5,8 @@ welcome channels and reaction roles). Play-money only — no cash-out, no
 transfers, no real-world value.
 
 First seen user id starts at STARTING_BALANCE. Daily drip is claimed on
-Eastern calendar date so it matches the date dock.
+Eastern calendar date so it matches the date dock. Aetherion keeps a house
+wallet (HOUSE_ID) that wins and loses against players.
 """
 from __future__ import annotations
 
@@ -22,8 +23,8 @@ from ..config import settings
 logger = logging.getLogger("aetherion.ai_coins")
 
 EASTERN = ZoneInfo("America/Detroit")
-STARTING_BALANCE = 500
-DAILY_DRIP = 500
+STARTING_BALANCE = 5000
+DAILY_DRIP = 2000
 STEP = 10
 MIN_BET = 10
 DEFAULT_BET = 10
@@ -33,6 +34,9 @@ MAX_GRANT = 10000
 CURRENCY = "Aether Coins"
 CURRENCY_ONE = "Aether Coin"
 SYMBOL = "\u2726"
+HOUSE_ID = 0
+HOUSE_NAME = "Aetherion"
+HOUSE_START = 1_000_000
 
 
 def coins(amount: int | str) -> str:
@@ -101,7 +105,39 @@ def _blank_user() -> dict[str, Any]:
     }
 
 
+def _ensure_house_unlocked(store: dict[str, Any]) -> dict[str, Any]:
+    users = store.setdefault("users", {})
+    key = str(HOUSE_ID)
+    row = users.get(key)
+    if not isinstance(row, dict):
+        row = {
+            "balance": HOUSE_START,
+            "pending_bet": 0,
+            "last_daily": None,
+            "created_at": datetime.now(EASTERN).isoformat(timespec="seconds"),
+            "house": True,
+        }
+        users[key] = row
+        return row
+    try:
+        row["balance"] = int(row.get("balance", HOUSE_START))
+    except (TypeError, ValueError):
+        row["balance"] = HOUSE_START
+    try:
+        row["pending_bet"] = int(row.get("pending_bet", 0) or 0)
+    except (TypeError, ValueError):
+        row["pending_bet"] = 0
+    if row["balance"] < 0:
+        row["balance"] = 0
+    if row["pending_bet"] < 0:
+        row["pending_bet"] = 0
+    row["house"] = True
+    return row
+
+
 def _ensure_user_unlocked(store: dict[str, Any], user_id: int) -> dict[str, Any]:
+    if int(user_id) == HOUSE_ID:
+        return _ensure_house_unlocked(store)
     users = store.setdefault("users", {})
     key = str(user_id)
     row = users.get(key)
@@ -124,12 +160,20 @@ def _ensure_user_unlocked(store: dict[str, Any], user_id: int) -> dict[str, Any]
     return row
 
 
+def _touch_house(store: dict[str, Any], delta: int) -> int:
+    house = _ensure_house_unlocked(store)
+    house["balance"] = max(0, int(house["balance"]) + int(delta))
+    return int(house["balance"])
+
+
 def refund_stale_pending(user_id: int) -> int:
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
         held = int(row.get("pending_bet") or 0)
         if held <= 0:
+            _ensure_house_unlocked(store)
+            _save_store(store)
             return 0
         row["balance"] = int(row["balance"]) + held
         row["pending_bet"] = 0
@@ -142,16 +186,21 @@ def get_balance(user_id: int) -> int:
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
+        _ensure_house_unlocked(store)
         _save_store(store)
         return int(row["balance"])
 
 
 def claim_daily(user_id: int) -> tuple[int, int, bool]:
+    if int(user_id) == HOUSE_ID:
+        return get_balance(user_id), 0, True
     today = _today_eastern()
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
+        _ensure_house_unlocked(store)
         if row.get("last_daily") == today:
+            _save_store(store)
             return int(row["balance"]), 0, True
         row["balance"] = int(row["balance"]) + DAILY_DRIP
         row["last_daily"] = today
@@ -168,6 +217,7 @@ def hold_bet(user_id: int, amount: int, *, max_bet: int | None = None) -> tuple[
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
+        _ensure_house_unlocked(store)
         if int(row.get("pending_bet") or 0) > 0:
             return False, int(row["balance"]), "You already have a hand in progress."
         bal = int(row["balance"])
@@ -203,8 +253,13 @@ def settle_hand(user_id: int, credit: int) -> int:
     with _lock:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
+        held = int(row.get("pending_bet") or 0)
         row["pending_bet"] = 0
         row["balance"] = int(row["balance"]) + credit
+        if int(user_id) != HOUSE_ID and held:
+            _touch_house(store, held - credit)
+        else:
+            _ensure_house_unlocked(store)
         _save_store(store)
         return int(row["balance"])
 
@@ -218,6 +273,7 @@ def grant_coins(user_id: int, amount: int) -> tuple[bool, int, str]:
         store = _load_store()
         row = _ensure_user_unlocked(store, user_id)
         row["balance"] = int(row["balance"]) + amount
+        _ensure_house_unlocked(store)
         _save_store(store)
         logger.info("granted coins user=%s amount=%s balance=%s", user_id, amount, row["balance"])
         return True, int(row["balance"]), ""
@@ -226,6 +282,8 @@ def grant_coins(user_id: int, amount: int) -> tuple[bool, int, str]:
 def snapshot_wallets() -> list[tuple[int, int, int]]:
     with _lock:
         store = _load_store()
+        _ensure_house_unlocked(store)
+        _save_store(store)
         out: list[tuple[int, int, int]] = []
         users = store.get("users") or {}
         if not isinstance(users, dict):
@@ -271,5 +329,7 @@ def resolve_wager(
         if stake > bal:
             return False, bal, f"You only have {bal} Aether Coins."
         row["balance"] = bal - stake + payout
+        if int(user_id) != HOUSE_ID:
+            _touch_house(store, stake - payout)
         _save_store(store)
         return True, int(row["balance"]), ""
