@@ -18,6 +18,10 @@ _Nothing waiting. New work is dated the day it ships._
 - Poker caption bar sits below the bottom hands. Winner text wraps onto two lines instead of running off the bar.
 - The Aether Coin mark used on `/slots` (`\u2726`) now sits next to coin amounts on blackjack, connect four, poker, `/balance`, `/daily`, `/leaderboard`, and `/givecoins`.
 
+### Fixed
+
+- Replies to Aetherion now read the message that was replied to, including Connect Four embeds and other game boards, plus recent chat with that user.
+
 ## [2026-09-14]
 
 ### Added
