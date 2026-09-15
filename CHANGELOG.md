@@ -22,6 +22,7 @@ _Nothing waiting. New work is dated the day it ships._
 - New players start with **5,000** Aether Coins. `/daily` grants **2,000**.
 - Aetherion has a house wallet that starts at **1,000,000**. Wins against players add to it, losses subtract, and it appears on `/leaderboard`.
 - Aetherion plays `/poker` from its own hole cards and the board only. It can value-bet, fold junk, or bluff. It cannot see anyone else's hole cards.
+- Aetherion no longer dumps the stack on ace-high. All-in and calling a shove need a pair or better, or a premium preflop hand. Bluffs stay small.
 
 ### Fixed
 
