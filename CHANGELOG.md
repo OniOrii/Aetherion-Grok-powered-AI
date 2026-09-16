@@ -15,7 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
-- `/poker` **Hands** button next to My cards. Private list of the nine ranks, and it marks that seat's best hand right now.
+- `/poker` **Hands** button next to My cards. Private chart of the nine ranks with mini card examples. It does not read your hole cards.
 
 ### Changed
 
@@ -33,6 +33,8 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Fixed
 
+- `/poker` Hands no longer claims your current best hand. It is a reference chart only.
+- `/poker` winner text stays in the embed title block and on the felt. The extra copy under the image is gone.
 - `/blackjack` states the result once, in the embed title, including coins won or lost. The footer and the painted table line no longer repeat it.
 - `/connect4` end text says Won / Lost / Push instead of only naming the pot.
 - `/poker` showdown names each seat's Won / Lost amount vs the buy-in.
