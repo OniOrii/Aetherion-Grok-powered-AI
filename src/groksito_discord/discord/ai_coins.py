@@ -44,6 +44,26 @@ def coins(amount: int | str) -> str:
     return f"{SYMBOL} {amount}"
 
 
+def signed_coins(net: int) -> str:
+    """+120 / -40 / 0 next to the Aether mark."""
+    net = int(net)
+    if net > 0:
+        return coins(f"+{net:,}")
+    if net < 0:
+        return coins(f"-{abs(net):,}")
+    return coins("0")
+
+
+def won_line(net: int) -> str:
+    """End-of-game payout line. Use this on every new game too."""
+    net = int(net)
+    if net > 0:
+        return f"Won {signed_coins(net)}"
+    if net < 0:
+        return f"Lost {coins(f'{abs(net):,}')}"
+    return "Push"
+
+
 _lock = threading.Lock()
 
 
