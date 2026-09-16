@@ -119,3 +119,71 @@ def _embed(page: str) -> discord.Embed:
         inline=True,
     )
     return embed
+
+
+class HelpView(discord.ui.View):
+    def __init__(self, user_id: int, page: str):
+        super().__init__(timeout=180)
+        self.user_id = user_id
+        self.page = page if page in PAGES else "overview"
+        self._sync_select()
+
+    def _sync_select(self) -> None:
+        for child in self.children:
+            if isinstance(child, discord.ui.Select):
+                child.placeholder = f"Topic \u00b7 {self.page}"
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("This help menu is not yours. Run `/help`.", ephemeral=True)
+            return False
+        return True
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            child.disabled = True
+
+    @discord.ui.select(
+        placeholder="Topic \u00b7 overview",
+        min_values=1,
+        max_values=1,
+        options=[
+            discord.SelectOption(label="Overview", value="overview", description="Command list"),
+            discord.SelectOption(label="Chat", value="chat", description="Mentions, images, /audio"),
+            discord.SelectOption(label="Voice & music", value="voice", description="/join and SoundCloud"),
+            discord.SelectOption(label="Games", value="games", description="Blackjack, slots, coin toss, Connect Four, poker"),
+            discord.SelectOption(label="Aether Coins", value="coins", description="Wallet, daily, bets"),
+            discord.SelectOption(label="Server tools", value="server", description="Roles, welcome, date dock"),
+        ],
+    )
+    async def pick_topic(self, interaction: discord.Interaction, select: discord.ui.Select):
+        self.page = str(select.values[0])
+        self._sync_select()
+        await interaction.response.edit_message(embed=_embed(self.page), view=self)
+
+
+def register_help(tree, is_guild_allowed) -> None:
+    @tree.command(name="help", description="How Aetherion works, and every command.")
+    @discord.app_commands.describe(topic="Jump straight to a help page")
+    @discord.app_commands.choices(
+        topic=[
+            discord.app_commands.Choice(name="Overview", value="overview"),
+            discord.app_commands.Choice(name="Chat", value="chat"),
+            discord.app_commands.Choice(name="Voice & music", value="voice"),
+            discord.app_commands.Choice(name="Games", value="games"),
+            discord.app_commands.Choice(name="Aether Coins", value="coins"),
+            discord.app_commands.Choice(name="Server tools", value="server"),
+        ]
+    )
+    async def help_slash(
+        interaction: discord.Interaction,
+        topic: discord.app_commands.Choice[str] | None = None,
+    ):
+        if interaction.guild and not is_guild_allowed(interaction.guild.id):
+            await interaction.response.send_message(
+                "Aetherion is not available on this server.", ephemeral=True
+            )
+            return
+        page = topic.value if topic else "overview"
+        view = HelpView(interaction.user.id, page)
+        await interaction.response.send_message(embed=_embed(page), view=view)
