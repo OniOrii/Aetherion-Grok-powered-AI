@@ -51,11 +51,44 @@ def test_ori_gate_id_unchanged():
     assert not creator_is_author(1)
 
 
+def test_battle_card_looks_like_owo():
+    card = hunt.battle_card(
+        "Ori",
+        {
+            "player": [hunt._fighter("eclipse_lion", 19)],
+            "enemy": [hunt._fighter("ember_moth", 12)],
+            "log": ["Eclipse Lion hits Ember Moth for 8. KO."],
+            "rounds": 2,
+            "xp_gain": 50,
+            "streak": 1,
+            "best_streak": 1,
+        },
+    )
+    assert "Ori goes into battle!" in card
+    assert "Ori's Team" in card
+    assert "Enemy Team" in card
+    assert "Turn 2 / 12" in card
+
+
+def test_gear_catalog_has_thirty_weapons():
+    from groksito_discord.discord import aether_gear as gear
+
+    assert len(gear.WEAPONS) == 30
+    assert len({row[0] for row in gear.WEAPONS}) == 30
+    pack = gear.blank_gear()
+    pack["lootbox"] = 1
+    pack["crate"] = 1
+    assert gear.open_lootbox(pack)["ok"]
+    crate = gear.open_crate(pack)
+    assert crate["ok"]
+    assert crate["wid"] == "1"
+
+
 def test_hunt_and_zoo_match_owo_layout():
     line = hunt.hunt_catch_line("Ori", "dust_mite")
-    assert line.startswith("**🌱 | Ori** spent")
+    assert line.startswith("**\U0001f331 | Ori** spent")
     assert "caught a **common**" in line
-    assert "🪲" in line
+    assert "\U0001fab2" in line
     epic = hunt.hunt_catch_line("Ori", "aether_drake")
     assert "caught an **epic**" in epic
     board = hunt.zoo_board(
@@ -63,9 +96,9 @@ def test_hunt_and_zoo_match_owo_layout():
         {"dust_mite": 2, "ember_moth": 0},
         {"dust_mite": 2},
     )
-    assert "🌿 🌱 🌳 **Ori's zoo!** 🌳 🌱 🌿" in board
-    assert "❓₀" in board
-    assert "🪲₂" in board
+    assert "\U0001f33f \U0001f331 \U0001f333 **Ori's zoo!** \U0001f333 \U0001f331 \U0001f33f" in board
+    assert "\u2753\u2080" in board
+    assert "\U0001fab2\u2082" in board
     assert "**Zoo Points: __2__**" in board
     owned = hunt.owned_catalog({"dust_mite": 2, "sol_wyrm": 0})
     assert [row[0] for row in owned] == ["dust_mite"]
