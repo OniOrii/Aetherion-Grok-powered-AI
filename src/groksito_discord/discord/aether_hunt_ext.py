@@ -116,6 +116,14 @@ def _streak_bonus(streak):
     x = max(0, int(streak))
     if x <= 0:
         return 0
+    if x % 1000 == 0:
+        return min(100000, int(250 * (x ** 0.5) + 12500))
+    if x % 500 == 0:
+        return min(100000, int(100 * (x ** 0.5) + 5000))
+    if x % 100 == 0:
+        return min(100000, int(50 * (x ** 0.5) + 2500))
+    if x % 50 == 0:
+        return min(100000, int(30 * (x ** 0.5) + 1500))
     if x % 10 == 0:
         return min(100000, int(10 * (x ** 0.5) + 500))
     return 0
@@ -200,12 +208,17 @@ def battle(user_id, rng=None):
                 foe["weapon"] = {"kind": kind, "name": name, "emoji": emoji, "style": style, "rarity": rarity, "atk": rng.randint(lo, hi)}
         outcome = simulate_battle(player, enemy, rng)
         result = outcome["result"]
+        prev_streak = int(pack.get("streak") or 0)
         if result == "win":
-            pack["streak"] = int(pack.get("streak") or 0) + 1
+            pack["streak"] = prev_streak + 1
         else:
             pack["streak"] = 0
         pack["best_streak"] = max(int(pack.get("best_streak") or 0), int(pack.get("streak") or 0))
-        xp_gain = BATTLE_XP[result] + _streak_bonus(pack["streak"]) + _level_diff_xp(player, enemy)
+        xp_base = BATTLE_XP[result]
+        xp_bonus = 0
+        if result == "win":
+            xp_bonus = _streak_bonus(pack["streak"]) + _level_diff_xp(player, enemy)
+        xp_gain = xp_base + xp_bonus
         highest = max(level_of(xp_of(row, aid)) for aid in team_ids)
         for aid in team_ids:
             extra = xp_gain
@@ -213,15 +226,11 @@ def battle(user_id, rng=None):
             if gap > 0:
                 extra = int(extra * min(10.0, 2 + 0.1 * gap))
             add_xp(row, aid, extra)
-        payout = WIN_PAYOUT if result == "win" else DRAW_PAYOUT if result == "draw" else 0
+        payout = 0
         balance = ai_coins.get_balance(user_id)
-        if payout:
-            ok, balance, err = ai_coins.grant_coins(user_id, payout)
-            if not ok:
-                payout = 0
         crate = gear.maybe_crate(pack, result == "win", rng)
         _save_store(store)
-        return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "frames": outcome.get("frames") or [], "xp_gain": xp_gain, "payout": payout, "balance": balance, "streak": int(pack.get("streak") or 0), "best_streak": int(pack.get("best_streak") or 0), "crate": crate}
+        return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "frames": outcome.get("frames") or [], "xp_gain": xp_gain, "xp_base": xp_base, "xp_bonus": xp_bonus, "payout": payout, "balance": balance, "streak": int(pack.get("streak") or 0), "prev_streak": prev_streak, "best_streak": int(pack.get("best_streak") or 0), "crate": crate}
 
 
 def hunt_catch_line(display_name, animal_id, extras=None, lootbox=False):
@@ -294,10 +303,9 @@ def battle_card(display_name, result):
     if log:
         lines.append("")
         lines.extend(log[-6:])
-    lines.append(f"Turn {rounds} / 5")
-    xp = int(result.get("xp_gain") or 0)
-    streak = int(result.get("streak") or 0)
-    lines.append(f"Team XP +{xp} \u00b7 streak {streak}")
+    lines.append(f"Turn {rounds}")
+    from .aether_battle import result_caption
+    lines.append(result_caption(result))
     return "\n".join(lines)
 
 
