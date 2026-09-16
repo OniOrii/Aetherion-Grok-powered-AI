@@ -15,7 +15,7 @@ logger = logging.getLogger("aetherion.reaction_roles")
 _CUSTOM_EMOJI_RE = re.compile(r"^<(a?):([A-Za-z0-9_]+):(\d+)>$" )
 _ID_EMOJI_RE = re.compile(r"^([A-Za-z0-9_]+):(\d+)$")
 _PAIR_RE = re.compile(r"(?P<left><(?:a)?:[A-Za-z0-9_]+:\d+>|\S+)\s+<@&(?P<rid>\d+)>")
-RR_EMBED_TITLE = "Aetherion reaction roles"
+RR_EMBED_TITLE = "\u2726 Aetherion \u00b7 Reaction roles"
 
 
 def _store_path() -> Path:
@@ -216,7 +216,7 @@ def panel_embed(panel: dict) -> discord.Embed:
     embed = discord.Embed(
         title=RR_EMBED_TITLE,
         description="\n".join(lines)[:4000] or "No roles bound yet.",
-        color=0x2B2D31,
+        color=0xC9A227,
     )
     return embed
 
