@@ -48,14 +48,12 @@ def _embed_for(hand: Hand, *, balance: int, reveal: bool) -> discord.Embed:
     if hand.finished:
         if hand.outcome in ("player_bj", "win"):
             color = EMBED_WIN
-            title = "\u2726 Blackjack \u00b7 You take it"
         elif hand.outcome in ("push", "both_bj"):
             color = EMBED_PUSH
-            title = "\u2726 Blackjack \u00b7 Push"
         else:
             color = EMBED_LOSE
-            title = "\u2726 Blackjack \u00b7 Dealer table"
-        footer = hand.result_line()
+        title = f"\u2726 Blackjack \u00b7 {hand.result_line().rstrip('.')}"
+        footer = ""
     else:
         color = EMBED_PLAY
         title = "\u2726 Blackjack"
@@ -66,7 +64,8 @@ def _embed_for(hand: Hand, *, balance: int, reveal: bool) -> discord.Embed:
     embed.add_field(name="\u2726 Aetherion", value=dealer_total_text, inline=True)
     embed.add_field(name="Bet", value=ai_coins.coins(f"**{hand.bet:,}**"), inline=True)
     embed.add_field(name="Wallet", value=ai_coins.coins(f"**{balance:,}**"), inline=True)
-    embed.set_footer(text=footer)
+    if footer:
+        embed.set_footer(text=footer)
     return embed
 
 
@@ -245,7 +244,6 @@ async def _act(interaction: discord.Interaction, view: BlackjackView, action: st
     reveal = hand.finished
     if hand.finished:
         balance = ai_coins.settle_hand(view.user_id, hand.credit())
-        _last_bet[view.user_id] = hand.bet if not hand.doubled else hand.bet // 2
         if hand.doubled:
             _last_bet[view.user_id] = max(ai_coins.MIN_BET, hand.bet // 2)
         else:
