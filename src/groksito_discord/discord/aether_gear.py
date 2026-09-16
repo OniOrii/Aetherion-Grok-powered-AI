@@ -418,17 +418,21 @@ def weapon_line(wep: dict[str, Any] | None) -> str:
     return f"`{wid}` {rarity_mark(rar)} {wep.get('emoji', '')} {passive} {quality}%".strip()
 
 def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
+    """Mobile-friendly /inv body: labeled supplies, spaced sections, short weapon rows."""
     _roll_day(blob)
-    lines = [f"===== {display_name}'s Inventory ====="]
+    lines = [f"===== {display_name}'s Inventory =====", ""]
     lb = int(blob.get("lootbox") or 0)
     cr = int(blob.get("crate") or 0)
     lb_today = int(blob.get("lb_today") or 0)
     crate_today = int(blob.get("crate_today") or 0)
-    lines.append(f"`050` \U0001f4e6 `{lb}`  `100` \U0001fab5 `{cr}`")
+    shards = int(blob.get("shards") or 0)
+    raid = int(blob.get("raid_ticket") or 0)
+    lines.append("**Supplies**")
+    lines.append(f"`050` 📦 LB `{lb}` · `100` 🪵 crate `{cr}`")
+    lines.append(f"`200` 🪨 shards `{shards}` · `300` 🎟️ raid `{raid}`")
     lines.append(
         f"Hunt lootboxes today `[{lb_today}/{LB_DAILY}]` · battle crates today `[{crate_today}/{CRATE_DAILY}]`"
     )
-    lines.append(f"`200` 🪨 `{int(blob.get('shards') or 0)}`  `300` 🎟️ `{int(blob.get('raid_ticket') or 0)}`")
     gem_bits = []
     for gid, n in sorted((blob.get("gems") or {}).items()):
         try:
@@ -443,7 +447,9 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
             continue
         gem_bits.append(f"{meta[2]} {RARITY_LABEL[rar]} {meta[1]} x{count}")
     if gem_bits:
-        lines.append("**Gems** " + " \u00b7 ".join(gem_bits))
+        lines.append("")
+        lines.append("**Gems**")
+        lines.extend(gem_bits)
     active = blob.get("active") or {}
     bits = []
     for kind, item in active.items():
@@ -455,8 +461,11 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
         mx = int(GEM_HUNTS.get(rar) or left or 1)
         bits.append(f"{meta[2]} {RARITY_LABEL.get(rar, rar)} {meta[1]} `[{left}/{mx}]`")
     if bits:
-        lines.append("**Active** " + " \u00b7 ".join(bits))
+        lines.append("")
+        lines.append("**Active**")
+        lines.extend(bits)
     weapons = blob.get("weapons") or {}
+    lines.append("")
     if weapons:
         lines.append("**Weapons**")
         for wid, raw in list(weapons.items())[:20]:
@@ -469,8 +478,9 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
             q = int(raw.get("quality") or 0)
             style = raw.get("style") or meta[3]
             passive = _STYLE_PASSIVE.get(style, "")
+            # Short quality token keeps id · rarity · emoji · name · style on one mobile line.
             lines.append(
-                f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} | Quality: {q}%"
+                f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} `{q}%`"
             )
     else:
         lines.append("No weapons yet. Battle for a crate.")
