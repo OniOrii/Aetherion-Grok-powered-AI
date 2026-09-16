@@ -49,3 +49,23 @@ def test_battle_ends_with_a_result():
 def test_ori_gate_id_unchanged():
     assert creator_is_author(CREATOR_DISCORD_ID)
     assert not creator_is_author(1)
+
+
+def test_hunt_and_zoo_match_owo_layout():
+    line = hunt.hunt_catch_line("Ori", "dust_mite")
+    assert line.startswith("**🌱 | Ori** spent")
+    assert "caught a **common**" in line
+    assert "🪲" in line
+    epic = hunt.hunt_catch_line("Ori", "aether_drake")
+    assert "caught an **epic**" in epic
+    board = hunt.zoo_board(
+        "Ori",
+        {"dust_mite": 2, "ember_moth": 0},
+        {"dust_mite": 2},
+    )
+    assert "🌿 🌱 🌳 **Ori's zoo!** 🌳 🌱 🌿" in board
+    assert "❓₀" in board
+    assert "🪲₂" in board
+    assert "**Zoo Points: __2__**" in board
+    owned = hunt.owned_catalog({"dust_mite": 2, "sol_wyrm": 0})
+    assert [row[0] for row in owned] == ["dust_mite"]
