@@ -33,6 +33,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Fixed
 
+- `/poker` Hands embed says "Ranked strongest to weakest."
 - `/poker` Hands suit symbols sit in the center of each mini card.
 - `/poker` Hands cards were too small. Jacks read as J, ranks sit in the corners, and royal flush is the top row.
 - `/poker` Hands no longer claims your current best hand. It is a reference chart only.
