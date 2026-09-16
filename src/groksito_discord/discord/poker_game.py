@@ -12,12 +12,45 @@ from .poker_table import render_hole_png, render_table_png
 from .poker_logic import (
     BOT_ID, BOT_NAME, MAX_SEATS, TABLE_NAME, HOLE_NAME, THINK_SLEEP,
     EMBED_WAIT, EMBED_PLAY, EMBED_WIN, EMBED_DEAD, DEFAULT_BUYIN,
+    HAND_NAMES, best_hand,
     _tables, _last_bet, _new_id, _card_label, _hold_seat, _refund_seat, _finish,
     _deal_holes, _raise_bounds, _apply_action, _bot_action, _after_action,
     _needs_board_run, _player_busy, _bind, Seat, Table, _showdown, _advance_street,
 )
 
 logger = logging.getLogger("aetherion.slash_poker")
+
+_HAND_HELP = (
+    ("Straight flush", "A 10\u2665 J\u2665 Q\u2665 K\u2665 A\u2665. Five in a row, same suit."),
+    ("Four of a kind", "Four aces. The fifth card is a kicker."),
+    ("Full house", "Three kings and two nines."),
+    ("Flush", "Five hearts, any ranks."),
+    ("Straight", "A 2 3 4 5, mixed suits."),
+    ("Three of a kind", "Three queens."),
+    ("Two pair", "Kings and sevens."),
+    ("Pair", "Two jacks."),
+    ("High card", "Nothing made. Ace high beats king high."),
+)
+
+
+def _hands_embed(seat, table) -> discord.Embed:
+    lines = []
+    made = None
+    if seat is not None and seat.hole:
+        made = int(best_hand(seat.hole, table.board)[0])
+    for i, (name, hint) in enumerate(reversed(_HAND_HELP)):
+        rank = 8 - i
+        mark = " \u2190 you" if made is not None and rank == made else ""
+        lines.append(f"**{name}**{mark}\n{hint}")
+    desc = "\n\n".join(lines)
+    if made is not None:
+        desc = f"Your best right now: **{HAND_NAMES[made]}**.\n\n" + desc
+    else:
+        desc = "Strongest at the top.\n\n" + desc
+    embed = discord.Embed(title="\u2726 Poker hands", description=desc, color=EMBED_PLAY)
+    embed.set_footer(text="Only you see this. Use five cards from your two plus the board.")
+    return embed
+
 
 def _embed(table, *, waiting=False):
     if waiting or table.street == "lobby":
@@ -363,6 +396,14 @@ class PlayView(discord.ui.View):
         embed = discord.Embed(title="\u2726 Your hole cards", description="  ".join(_card_label(c) for c in seat.hole), color=EMBED_PLAY)
         embed.set_image(url=f"attachment://{HOLE_NAME}")
         await interaction.response.send_message(embed=embed, file=file, ephemeral=True)
+    @discord.ui.button(label="Hands", style=discord.ButtonStyle.secondary, row=1)
+    async def hands_guide(self, interaction, button):
+        table = self._table()
+        if table is None:
+            await interaction.response.send_message("This hand is over.", ephemeral=True)
+            return
+        seat = table.seat_of(interaction.user.id)
+        await interaction.response.send_message(embed=_hands_embed(seat, table), ephemeral=True)
     async def on_timeout(self):
         table = self._table()
         if table is None or table.finished or table.street == "lobby":
