@@ -25,10 +25,13 @@ _Nothing waiting. New work is dated the day it ships._
 - Aetherion has a house wallet that starts at **1,000,000**. Wins against players add to it, losses subtract, and it appears on `/leaderboard`.
 - Aetherion plays `/poker` from its own hole cards and the board only. It can value-bet, fold junk, or bluff. It cannot see anyone else's hole cards.
 - Aetherion no longer dumps the stack on ace-high. All-in and calling a shove need a pair or better, or a premium preflop hand. Bluffs stay small.
+- Every coin game prints how much you won or lost at the end. New games should use `ai_coins.won_line`.
 
 ### Fixed
 
-- `/blackjack` states the result once, in the embed title. The footer and the painted table line no longer repeat it.
+- `/blackjack` states the result once, in the embed title, including coins won or lost. The footer and the painted table line no longer repeat it.
+- `/connect4` end text says Won / Lost / Push instead of only naming the pot.
+- `/poker` showdown names each seat's Won / Lost amount vs the buy-in.
 - Replies to Aetherion now read the message that was replied to, including Connect Four embeds and other game boards, plus recent chat with that user.
 - Replies to a finished Connect Four board now keep the result text (embed title, fields, footer) and the match outcome, so "impossible to win against you" is treated as talk about that game instead of a new dare.
 - Connect Four no longer flickers the whole board on each drop. The painted table is cached, only the falling chip is drawn, and Discord keeps one connect4.gif attachment instead of swapping GIF then PNG every turn.
