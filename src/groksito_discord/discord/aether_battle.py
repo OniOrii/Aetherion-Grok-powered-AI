@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 from .aether_gear import COMMON, WEAPON_BY_ID
 from .weapon_art import weapon_icon_png
 
-MAX_TURNS = 5
+MAX_TURNS = 25
 BOARD_W = 900
 ROW_H = 128
 PAD = 10
@@ -170,11 +170,11 @@ def _card(
     mx = max(1, int(pet.get("max_hp") or 1))
     wp = max(0, int(pet.get("wp") or 0))
     wpx = max(1, int(pet.get("max_wp") or 1))
-    bar_w = max(120, (x1 - text_x) - 18)
+    bar_w = max(110, (x1 - text_x) - 78)
     _bar(draw, text_x, y0 + 58, bar_w, 14, hp, mx, HP_RED, HP_BACK)
-    draw.text((text_x + bar_w, y0 + 64), f"{hp}/{mx}", font=_font(11, True), fill=INK, anchor="rm")
-    _bar(draw, text_x, y0 + 78, bar_w, 12, wp, wpx, WP_BLUE, WP_BACK)
-    draw.text((text_x + bar_w, y0 + 83), f"{wp}/{wpx} WP", font=_font(11), fill=MUTED, anchor="rm")
+    draw.text((text_x + bar_w + 8, y0 + 64), f"{hp}/{mx}", font=_font(12, True), fill=INK, anchor="lm")
+    _bar(draw, text_x, y0 + 80, bar_w, 12, wp, wpx, WP_BLUE, WP_BACK)
+    draw.text((text_x + bar_w + 8, y0 + 85), f"{wp}/{wpx}", font=_font(11), fill=MUTED, anchor="lm")
 
 
 def render_battle_png(
@@ -186,7 +186,7 @@ def render_battle_png(
     lines: list[str] | None = None,
 ) -> io.BytesIO:
     rows = max(len(player), len(enemy), 1)
-    extra = 26 if lines else 0
+    extra = 22 if lines else 0
     height = HEAD_H + rows * ROW_H + FOOT_H + extra
     img = Image.new("RGB", (BOARD_W, height), BG)
     draw = ImageDraw.Draw(img)
@@ -205,9 +205,9 @@ def render_battle_png(
         else:
             draw.rounded_rectangle(right, radius=12, fill=(28, 30, 38), outline=PANEL_EDGE)
     if lines:
-        note = "  \u00b7  ".join(lines[-2:])[:110]
-        draw.text((mid, height - 36), note, font=_font(12), fill=MUTED, anchor="mm")
-    draw.text((mid, height - 12), f"Turn {turn} / {max_turns}", font=_font(13, True), fill=MUTED, anchor="mm")
+        note = lines[-1][:90]
+        draw.text((mid, height - 34), note, font=_font(13), fill=MUTED, anchor="mm")
+    draw.text((mid, height - 12), f"Turn {turn}", font=_font(13, True), fill=MUTED, anchor="mm")
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
     buf.seek(0)
@@ -225,7 +225,7 @@ def roster_field(side: list[dict[str, Any]]) -> str:
             gear = "*no weapon*"
         emoji = pet.get("emoji") or ""
         name = pet.get("name") or pet.get("id") or "pet"
-        bits.append(f"L. {pet.get('level', 1)} {emoji} {name}\n- {gear}")
+        bits.append(f"L. {pet.get('level', 1)} {emoji} {name} - {gear}")
     return "\n".join(bits) or "*empty*"
 
 
@@ -235,6 +235,9 @@ def result_caption(result: dict[str, Any]) -> str:
     xp = int(result.get("xp_gain") or 0)
     word = {"win": "won", "lose": "lost"}.get(outcome, "tied")
     line = f"You {word} in {rounds} turn{'s' if rounds != 1 else ''}! | +{xp} xp"
+    streak = int(result.get("streak") or 0)
+    if outcome == "win" and streak:
+        line += f" | Streak: {streak}"
     if result.get("crate"):
         line += "\nYou found a weapon crate!"
     return line
