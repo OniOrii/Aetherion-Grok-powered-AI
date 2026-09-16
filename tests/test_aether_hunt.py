@@ -912,6 +912,76 @@ def test_settings_slot_display_and_team_settings_body():
     assert "Thorn Wolf" in body
 
 
+
+def test_team_lines_layout_and_weapon_rows():
+    """ /team party card: spaced stats, soft no-weapon, clear equipped row."""
+    from groksito_discord.discord import aether_gear as gear
+
+    bare = "\n".join(
+        hunt.team_lines(
+            ["dust_mite", None, "thorn_wolf"],
+            {"dust_mite": 0, "thorn_wolf": 0},
+            {"dust_mite": 1, "thorn_wolf": 1},
+            None,
+        )
+    )
+    assert "**[1]**" in bare and "**[2]** empty" in bare
+    assert "🟥 H " in bare and "🟦 W " in bare
+    assert " ·  " in bare
+    assert "· no weapon" in bare
+    assert "*no weapon*" not in bare
+    assert "**Owned**" not in bare
+    # blank line between slots
+    assert "\n\n**[2]**" in bare or "\n\n**[3]**" in bare
+
+    pack = gear.blank_gear()
+    pack["weapons"]["7"] = {
+        "kind": "mist_dagger",
+        "rarity": gear.UNCOMMON,
+        "quality": 77,
+        "atk": 5,
+        "style": "strike",
+    }
+    pack["equip"]["dust_mite"] = "7"
+    armed = "\n".join(
+        hunt.team_lines(
+            ["dust_mite", None, None],
+            {"dust_mite": 0},
+            {"dust_mite": 1},
+            pack,
+        )
+    )
+    held = gear.equipped_weapon(pack, "dust_mite")
+    assert held is not None
+    assert f"⚔️ {gear.weapon_line(held)}" in armed
+    slot1 = armed.split("**[1]**", 1)[1].split("**[2]**", 1)[0]
+    assert "· no weapon" not in slot1
+
+
+def test_team_embed_omits_owned_section(tmp_path: Path):
+    """build_team_embed must not dump the Owned catalog (use /zoo)."""
+    from groksito_discord.discord import team_settings_views as team_ui
+
+    hunt.set_store_path(tmp_path / "hunt.json")
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 55)
+        row["zoo"] = {"dust_mite": 2, "ember_moth": 1, "thorn_wolf": 1}
+        row["caught"] = {"dust_mite": 2, "ember_moth": 1, "thorn_wolf": 1}
+        row["team"] = ["dust_mite", "thorn_wolf", None]
+        hunt._save_store(store)
+    embed = team_ui.build_team_embed(55)
+    body = embed.description or ""
+    assert "**Owned**" not in body
+    assert "Ember Moth" not in body  # owned but not on team
+    assert "Dust Mite" in body
+    assert "Thorn Wolf" in body
+    assert "· no weapon" in body
+    footer = embed.footer.text or ""
+    assert "/zoo for owned" in footer
+    assert "settings" in footer
+
+
 def test_set_team_slot_clear_and_swap(tmp_path: Path, monkeypatch):
     """Slot helper used by settings Select still clears and rejects dupes."""
     store = tmp_path / "hunt.json"

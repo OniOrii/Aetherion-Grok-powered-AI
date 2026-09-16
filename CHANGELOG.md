@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Changed
+
+- **Hunt `/team` UX polish (Ori only):** clearer slot spacing (blank line between slots), spaced `🟥 H/P/p · 🟦 W/M/m` rows, equipped weapon prefixed with ⚔️, soft `· no weapon` when empty. **Owned** animal list removed from the `/team` embed (discovery stays on `/zoo` `/bestiary` `/checklist`). Footer hint `⚙️ settings · /zoo for owned`. Team Settings cog + views unchanged.
+
 ### Added
 
 - **Hunt unique weapon passives + rarity combat pools (Ori only):** every crate weapon kind has a unique P01–P42 passive (AETHERION_WEAPON_PASSIVES.md: name, Description + Passive, combat hooks) — no OwO weapon/creature names. `/weapon id` shows the unique passive; team/inv rows glue the passive icon after the weapon emoji. Battle applies a small hook set (lifesteal, thorns, WP refund, STR/MAG/HP/WP/PR/MR %, cleave/mend bonus, first strike, MR shred, crit, missing-HP amp, start shield, death nuke, Field Tutor XP). Quality% lightly scales hook strength. Animal `RARITY_BASE` widened (Common 40/8 → Mythic 128/30) and PR/MR/WP_MAX scale by rarity (C 6/6/40 … M 20/20/90) in `_fighter` / `/team` so rarer animals outclass commons in all combat stats at the same level. Strike/cleave/mend styles unchanged. Expedition and board PNG redesign out of scope.

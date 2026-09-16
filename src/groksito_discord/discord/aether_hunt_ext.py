@@ -362,9 +362,13 @@ def team_lines(team, xp, zoo, pack=None):
 
     Maps honestly to existing fighter stats (no new combat math).
     H=HP, P=ATK, p=PR, W=WP, M=MAG, m=MR — same formulas as `_fighter`.
+    Blank line between slots; spaced H/P/p · W/M/m; equipped weapon prefixed;
+    empty gear stays a soft · no weapon (Owned catalog lives on /zoo).
     """
     lines = []
     for i in range(TEAM_SIZE):
+        if i > 0:
+            lines.append("")
         aid = team[i] if i < len(team) else None
         if not aid:
             lines.append(f"**[{i + 1}]** empty")
@@ -383,13 +387,13 @@ def team_lines(team, xp, zoo, pack=None):
         xp_bit = f"{into}/{need}" if need else f"{into}/—"
         lines.append(f"**[{i + 1}]** {animal_label(aid)}")
         lines.append(f"Lvl {lvl} [{xp_bit}]")
-        lines.append(f"🟥H {base_hp}  🟦W {wp}")
-        lines.append(f"🟥P {atk}  🟦M {mag}")
-        lines.append(f"🟥p {pr}  🟦m {mr}")
+        lines.append(f"🟥 H {base_hp}  ·  🟦 W {wp}")
+        lines.append(f"🟥 P {atk}  ·  🟦 M {mag}")
+        lines.append(f"🟥 p {pr}  ·  🟦 m {mr}")
         if held:
-            lines.append(gear.weapon_line(held))
+            lines.append(f"⚔️ {gear.weapon_line(held)}")
         else:
-            lines.append("*no weapon*")
+            lines.append("· no weapon")
     return lines
 
 
