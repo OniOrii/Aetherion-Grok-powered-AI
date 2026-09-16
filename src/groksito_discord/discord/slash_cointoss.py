@@ -111,11 +111,11 @@ class TossView(discord.ui.View):
 
 def _toss_embed(* , pocket: int, winnings_text: str, body: str, bet: int, color: int) -> discord.Embed:
     desc = (
-        f"Pocket: {coins(f'**{pocket:,}**')}\n"
-        f"Winnings: {coins(f'**{winnings_text}**')}\n\n"
+        f"**Pocket** \u00b7 {coins(f'**{pocket:,}**')}\n"
+        f"**Winnings** \u00b7 {coins(f'**{winnings_text}**')}\n\n"
         f"{body}"
     )
-    embed = discord.Embed(title="Coin Toss", description=desc, color=color)
+    embed = discord.Embed(title="\u2726 Coin Toss", description=desc, color=color)
     embed.set_footer(
         text=(
             f"Bet: {coins(f'{bet:,}')}  |  Correct: {WIN_MULTI:g}x  |  Side: {SIDE_MULTI:g}x"
@@ -284,7 +284,7 @@ async def _run_toss(
 
 
 def register_cointoss(tree, is_guild_allowed) -> None:
-    @tree.command(name="cointoss", description="Flip an Aether coin for Aether Coins")
+    @tree.command(name="cointoss", description="Flip an Aether coin for Aether Coins.")
     @discord.app_commands.describe(
         bet=f"Wager in Aether Coins ({TOSS_MIN_BET}\u2013{TOSS_MAX_BET})",
         side="Call heads or tails",
