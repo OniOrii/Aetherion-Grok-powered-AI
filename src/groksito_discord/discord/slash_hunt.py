@@ -518,9 +518,10 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 break
         return out
 
-    @tree.command(name="weapon", description="WIP Ori only. List owned crate weapons and who holds them.")
+    @tree.command(name="weapon", description="WIP Ori only. List crate weapons, or inspect one by id.")
+    @discord.app_commands.describe(id="Weapon inventory id — omit for the armory list")
     @discord.app_commands.default_permissions(administrator=True)
-    async def weapon_slash(interaction: discord.Interaction):
+    async def weapon_slash(interaction: discord.Interaction, id: str | None = None):
         if not await _gate(interaction, is_guild_allowed):
             return
         snap = hunt.snapshot(interaction.user.id)
@@ -531,10 +532,41 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 row = hunt._ensure_user(store, interaction.user.id)
                 pack = gear.ensure_gear(row)
                 hunt._save_store(store)
-        body = hunt.weapon_board(_display_name(interaction), pack)
+        name = _display_name(interaction)
+        if id:
+            result = hunt.weapon_detail(interaction.user.id, id, name)
+            if not result.get("ok"):
+                await interaction.response.send_message(
+                    result.get("error") or "Could not open that weapon.", ephemeral=True
+                )
+                return
+            body = result["body"]
+            if len(body) > 3900:
+                body = body[:3890] + '\n…'
+            title = f"{result.get('emoji', '')} {name}'s {result.get('name', 'weapon')}".strip()
+            embed = _embed(title, body)
+            wep = result.get("wep") or {}
+            if wep.get("kind") and hasattr(gear, "weapon_icon_png"):
+                icon = gear.weapon_icon_png(str(wep["kind"]), wep.get("rarity"))
+                fname = f"{wep['kind']}.png"
+                embed.set_thumbnail(url=f"attachment://{fname}")
+                await interaction.response.send_message(
+                    embed=embed, file=discord.File(icon, filename=fname)
+                )
+                return
+            await interaction.response.send_message(embed=embed)
+            return
+        rowish = {"nicks": snap.get("nicks") or {}}
+        body = hunt.weapon_board(name, pack, rowish)
         if len(body) > 3900:
-            body = body[:3890] + "\n\u2026"
-        await interaction.response.send_message(embed=_embed("\u2726 Armory", body))
+            body = body[:3890] + '\n…'
+        await interaction.response.send_message(embed=_embed('✦ Armory', body))
+
+    @weapon_slash.autocomplete("id")
+    async def weapon_id_ac(interaction: discord.Interaction, current: str):
+        return await equip_weapon_ac(interaction, current)
+
+
 
     @tree.command(name="sacrifice", description="WIP Ori only. Sacrifice extra animals into Essence.")
     @discord.app_commands.describe(animal="Animal name", count="How many extras to sacrifice")

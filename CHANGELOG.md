@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Added
+
+- **Hunt `/weapon {id}` detail embed (Ori only):** OwO-feel card with Aetherion copy — Name + emoji, ID, Salvage (shards by rarity; no invented sell currency), Quality%, WP Cost (mapped from existing strike/cleave/mend battle spend), Description from style targeting, Passives (style mark + ATK), and equipped animal when set. Thumbnail uses the painted weapon icon. Bare `/weapon` stays an ID-first dense list (equipped marker now includes animal name).
+
 ### Changed
 
 - **Hunt `/battle` animal portraits:** board tiles load original Aetherion species PNGs from `assets/hunt_portraits/` (clearer Discord-size species read, rarity-rimmed). Procedural silhouettes remain as fallback. KO rows stay dimmed. Board HP/WP spacing from PR #6 kept.

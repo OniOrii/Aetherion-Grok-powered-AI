@@ -404,11 +404,11 @@ def nick_label(animal_id, row=None):
     return f'{label} "{nick}"' if nick else label
 
 
-def weapon_board(display_name, pack):
+def weapon_board(display_name, pack, row=None):
     """ID-first armory list — OwO density with Aetherion copy."""
     lines = [
         f"**{display_name}'s weapons**",
-        "`/weapon` list · `/equip` by id · `/crate` for more",
+        "Detail `/weapon id:` · Equip `/equip` · Salvage `/salvage`",
     ]
     weapons = (pack or {}).get("weapons") or {}
     equip = (pack or {}).get("equip") or {}
@@ -429,12 +429,63 @@ def weapon_board(display_name, pack):
         line = f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} | Quality: {q}%"
         holder = by_wid.get(str(wid))
         if holder:
-            row = ANIMAL_BY_ID.get(holder)
-            mark = row[2] if row else ""
-            lines.append(f"{line} · {mark}")
+            animal = ANIMAL_BY_ID.get(holder)
+            if row is not None:
+                label = nick_label(holder, row)
+            elif animal:
+                label = f"{animal[2]} {animal[1]}".strip()
+            else:
+                label = holder
+            lines.append(f"{line} · {label}")
         else:
             lines.append(line)
     return "\n".join(lines)
+
+
+def weapon_detail(user_id, query, display_name="Hunter"):
+    """OwO-feel `/weapon {id}` detail card from existing style/ATK/WP data."""
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        wid = gear.resolve_weapon(pack, query)
+        if not wid:
+            return {"ok": False, "error": "No matching weapon. Use the id from `/weapon`."}
+        raw = (pack.get("weapons") or {}).get(str(wid))
+        if not isinstance(raw, dict):
+            return {"ok": False, "error": "That weapon entry is broken."}
+        meta = gear.WEAPON_BY_ID.get(raw.get("kind"))
+        if not meta:
+            return {"ok": False, "error": "That weapon entry is broken."}
+        wep = {
+            "wid": str(wid),
+            "kind": raw.get("kind"),
+            "name": meta[1],
+            "emoji": meta[2],
+            "style": raw.get("style") or meta[3],
+            "rarity": raw.get("rarity") or COMMON,
+            "quality": int(raw.get("quality") or 50),
+            "atk": int(raw.get("atk") or 0),
+        }
+        holder_label = None
+        for animal_id, held in (pack.get("equip") or {}).items():
+            if str(held) == str(wid):
+                # nick_label / animal_label already include the species emoji
+                holder_label = nick_label(animal_id, row)
+                break
+        body = gear.weapon_detail_text(
+            wep, display_name=display_name, holder_label=holder_label
+        )
+        return {
+            "ok": True,
+            "wid": str(wid),
+            "kind": wep["kind"],
+            "name": wep["name"],
+            "emoji": wep["emoji"],
+            "rarity": wep["rarity"],
+            "body": body,
+            "wep": wep,
+        }
 
 
 def sacrifice(user_id, query, count=1):
@@ -782,7 +833,7 @@ def install(mod=None):
         "battle", "team_lines", "battle_card",
         "open_lootbox", "open_crate", "use_gem", "equip_weapon",
         "grant_daily_supplies", "grant_supplies",
-        "essence_of", "nick_of", "nick_label", "weapon_board",
+        "essence_of", "nick_of", "nick_label", "weapon_board", "weapon_detail",
         "sacrifice", "rename_animal", "checklist_board",
         "bestiary_card", "bestiary", "salvage", "build_raid_boss", "raid",
         "RENAME_FEE", "ESSENCE_BY_RARITY", "LORE_BY_RARITY",
