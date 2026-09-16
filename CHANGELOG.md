@@ -11,6 +11,12 @@ Older packaged history stays under version headings. Aetherion work from Septemb
 
 _Nothing waiting. New work is dated the day it ships._
 
+## [2026-09-16]
+
+### Added
+
+- **Aetherion Hunt Test 2 (Ori only):** thirty original weapons, weapon crates, lootboxes, and hunting/lucky/empower gems. `/inv`, `/lootbox`, `/crate`, `/use`, `/equip`. First hunt of the day drops a lootbox (then 5%, max 3). First battle win drops a crate (then 5%, max 3). Gems change hunt yield. Weapons add ATK and a strike/cleave/mend style. `/battle` prints `{name} goes into battle!`, both rosters with rarity marks and weapons, HP bars, turn count, and streak XP. `/inv` uses the OwO inventory header (`050` lootbox, `100` crate). `/lootbox` uses the two-line gem reveal. Pet level cap is 50.
+
 ## [2026-09-15]
 
 ### Added
@@ -20,11 +26,11 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
-- `/hunt` is now the OwO-style one-liner (`spent 10 ✦ and caught a common 🟥C …`). `/zoo` is the C/U/R/E/M grid with ❓ for unseen animals, current owned counts, and lifetime **Zoo Points**. Selling does not wipe a discovered slot. `/team` and `/sell` only list animals you currently own.
-- Command embeds use the gold cosmos look: `\u2726` titles, sentence case, and punctuation on `/help`, `/ping`, `/play`, `/blackjack`, `/balance`, `/daily`, `/leaderboard`, `/slots`, `/cointoss`, `/connect4`, `/poker`, and reaction-role panels.
+- `/hunt` is now the OwO-style one-liner (`spent 10 \u2726 and caught a common`). `/zoo` is the C/U/R/E/M grid with unseen animals, current owned counts, and lifetime **Zoo Points**. Selling does not wipe a discovered slot. `/team` and `/sell` only list animals you currently own.
+- Command embeds use the gold cosmos look on `/help`, `/ping`, `/play`, `/blackjack`, `/balance`, `/daily`, `/leaderboard`, `/slots`, `/cointoss`, `/connect4`, `/poker`, and reaction-role panels.
 - `/balance` and `/daily` now reply with gold wallet embeds instead of plain text.
 - Poker caption bar sits below the bottom hands. Winner text wraps onto two lines instead of running off the bar.
-- The Aether Coin mark used on `/slots` (`\u2726`) now sits next to coin amounts on blackjack, connect four, poker, `/balance`, `/daily`, `/leaderboard`, and `/givecoins`.
+- The Aether Coin mark used on `/slots` now sits next to coin amounts on blackjack, connect four, poker, `/balance`, `/daily`, `/leaderboard`, and `/givecoins`.
 - `/poker` default buy-in is 200. Blinds scale with the buy-in (20/40 at 200, larger on bigger stacks). 10-coin tables stay blindless so they do not all-in on the post.
 - Aetherion raises and calls more in `/poker` instead of checking every street or folding every raise. House raises size to the pot.
 - New players start with **5,000** Aether Coins. `/daily` grants **2,000**.
@@ -54,20 +60,20 @@ _Nothing waiting. New work is dated the day it ships._
 ### Added
 
 - `/help` with topic pages (overview, chat, voice, games, coins, server) and a dropdown to switch pages.
-- `/connect4` \u2014 two-player Connect Four. Challenge a member, both stake the same Aether Coin bet, winner takes the pot. Draw returns both stakes.
+- `/connect4` two-player Connect Four. Challenge a member, both stake the same Aether Coin bet, winner takes the pot. Draw returns both stakes.
 - `/connect4` can be played against **Aetherion** (leave opponent empty). Painted cosmos board, house AI, Play Again.
 - Connect Four discs now fall down the column each turn. Aetherion pauses to choose, then drops with the same animation.
 - Connect Four drop animation is a single GIF per turn so the board does not flicker between holes.
 - Connect Four drop GIFs play once and freeze on the landed disc. They no longer restart from the top.
 - Connect Four GIFs no longer loop. The disc falls once, then the board freezes as a still image.
-- `/poker` \u2014 Texas Hold'em, 2-4 seats. Friends can Join, or Seat Aetherion. Fair house player uses only its own cards. Buy-in 10-1,000 Aether Coins. Fold / Check-Call / Raise / All-in. Hole cards stay private.
+- `/poker` Texas Hold'em, 2-4 seats. Friends can Join, or Seat Aetherion. Fair house player uses only its own cards. Buy-in 10-1,000 Aether Coins. Fold / Check-Call / Raise / All-in. Hole cards stay private.
 
 ### Changed
 
 - Poker table uses a felt oval, wider seats, and hole cards that sit side by side instead of overlapping.
 - `/poker` Raise opens a box so you type the amount. End of hand names the winner, the hand, both hole cards, and stacks.
 - Poker seat hole cards are larger again so they read at a glance. Community cards stay the same size so they do not overlap.
-- Poker action line on the felt ("OniOrii is all-in.") is larger and sits in a caption bar.
+- Poker action line on the felt is larger and sits in a caption bar.
 
 ### Fixed
 
@@ -85,26 +91,26 @@ _Nothing waiting. New work is dated the day it ships._
 - Exclusive multi-color **reaction roles** (Admin slash setup, anyone can react).
 - Fair `/blackjack` against Aetherion (Hit / Stand / Double).
 - Play-money **Aether Coins** saved in `data/ai_coins.json`.
-- `/slots` \u2014 Cosmos Wheel, Nebula, Event Horizon. Bet 100\u201310,000. Same wallet as blackjack.
+- `/slots` Cosmos Wheel, Nebula, Event Horizon. Bet 100-10,000. Same wallet as blackjack.
 - `/leaderboard` and Ori-only `/givecoins`.
 - Blackjack table art and Ori-only `/edit`.
-- Blackjack **Play Again** + **Change Bet** after each hand (same last stake, no retyping `/blackjack`).
-- `/cointoss` \u2014 Heads / Tails, 2% side landing at 2.5x, falling flip animation, custom Aether coin art. Bet 10\u201310,000.
+- Blackjack **Play Again** + **Change Bet** after each hand.
+- `/cointoss` Heads / Tails, 2% side landing at 2.5x, falling flip animation, custom Aether coin art. Bet 10-10,000.
 
 ### Changed
 
-- `/slots` cabinet now animates (spark reel \u2192 blur \u2192 land) and uses a tighter Pocket / Winnings / Net embed.
+- `/slots` cabinet now animates and uses a tighter Pocket / Winnings / Net embed.
 - Play-money currency is now **Aether Coins** (was AI Coins).
 - Blackjack table is a starfield with real suit glyphs.
 - Aether Coin bets and grants go by **10s**. Blackjack minimum is 10.
 - `/daily` grants **500** Aether Coins.
 - Slot pair and trip multipliers are **2x** the previous table.
 - `/cointoss` uses a smaller coin that falls the full frame. Odds are **48% heads / 48% tails / 2% side**.
-- Coin toss background is a sharp starfield with no planet. Side landings use their own standing-rim frame after the flip.
-- Slot reel rows keep `|` dividers between symbols and wider row spacing.
-- `/slots` uses a **corner thumbnail** for each cabinet (Cosmos, Nebula, Event Horizon). The large full-width embed image was removed because it kept breaking.
+- Coin toss background is a sharp starfield with no planet.
+- Slot reel rows keep dividers between symbols and wider row spacing.
+- `/slots` uses a **corner thumbnail** for each cabinet.
 - Coin toss uses **8** mid-air frames.
-- README now matches live commands (games, Aether Coins, reaction roles, admin tools) and states music is SoundCloud-only.
+- README now matches live commands and states music is SoundCloud-only.
 
 ### Fixed
 
@@ -116,7 +122,7 @@ _Nothing waiting. New work is dated the day it ships._
 ### Removed
 
 - The short-lived ~2% kinder payout bump on slots and blackjack.
-- Unused photo-cabinet leftovers (`cabinet_cosmos.py`, `assets/slots/*.b64`).
+- Unused photo-cabinet leftovers.
 - README claims that YouTube playback exists. `/play` still rejects YouTube links.
 
 ## [2026-09-12]
