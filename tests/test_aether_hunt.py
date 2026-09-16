@@ -155,3 +155,68 @@ def test_lootbox_is_not_guaranteed():
             break
     assert found
     assert pack2["lb_today"] >= 1
+
+
+def test_sacrifice_essence_keeps_team_copy(tmp_path: Path):
+    hunt.set_store_path(tmp_path / "hunt.json")
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 11)
+        row["zoo"] = {"dust_mite": 3, "glass_fox": 1}
+        row["caught"] = {"dust_mite": 3, "glass_fox": 1}
+        row["team"] = ["dust_mite", None, None]
+        hunt._save_store(store)
+    blocked = hunt.sacrifice(11, "dust_mite", 3)
+    assert not blocked["ok"]
+    out = hunt.sacrifice(11, "dust_mite", 2)
+    assert out["ok"]
+    assert out["sacrificed"] == 2
+    assert out["gained"] == 20
+    assert out["essence"] == 20
+    assert out["left"] == 1
+    snap = hunt.snapshot(11)
+    assert snap["essence"] == 20
+    assert snap["zoo"]["dust_mite"] == 1
+
+
+def test_rename_sets_and_clears(tmp_path: Path, monkeypatch):
+    from groksito_discord.discord import ai_coins
+
+    hunt.set_store_path(tmp_path / "hunt.json")
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 12)
+        row["zoo"] = {"sol_wyrm": 1}
+        row["caught"] = {"sol_wyrm": 1}
+        hunt._save_store(store)
+
+    monkeypatch.setattr(ai_coins, "get_balance", lambda _uid: 500)
+    monkeypatch.setattr(
+        ai_coins,
+        "resolve_wager",
+        lambda *_a, **_k: (True, 450, ""),
+    )
+    set_out = hunt.rename_animal(12, "sol_wyrm", "Solace")
+    assert set_out["ok"]
+    assert set_out["nickname"] == "Solace"
+    assert set_out["fee"] == hunt.RENAME_FEE
+    snap = hunt.snapshot(12)
+    assert snap["nicks"]["sol_wyrm"] == "Solace"
+    assert 'Sol Wyrm "Solace"' in hunt.nick_label("sol_wyrm", {"nicks": snap["nicks"]})
+
+    clear = hunt.rename_animal(12, "sol_wyrm", "")
+    assert clear["ok"] and clear["cleared"]
+    snap2 = hunt.snapshot(12)
+    assert "sol_wyrm" not in (snap2.get("nicks") or {})
+
+
+def test_checklist_marks_discovered_and_missing():
+    board = hunt.checklist_board("Ori", {"dust_mite": 2, "aether_drake": 1})
+    assert "Ori's field guide" in board
+    assert "Dust Mite" in board
+    assert "Aether Drake" in board
+    assert "Sol Wyrm" in board
+    assert "Missing" in board
+    assert "Found" in board
+    assert "Discovered __2__ / 30" in board
+    assert "cowoncy" not in board.lower()

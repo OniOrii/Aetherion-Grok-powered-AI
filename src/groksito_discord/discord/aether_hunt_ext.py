@@ -186,7 +186,8 @@ def snapshot(user_id):
         row = _ensure_user(store, user_id)
         pack = gear.ensure_gear(row)
         _save_store(store)
-        return {"zoo": dict(row["zoo"]), "caught": dict(row.get("caught") or {}), "team": list(row["team"]), "xp": dict(row["xp"]), "last_hunt": float(row["last_hunt"]), "cooldown": cooldown_left(row), "points": zoo_points_for(row.get("caught") or {}), "gear": pack, "streak": int(pack.get("streak") or 0), "best_streak": int(pack.get("best_streak") or 0)}
+        nicks = row.get("nicks") if isinstance(row.get("nicks"), dict) else {}
+        return {"zoo": dict(row["zoo"]), "caught": dict(row.get("caught") or {}), "team": list(row["team"]), "xp": dict(row["xp"]), "last_hunt": float(row["last_hunt"]), "cooldown": cooldown_left(row), "points": zoo_points_for(row.get("caught") or {}), "gear": pack, "streak": int(pack.get("streak") or 0), "best_streak": int(pack.get("best_streak") or 0), "essence": essence_of(row), "nicks": dict(nicks)}
 
 
 def battle(user_id, rng=None):
@@ -355,6 +356,164 @@ def equip_weapon(user_id, query, animal_query):
         return out
 
 
+
+RENAME_FEE = 50
+NICK_MAX = 24
+ESSENCE_BY_RARITY = dict(base.RARITY_SELL)
+
+
+def essence_of(row):
+    try:
+        return max(0, int(row.get("essence") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def nick_of(row, animal_id):
+    nicks = row.get("nicks")
+    if not isinstance(nicks, dict):
+        return None
+    raw = nicks.get(animal_id)
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    return text or None
+
+
+def nick_label(animal_id, row=None):
+    label = animal_label(animal_id)
+    if row is None:
+        return label
+    nick = nick_of(row, animal_id)
+    return f'{label} "{nick}"' if nick else label
+
+
+def weapon_board(display_name, pack):
+    lines = [f"**{display_name}'s armory**", "Crate weapons and the animal each one rides with."]
+    weapons = (pack or {}).get("weapons") or {}
+    equip = (pack or {}).get("equip") or {}
+    by_wid = {str(held): aid for aid, held in equip.items() if held}
+    if not weapons:
+        lines.append("No weapons yet. Win a battle for a crate, then /crate.")
+        return "\n".join(lines)
+    for wid, raw in weapons.items():
+        if not isinstance(raw, dict):
+            continue
+        meta = gear.WEAPON_BY_ID.get(raw.get("kind"))
+        if not meta:
+            continue
+        rar = raw.get("rarity") or COMMON
+        line = f"`{wid}` {meta[2]} {meta[1]} {gear.RARITY_MARK.get(rar, rar)} Q{int(raw.get('quality') or 0)} +{int(raw.get('atk') or 0)} ATK"
+        holder = by_wid.get(str(wid))
+        if holder:
+            lines.append(f"{line} · on {animal_label(holder)}")
+        else:
+            lines.append(f"{line} · unequipped")
+    return "\n".join(lines)
+
+
+def sacrifice(user_id, query, count=1):
+    animal_id = resolve_animal(query)
+    if animal_id is None:
+        return {"ok": False, "error": "I do not know that animal. Check /zoo."}
+    try:
+        count = int(count)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "Count has to be a whole number."}
+    if count < 1:
+        return {"ok": False, "error": "Sacrifice at least one."}
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        have = owned_count(row, animal_id)
+        on_team = animal_id in row["team"]
+        keep = 1 if on_team else 0
+        if have - count < keep:
+            if on_team:
+                return {"ok": False, "error": f"{animal_label(animal_id)} is on your team. Keep at least one, or take it off the team first."}
+            if have <= 0:
+                return {"ok": False, "error": f"You do not have a {animal_label(animal_id)}."}
+            return {"ok": False, "error": f"You only have {have}."}
+        gain = int(ESSENCE_BY_RARITY.get(rarity_of(animal_id), 10)) * count
+        row["zoo"][animal_id] = have - count
+        if row["zoo"][animal_id] <= 0:
+            del row["zoo"][animal_id]
+        total = essence_of(row) + gain
+        row["essence"] = total
+        _save_store(store)
+        return {
+            "ok": True,
+            "animal_id": animal_id,
+            "sacrificed": count,
+            "gained": gain,
+            "essence": total,
+            "left": owned_count(row, animal_id),
+        }
+
+
+def rename_animal(user_id, query, nickname=None):
+    animal_id = resolve_animal(query)
+    if animal_id is None:
+        return {"ok": False, "error": "I do not know that animal. Check /zoo."}
+    nick = " ".join(str(nickname or "").strip().split())
+    if len(nick) > NICK_MAX:
+        return {"ok": False, "error": f"Nicknames stay under {NICK_MAX} characters."}
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        if owned_count(row, animal_id) < 1:
+            return {"ok": False, "error": f"You do not have a {animal_label(animal_id)} yet. Hunt first."}
+        nicks = row.get("nicks")
+        if not isinstance(nicks, dict):
+            nicks = {}
+            row["nicks"] = nicks
+        if not nick:
+            nicks.pop(animal_id, None)
+            if not nicks:
+                row.pop("nicks", None)
+            _save_store(store)
+            return {"ok": True, "animal_id": animal_id, "nickname": None, "cleared": True, "fee": 0, "balance": ai_coins.get_balance(user_id)}
+        pocket = ai_coins.get_balance(user_id)
+        if pocket < RENAME_FEE:
+            return {"ok": False, "error": f"Renaming costs {ai_coins.coins(RENAME_FEE)}. You have {ai_coins.coins(pocket)}."}
+        ok, balance, err = ai_coins.resolve_wager(
+            user_id, RENAME_FEE, 0, min_bet=RENAME_FEE, max_bet=RENAME_FEE
+        )
+        if not ok:
+            return {"ok": False, "error": err or "Could not spend Aether Coins."}
+        nicks[animal_id] = nick
+        _save_store(store)
+        return {"ok": True, "animal_id": animal_id, "nickname": nick, "cleared": False, "fee": RENAME_FEE, "balance": balance}
+
+
+def checklist_board(display_name, caught):
+    lines = [
+        f"**{display_name}'s field guide**",
+        "Species you have discovered versus those still missing from the wilds.",
+    ]
+    total_found = 0
+    for rarity in base.RARITY_ORDER:
+        pool = [row for row in ANIMALS if row[3] == rarity]
+        found = []
+        missing = []
+        for aid, name, emoji, _rar in pool:
+            try:
+                ever = int((caught or {}).get(aid) or 0)
+            except (TypeError, ValueError):
+                ever = 0
+            if ever > 0:
+                found.append(f"{emoji} {name}")
+                total_found += 1
+            else:
+                missing.append(f"{emoji} {name}")
+        mark = rarity_mark(rarity)
+        lines.append(f"\n{mark} **{RARITY_LABEL[rarity]}** · {len(found)}/{len(pool)}")
+        lines.append("Found · " + (", ".join(found) if found else "none yet"))
+        lines.append("Missing · " + (", ".join(missing) if missing else "none — tier complete"))
+    lines.append(f"\n**Discovered __{total_found}__ / {len(ANIMALS)}**")
+    return "\n".join(lines)
+
+
 def grant_daily_supplies(user_id):
     with _lock:
         store = _load_store()
@@ -398,6 +557,9 @@ def install(mod=None):
         "battle", "hunt_catch_line", "team_lines", "battle_card",
         "open_lootbox", "open_crate", "use_gem", "equip_weapon",
         "grant_daily_supplies", "grant_supplies",
+        "essence_of", "nick_of", "nick_label", "weapon_board",
+        "sacrifice", "rename_animal", "checklist_board",
+        "RENAME_FEE", "ESSENCE_BY_RARITY",
     ):
         setattr(mod, name, globals()[name])
 
