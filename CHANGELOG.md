@@ -19,6 +19,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
+- **Hunt raid tiers + ticket economy (Ori only):** `/raid tier:` **Easy / Hard / Nightmare** (display **Ember / Void / Crown Rift**, costs **1 / 2 / 3** tickets). Boss HP/ATK/WP + escort arming follow `owo-research/RAID_BOSS_TIERS.md`. Spend tickets before simulate. Win loot scales (shards, raid_clear crates, empowered weapons, gems, rare ticket return on Hard/NM). Hard/NM loss/draw pity is shards only — no ticket refund. Ticket sources beyond `/daily`: first wild `/battle` win/day, 10 hunts/day streak, checklist rarity-row complete (lifetime C–M), and craft **30 shards → 1 ticket** (`/raid craft:`). Ticket gains shown in hunt/battle/raid responses. Board PNG pipeline unchanged. Expedition/autohunt out of scope (`/weapons` board already on main).
 - **Hunt `/weapons` zoo-style board (Ori only):** dense armory grouped by rarity with blank-line headers — `id` · rarity mark · emoji · name · `` `{quality}%` `` · equipped animal when set. Friendly empty state. `/weapon [id]` detail embed unchanged (bare `/weapon` still shows the board). Help lists `/weapons`.
 
 ### Changed

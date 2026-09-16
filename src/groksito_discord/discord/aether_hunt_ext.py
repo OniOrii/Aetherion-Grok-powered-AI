@@ -342,6 +342,14 @@ def hunt(user_id, rng=None):
             mx = int(gear.GEM_HUNTS.get(rar) or left or 1)
             gems_hud.append({"kind": kind, "emoji": emoji, "left": left, "max": mx, "rarity": rar})
         row["last_hunt"] = time.time()
+        ticket_awards = []
+        hunt_aw = gear.note_hunt_and_maybe_ticket(pack)
+        if hunt_aw:
+            ticket_awards.append(hunt_aw)
+        for aw in gear.maybe_checklist_tier_ticket(
+            pack, row.get("caught") or {}, ANIMALS, base.RARITY_ORDER
+        ):
+            ticket_awards.append(aw)
         _save_store(store)
         return {
             "ok": True,
@@ -354,6 +362,8 @@ def hunt(user_id, rng=None):
             "lootbox_count": int(pack.get("lb_today") or 0) if dropped else 0,
             "xp_gain": xp_gain,
             "gems_hud": gems_hud,
+            "ticket_awards": ticket_awards,
+            "hunt_streak": int(pack.get("hunt_streak") or 0),
         }
 
 
@@ -410,8 +420,13 @@ def battle(user_id, rng=None):
         balance = ai_coins.get_balance(user_id)
         # OwO: crate chance on any finished battle (win/lose/tie), not win-only
         crate = gear.maybe_crate(pack, True, rng)
+        ticket_awards = []
+        if result == "win":
+            awarded = gear.maybe_battle_win_ticket(pack)
+            if awarded:
+                ticket_awards.append(awarded)
         _save_store(store)
-        return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "frames": outcome.get("frames") or [], "xp_gain": xp_gain, "xp_base": xp_base, "xp_bonus": xp_bonus, "payout": payout, "balance": balance, "streak": int(pack.get("streak") or 0), "prev_streak": prev_streak, "best_streak": int(pack.get("best_streak") or 0), "crate": crate, "crate_today": int(pack.get("crate_today") or 0)}
+        return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "frames": outcome.get("frames") or [], "xp_gain": xp_gain, "xp_base": xp_base, "xp_bonus": xp_bonus, "payout": payout, "balance": balance, "streak": int(pack.get("streak") or 0), "prev_streak": prev_streak, "best_streak": int(pack.get("best_streak") or 0), "crate": crate, "crate_today": int(pack.get("crate_today") or 0), "ticket_awards": ticket_awards}
 
 
 
@@ -891,62 +906,354 @@ def salvage(user_id, query):
         return out
 
 
-def build_raid_boss(player, rng):
-    """One inflated mythic boss plus two tough escorts — no guild system."""
-    avg = sum(int(pet.get("level") or 1) for pet in player) / max(1, len(player))
-    mythics = [aid for aid, _n, _e, rar in ANIMALS if rar == MYTHIC] or [aid for aid, *_ in ANIMALS]
-    epics = [aid for aid, _n, _e, rar in ANIMALS if rar == EPIC] or mythics
-    boss_id = rng.choice(mythics)
-    boss_lvl = min(LEVEL_CAP, max(5, int(round(avg)) + rng.randint(4, 8)))
+
+# --- Raid tiers (owo-research/RAID_BOSS_TIERS.md CoS V1) ---
+RAID_TIERS = {
+    "easy": {
+        "key": "easy",
+        "label": "Easy",
+        "rift": "Ember Rift",
+        "cost": 1,
+        "hp_mult": 1.85,
+        "hp_flat": 40,
+        "atk_mult": 1.45,
+        "atk_flat": 8,
+        "wp_bonus": 30,
+        "boss_lvl": (3, 5),
+        "boss_lvl_floor": 5,
+        "escort_lvl": (2, 4),
+        "escort_arm": 0.85,
+        "escort_pool": "epic_mythic",
+        "escort_epic_plus": False,
+        "ignore_softcap": False,
+        "wep_quality": (85, 95),
+        "wep_atk_bonus": 6,
+        "xp_bonus": 100,
+        "shards_win": 8,
+        "shards_lose": 0,
+        "shards_draw": 2,
+        "crate_mode": "maybe",  # normal maybe_crate with daily cap
+        "crate_extra_p": 0.0,
+        "empowered": None,  # None | "roll" | "guaranteed"
+        "empowered_p": 0.0,
+        "gem": "easy",
+        "bonus_ticket_p": 0.0,
+    },
+    "hard": {
+        "key": "hard",
+        "label": "Hard",
+        "rift": "Void Rift",
+        "cost": 2,
+        "hp_mult": 2.25,
+        "hp_flat": 55,
+        "atk_mult": 1.70,
+        "atk_flat": 12,
+        "wp_bonus": 45,
+        "boss_lvl": (5, 8),
+        "boss_lvl_floor": 8,
+        "escort_lvl": (3, 6),
+        "escort_arm": 1.0,
+        "escort_pool": "epic_mythic",
+        "escort_epic_plus": False,
+        "ignore_softcap": False,
+        "wep_quality": (90, 98),
+        "wep_atk_bonus": 10,
+        "xp_bonus": 200,
+        "shards_win": 22,
+        "shards_lose": 3,
+        "shards_draw": 6,
+        "crate_mode": "guaranteed",
+        "crate_extra_p": 0.0,
+        "empowered": "roll",
+        "empowered_p": 0.10,
+        "gem": "hard",
+        "bonus_ticket_p": 0.05,
+    },
+    "nightmare": {
+        "key": "nightmare",
+        "label": "Nightmare",
+        "rift": "Crown Rift",
+        "cost": 3,
+        "hp_mult": 2.75,
+        "hp_flat": 80,
+        "atk_mult": 1.95,
+        "atk_flat": 16,
+        "wp_bonus": 60,
+        "boss_lvl": (7, 10),
+        "boss_lvl_floor": 12,
+        "escort_lvl": (5, 8),
+        "escort_arm": 1.0,
+        "escort_pool": "mythic",
+        "escort_epic_plus": True,
+        "ignore_softcap": True,
+        "wep_quality": (95, 100),
+        "wep_atk_bonus": 14,
+        "xp_bonus": 350,
+        "shards_win": 45,
+        "shards_lose": 6,
+        "shards_draw": 10,
+        "crate_mode": "guaranteed",
+        "crate_extra_p": 0.40,
+        "empowered": "guaranteed",
+        "empowered_p": 1.0,
+        "gem": "nightmare",
+        "bonus_ticket_p": 0.12,
+    },
+}
+
+_EMPOWERED_WEIGHT = {RARE: 40, EPIC: 45, MYTHIC: 15}
+_EMPOWERED_HARD_MIN = EPIC  # Hard 10% epic+
+
+
+def resolve_raid_tier(tier: str | None) -> dict:
+    key = str(tier or "easy").strip().lower()
+    aliases = {
+        "easy": "easy",
+        "ember": "easy",
+        "ember_rift": "easy",
+        "hard": "hard",
+        "void": "hard",
+        "void_rift": "hard",
+        "nightmare": "nightmare",
+        "nm": "nightmare",
+        "crown": "nightmare",
+        "crown_rift": "nightmare",
+    }
+    resolved = aliases.get(key, key)
+    if resolved not in RAID_TIERS:
+        return RAID_TIERS["easy"]
+    return RAID_TIERS[resolved]
+
+
+def _clamp_lvl(lo: int, hi: int, floor: int) -> tuple[int, int]:
+    return max(floor, lo), min(LEVEL_CAP, hi)
+
+
+def _raid_boss_weapon(tier: dict, rng: random.Random) -> dict:
     kind, name, emoji, style = rng.choice(gear.WEAPONS)
     rarity = MYTHIC
     lo, hi = gear.WEAPON_ATK[rarity]
-    boss_wep = {
-        "kind": kind, "name": name, "emoji": emoji, "style": style,
-        "rarity": rarity, "quality": 90, "atk": rng.randint(lo, hi) + 6,
+    q_lo, q_hi = tier["wep_quality"]
+    quality = rng.randint(int(q_lo), int(q_hi))
+    atk = rng.randint(lo, hi) + int(tier["wep_atk_bonus"])
+    return {
+        "kind": kind,
+        "name": name,
+        "emoji": emoji,
+        "style": style,
+        "rarity": rarity,
+        "quality": quality,
+        "atk": atk,
     }
+
+
+def _raid_escort_weapon(player, tier: dict, rng: random.Random) -> dict | None:
+    if rng.random() >= float(tier["escort_arm"]):
+        return None
+    if tier.get("ignore_softcap") or tier.get("escort_epic_plus"):
+        kind, name, emoji, style = rng.choice(gear.WEAPONS)
+        # Nightmare escorts: epic+ only; ignore soft-cap
+        weights = {EPIC: 70, MYTHIC: 30} if tier.get("escort_epic_plus") else {
+            COMMON: 0, UNCOMMON: 0, RARE: 20, EPIC: 50, MYTHIC: 30,
+        }
+        weights = {k: v for k, v in weights.items() if v > 0}
+        rarity = gear.roll_rarity(weights, rng)
+        lo, hi = gear.WEAPON_ATK[rarity]
+        quality = rng.randint(40, 90)
+        return {
+            "kind": kind, "name": name, "emoji": emoji, "style": style,
+            "rarity": rarity, "quality": quality, "atk": rng.randint(lo, hi),
+        }
+    return _roll_enemy_weapon(player, rng)
+
+
+def build_raid_boss(player, rng, tier="easy"):
+    """Tiered mythic boss + escorts — CoS RAID_BOSS_TIERS.md."""
+    spec = resolve_raid_tier(tier)
+    avg = sum(int(pet.get("level") or 1) for pet in player) / max(1, len(player))
+    a = int(round(avg))
+    b_lo, b_hi = spec["boss_lvl"]
+    floor = int(spec["boss_lvl_floor"])
+    lvl_lo, lvl_hi = _clamp_lvl(a + b_lo, a + b_hi, floor)
+    if lvl_lo > lvl_hi:
+        lvl_lo = lvl_hi
+    boss_lvl = rng.randint(lvl_lo, lvl_hi)
+
+    mythics = [aid for aid, _n, _e, rar in ANIMALS if rar == MYTHIC] or [aid for aid, *_ in ANIMALS]
+    epics = [aid for aid, _n, _e, rar in ANIMALS if rar == EPIC] or mythics
+    boss_id = rng.choice(mythics)
+    boss_wep = _raid_boss_weapon(spec, rng)
     boss = _fighter(boss_id, boss_lvl, boss_wep)
-    # Boss pressure: more HP/ATK/WP (after weapon ATK + passives)
-    boss["max_hp"] = int(boss["max_hp"] * 1.85) + 40
+    boss["max_hp"] = int(boss["max_hp"] * float(spec["hp_mult"])) + int(spec["hp_flat"])
     boss["hp"] = boss["max_hp"]
-    boss["atk"] = int(boss["atk"] * 1.45) + 8
-    boss["mag"] = int(boss.get("mag") or boss["atk"]) + 8
-    boss["wp"] = int(boss.get("wp") or 40) + 30
+    boss["atk"] = int(boss["atk"] * float(spec["atk_mult"])) + int(spec["atk_flat"])
+    boss["mag"] = int(boss.get("mag") or boss["atk"]) + int(spec["atk_flat"])
+    boss["wp"] = int(boss.get("wp") or 40) + int(spec["wp_bonus"])
     boss["max_wp"] = boss["wp"]
     boss["raid_boss"] = True
+
     out = [boss]
     used = {boss_id}
-    pool = [aid for aid in (epics + mythics) if aid not in used]
+    if spec["escort_pool"] == "mythic":
+        pool = [aid for aid in mythics if aid not in used]
+    else:
+        pool = [aid for aid in (epics + mythics) if aid not in used]
     rng.shuffle(pool)
+    e_lo, e_hi = spec["escort_lvl"]
     for aid in pool[:2]:
         used.add(aid)
-        lvl = min(LEVEL_CAP, max(3, int(round(avg)) + rng.randint(2, 5)))
-        escort_wep = None
-        if rng.random() < 0.85:
-            escort_wep = _roll_enemy_weapon(player, rng)
-        escort = _fighter(aid, lvl, escort_wep)
-        out.append(escort)
+        el_lo, el_hi = _clamp_lvl(a + e_lo, a + e_hi, 3)
+        if el_lo > el_hi:
+            el_lo = el_hi
+        lvl = rng.randint(el_lo, el_hi)
+        escort_wep = _raid_escort_weapon(player, spec, rng)
+        out.append(_fighter(aid, lvl, escort_wep))
     return out
 
 
-def raid(user_id, rng=None):
+def _grant_empowered_weapon(pack, rng, *, hard_epic_plus: bool = False):
+    kind, name, emoji, style = rng.choice(gear.WEAPONS)
+    if hard_epic_plus:
+        weights = {EPIC: 70, MYTHIC: 30}
+    else:
+        weights = dict(_EMPOWERED_WEIGHT)
+    rarity = gear.roll_rarity(weights, rng)
+    lo, hi = gear.WEAPON_ATK[rarity]
+    quality = rng.randint(70, 100)
+    atk = lo + int((hi - lo) * quality / 100)
+    wid = str(int(pack.get("next_wid") or 1))
+    pack["next_wid"] = int(wid) + 1
+    pack.setdefault("weapons", {})[wid] = {
+        "kind": kind, "rarity": rarity, "quality": quality, "atk": atk, "style": style,
+    }
+    return {
+        "wid": wid, "kind": kind, "name": name, "emoji": emoji,
+        "rarity": rarity, "quality": quality, "atk": atk, "style": style,
+    }
+
+
+def _roll_raid_gem(spec: dict, rng: random.Random) -> tuple[str, str] | None:
+    mode = spec.get("gem")
+    if mode == "easy":
+        if rng.random() >= 0.08:
+            return None
+        kind = rng.choice(["hunting", "lucky", "empower"])
+        rarity = gear.roll_rarity(gear.GEM_WEIGHT, rng)
+        return kind, rarity
+    if mode == "hard":
+        if rng.random() >= 0.20:
+            return None
+        kind = rng.choice(["lucky", "prism"])
+        rarity = gear.roll_rarity(gear.GEM_WEIGHT, rng)
+        return kind, rarity
+    if mode == "nightmare":
+        if rng.random() < 0.40:
+            rarity = gear.roll_rarity(gear.GEM_WEIGHT, rng)
+            return "prism", rarity
+        if rng.random() < 0.25:
+            kind = rng.choice(["lucky", "empower"])
+            rarity = gear.roll_rarity(gear.GEM_WEIGHT, rng)
+            return kind, rarity
+        return None
+    return None
+
+
+def _apply_raid_rewards(pack, result: str, spec: dict, rng: random.Random) -> dict:
+    """Win / lose / draw loot per RAID_BOSS_TIERS.md. Mutates pack."""
+    notes: list[str] = []
+    shard_bonus = 0
+    crate = False
+    crate_extra = False
+    empowered = None
+    gem = None
+    bonus_ticket = False
+
+    if result == "win":
+        shard_bonus = int(spec["shards_win"])
+        pack["shards"] = int(pack.get("shards") or 0) + shard_bonus
+        notes.append(f"+{shard_bonus} shards")
+        mode = spec["crate_mode"]
+        if mode == "maybe":
+            crate = gear.maybe_crate(pack, True, rng)
+            if crate:
+                notes.append("crate!")
+        else:
+            crate = gear.grant_raid_clear_crate(pack)
+            notes.append("crate!")
+            if float(spec.get("crate_extra_p") or 0) and rng.random() < float(spec["crate_extra_p"]):
+                gear.grant_raid_clear_crate(pack)
+                crate_extra = True
+                notes.append("second crate!")
+        emp = spec.get("empowered")
+        if emp == "guaranteed" or (emp == "roll" and rng.random() < float(spec.get("empowered_p") or 0)):
+            empowered = _grant_empowered_weapon(
+                pack, rng, hard_epic_plus=(spec["key"] == "hard")
+            )
+            notes.append(f"empowered {empowered['emoji']} {empowered['name']}!")
+        rolled = _roll_raid_gem(spec, rng)
+        if rolled:
+            kind, rarity = rolled
+            gem = gear.grant_gem_kind(pack, kind, rarity)
+            if gem.get("ok"):
+                notes.append(f"{gem['emoji']} {gear.RARITY_LABEL.get(rarity, rarity)} {gem['label']}!")
+        if float(spec.get("bonus_ticket_p") or 0) and rng.random() < float(spec["bonus_ticket_p"]):
+            gear.add_raid_tickets(pack, 1)
+            bonus_ticket = True
+            notes.append("rift ticket returned!")
+    elif result == "lose":
+        shard_bonus = int(spec["shards_lose"])
+        if shard_bonus:
+            pack["shards"] = int(pack.get("shards") or 0) + shard_bonus
+            notes.append(f"+{shard_bonus} shards")
+    else:  # draw
+        shard_bonus = int(spec["shards_draw"])
+        if shard_bonus:
+            pack["shards"] = int(pack.get("shards") or 0) + shard_bonus
+            notes.append(f"+{shard_bonus} shards")
+
+    return {
+        "shard_bonus": shard_bonus,
+        "crate": crate,
+        "crate_extra": crate_extra,
+        "empowered": empowered,
+        "gem": gem,
+        "bonus_ticket": bonus_ticket,
+        "reward_notes": notes,
+    }
+
+
+def raid(user_id, tier="easy", rng=None):
+    """Spend tier ticket cost, then simulate. Spend happens before sim."""
+    if isinstance(tier, random.Random):
+        # Back-compat: raid(user_id, rng)
+        rng = tier
+        tier = "easy"
     rng = rng or random.Random()
+    spec = resolve_raid_tier(tier)
+    cost = int(spec["cost"])
     with _lock:
         store = _load_store()
         row = _ensure_user(store, user_id)
         pack = gear.ensure_gear(row)
         tickets = int(pack.get("raid_ticket") or 0)
-        if tickets < 1:
-            return {"ok": False, "error": "No raid tickets. Claim /daily for one, then try again."}
+        if tickets < cost:
+            need = cost
+            return {
+                "ok": False,
+                "error": (
+                    f"Need {need} ticket{'s' if need != 1 else ''} for {spec['label']} "
+                    f"· you have {tickets} · /daily, battle, hunt streak, checklist, or 30 shards"
+                ),
+            }
         team_ids = active_team(row)
         if len(team_ids) < TEAM_SIZE:
             return {"ok": False, "error": f"Raid is 3v3. Fill all {TEAM_SIZE} team slots with /team first."}
-        pack["raid_ticket"] = tickets - 1
+        pack["raid_ticket"] = tickets - cost
         player = [
             _fighter(aid, level_of(xp_of(row, aid)), gear.equipped_weapon(pack, aid))
             for aid in team_ids
         ]
-        enemy = build_raid_boss(player, rng)
+        enemy = build_raid_boss(player, rng, spec["key"])
         outcome = simulate_battle(player, enemy, rng)
         result = outcome["result"]
         prev_streak = int(pack.get("streak") or 0)
@@ -956,11 +1263,9 @@ def raid(user_id, rng=None):
             pack["streak"] = 0
         pack["best_streak"] = max(int(pack.get("best_streak") or 0), int(pack.get("streak") or 0))
         xp_base = BATTLE_XP[result]
-        # Raid pays a little more base XP than a wild battle
-        if result == "win":
-            xp_base = xp_base + 100
         xp_bonus = 0
         if result == "win":
+            xp_base = xp_base + int(spec["xp_bonus"])
             xp_bonus = _streak_bonus(pack["streak"]) + _level_diff_xp(player, enemy)
         xp_gain = xp_base + xp_bonus
         highest = max(level_of(xp_of(row, aid)) for aid in team_ids)
@@ -970,12 +1275,7 @@ def raid(user_id, rng=None):
             if gap > 0:
                 extra = int(extra * min(10.0, 2 + 0.1 * gap))
             add_xp(row, aid, extra)
-        crate = False
-        shard_bonus = 0
-        if result == "win":
-            crate = gear.maybe_crate(pack, True, rng)
-            shard_bonus = 5
-            pack["shards"] = int(pack.get("shards") or 0) + shard_bonus
+        loot = _apply_raid_rewards(pack, result, spec, rng)
         _save_store(store)
         return {
             "ok": True,
@@ -993,11 +1293,32 @@ def raid(user_id, rng=None):
             "streak": int(pack.get("streak") or 0),
             "prev_streak": prev_streak,
             "best_streak": int(pack.get("best_streak") or 0),
-            "crate": crate,
+            "crate": loot["crate"],
+            "crate_extra": loot["crate_extra"],
             "tickets_left": int(pack.get("raid_ticket") or 0),
-            "shard_bonus": shard_bonus,
+            "tickets_spent": cost,
+            "shard_bonus": loot["shard_bonus"],
+            "empowered": loot["empowered"],
+            "gem": loot["gem"],
+            "bonus_ticket": loot["bonus_ticket"],
+            "reward_notes": loot["reward_notes"],
             "boss": True,
+            "tier": spec["key"],
+            "tier_label": spec["label"],
+            "rift": spec["rift"],
         }
+
+
+def craft_raid_ticket(user_id):
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        out = gear.craft_ticket_from_shards(pack)
+        if out.get("ok"):
+            _save_store(store)
+        return out
+
 
 
 def grant_daily_supplies(user_id):
@@ -1049,6 +1370,7 @@ def install(mod=None):
         "essence_of", "nick_of", "nick_label", "weapon_board", "weapon_detail",
         "sacrifice", "rename_animal", "checklist_board",
         "bestiary_card", "bestiary", "salvage", "build_raid_boss", "raid",
+        "resolve_raid_tier", "craft_raid_ticket", "RAID_TIERS",
         "_roll_enemy_weapon", "_player_gear_caps", "_apply_weapon_passives", "_mark_wild_boss",
         "RENAME_FEE", "ESSENCE_BY_RARITY", "LORE_BY_RARITY",
     ):

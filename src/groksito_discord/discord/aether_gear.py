@@ -125,7 +125,7 @@ GEM_KINDS = (
 GEM_BY_KIND = {row[0]: row for row in GEM_KINDS}
 
 def blank_gear() -> dict[str, Any]:
-    return {"lootbox": 0, "crate": 0, "gems": {}, "weapons": {}, "next_wid": 1, "active": {}, "equip": {}, "day": "", "lb_today": 0, "crate_today": 0, "streak": 0, "best_streak": 0, "daily_grant": "", "shards": 0, "raid_ticket": 0}
+    return {"lootbox": 0, "crate": 0, "gems": {}, "weapons": {}, "next_wid": 1, "active": {}, "equip": {}, "day": "", "lb_today": 0, "crate_today": 0, "streak": 0, "best_streak": 0, "daily_grant": "", "shards": 0, "raid_ticket": 0, "hunt_streak": 0, "checklist_tiers": [], "battle_ticket_day": "", "hunt_ticket_day": ""}
 
 def ensure_gear(row: dict[str, Any]) -> dict[str, Any]:
     blob = row.get("gear")
@@ -139,13 +139,18 @@ def ensure_gear(row: dict[str, Any]) -> dict[str, Any]:
     for key in ("gems", "weapons", "active", "equip"):
         if not isinstance(blob.get(key), dict):
             blob[key] = {}
-    for key in ("lootbox", "crate", "next_wid", "lb_today", "crate_today", "streak", "best_streak", "shards", "raid_ticket"):
+    for key in ("lootbox", "crate", "next_wid", "lb_today", "crate_today", "streak", "best_streak", "shards", "raid_ticket", "hunt_streak"):
         try:
             blob[key] = max(0 if key != "next_wid" else 1, int(blob.get(key) or 0))
         except (TypeError, ValueError):
             blob[key] = 1 if key == "next_wid" else 0
     if blob["next_wid"] < 1:
         blob["next_wid"] = 1
+    if not isinstance(blob.get("checklist_tiers"), list):
+        blob["checklist_tiers"] = []
+    for day_key in ("battle_ticket_day", "hunt_ticket_day"):
+        if not isinstance(blob.get(day_key), str):
+            blob[day_key] = ""
     return blob
 
 def _today() -> str:
@@ -157,6 +162,7 @@ def _roll_day(blob: dict[str, Any]) -> None:
         blob["day"] = today
         blob["lb_today"] = 0
         blob["crate_today"] = 0
+        blob["hunt_streak"] = 0
 
 def roll_rarity(weights: dict[str, int], rng: random.Random) -> str:
     keys = [k for k in RARITY_ORDER if k in weights]
@@ -446,6 +452,7 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
     lines.append("**Supplies**")
     lines.append(f"`050` 📦 LB `{lb}` · `100` 🪵 crate `{cr}`")
     lines.append(f"`200` 🪨 shards `{shards}` · `300` 🎟️ raid `{raid}`")
+    lines.append("Easy 1 · Hard 2 · Crown 3 · craft 30 shards")
     lines.append(
         f"Hunt lootboxes today `[{lb_today}/{LB_DAILY}]` · battle crates today `[{crate_today}/{CRATE_DAILY}]`"
     )
@@ -562,6 +569,100 @@ def salvage_weapon(blob: dict[str, Any], wid: str) -> dict[str, Any]:
         "gained": gained,
         "shards": int(blob["shards"]),
     }
+
+
+
+SHARD_TICKET_COST = 30
+
+
+def add_raid_tickets(blob: dict[str, Any], amount: int = 1) -> int:
+    """Grant raid tickets; returns new balance."""
+    n = max(0, int(amount or 0))
+    blob["raid_ticket"] = int(blob.get("raid_ticket") or 0) + n
+    return int(blob["raid_ticket"])
+
+
+def maybe_battle_win_ticket(blob: dict[str, Any]) -> dict[str, Any] | None:
+    """First wild battle win of the calendar day → +1 ticket."""
+    _roll_day(blob)
+    today = _today()
+    if blob.get("battle_ticket_day") == today:
+        return None
+    blob["battle_ticket_day"] = today
+    left = add_raid_tickets(blob, 1)
+    return {"amount": 1, "reason": "first battle win today", "tickets": left}
+
+
+def note_hunt_and_maybe_ticket(blob: dict[str, Any]) -> dict[str, Any] | None:
+    """Increment daily hunt streak; +1 ticket at 10 hunts once/day."""
+    _roll_day(blob)
+    blob["hunt_streak"] = int(blob.get("hunt_streak") or 0) + 1
+    today = _today()
+    if blob["hunt_streak"] < 10:
+        return None
+    if blob.get("hunt_ticket_day") == today:
+        return None
+    blob["hunt_ticket_day"] = today
+    left = add_raid_tickets(blob, 1)
+    return {"amount": 1, "reason": "10 hunts today", "tickets": left}
+
+
+def maybe_checklist_tier_ticket(blob: dict[str, Any], caught: dict, animals, rarity_order) -> list[dict[str, Any]]:
+    """Lifetime grants when a rarity row first reaches complete (C/U/R/E/M)."""
+    claimed = blob.setdefault("checklist_tiers", [])
+    if not isinstance(claimed, list):
+        claimed = []
+        blob["checklist_tiers"] = claimed
+    awards: list[dict[str, Any]] = []
+    caught = caught or {}
+    for rarity in rarity_order:
+        if rarity in claimed:
+            continue
+        pool = [aid for aid, _n, _e, rar in animals if rar == rarity]
+        if not pool:
+            continue
+        if all(int(caught.get(aid) or 0) > 0 for aid in pool):
+            claimed.append(rarity)
+            left = add_raid_tickets(blob, 1)
+            awards.append({"amount": 1, "reason": f"checklist {rarity}", "tickets": left})
+    return awards
+
+
+def craft_ticket_from_shards(blob: dict[str, Any]) -> dict[str, Any]:
+    """Spend 30 shards → 1 raid ticket."""
+    shards = int(blob.get("shards") or 0)
+    if shards < SHARD_TICKET_COST:
+        return {
+            "ok": False,
+            "error": f"Need {SHARD_TICKET_COST} shards for a raid ticket · you have {shards}.",
+        }
+    blob["shards"] = shards - SHARD_TICKET_COST
+    left = add_raid_tickets(blob, 1)
+    return {
+        "ok": True,
+        "spent": SHARD_TICKET_COST,
+        "shards": int(blob["shards"]),
+        "tickets": left,
+        "amount": 1,
+        "reason": "shard exchange",
+    }
+
+
+def grant_raid_clear_crate(blob: dict[str, Any]) -> bool:
+    """Guaranteed weapon crate that bypasses daily battle-crate caps."""
+    blob["crate"] = int(blob.get("crate") or 0) + 1
+    return True
+
+
+def grant_gem_kind(blob: dict[str, Any], kind: str, rarity: str) -> dict[str, Any]:
+    """Put one rolled gem into inventory (lootbox-style grant)."""
+    if kind not in GEM_BY_KIND or rarity not in RARITY_LABEL:
+        return {"ok": False}
+    gid = f"{kind}_{rarity}"
+    gems = blob.setdefault("gems", {})
+    gems[gid] = int(gems.get(gid) or 0) + 1
+    meta = GEM_BY_KIND[kind]
+    return {"ok": True, "kind": kind, "rarity": rarity, "emoji": meta[2], "label": meta[1]}
 
 
 def grant_daily_supplies(blob: dict[str, Any]) -> dict[str, int]:

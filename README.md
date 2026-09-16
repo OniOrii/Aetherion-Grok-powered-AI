@@ -61,7 +61,7 @@ Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt 
 - `/team` `/sell` `/sacrifice` `/rename` `/checklist`.
 - `/battle` — 3v3 board image (species portraits), phys ATK/PR and weapon MAG/MR with WP spend.
 - `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon`.
-- `/bestiary` (alias `/dex`), `/salvage`, `/raid`.
+- `/bestiary` (alias `/dex`), `/salvage`, `/raid` (Easy/Hard/Nightmare).
 - Gems: hunting / lucky / empower / prism, tiers through Fabled. `/use` activates them onto hunts, not onto pets.
 
 ### Server tools

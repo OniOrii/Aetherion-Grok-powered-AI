@@ -609,14 +609,250 @@ def test_raid_spends_ticket_and_fights(tmp_path: Path):
         pack = gear.ensure_gear(row)
         pack["raid_ticket"] = 1
         hunt._save_store(store)
-    out = hunt.raid(23, random.Random(3))
+    out = hunt.raid(23, tier="easy", rng=random.Random(3))
     assert out["ok"]
     assert out["result"] in {"win", "lose", "draw"}
+    assert out["tickets_spent"] == 1
     assert out["tickets_left"] == 0
+    assert out["tier"] == "easy"
+    assert out["rift"] == "Ember Rift"
     assert len(out["enemy"]) == 3
     # second raid without ticket fails
-    blocked = hunt.raid(23, random.Random(3))
+    blocked = hunt.raid(23, tier="easy", rng=random.Random(3))
     assert not blocked["ok"]
+    assert "Need 1 ticket" in (blocked.get("error") or "")
+
+
+def _seed_raid_team(tmp_path: Path, uid: int, tickets: int, avg_xp: int = 5000):
+    from groksito_discord.discord import aether_gear as gear
+
+    hunt.set_store_path(tmp_path / f"hunt_{uid}.json")
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, uid)
+        row["zoo"] = {"dust_mite": 1, "thorn_wolf": 1, "ember_elk": 1}
+        row["caught"] = dict(row["zoo"])
+        row["team"] = ["dust_mite", "thorn_wolf", "ember_elk"]
+        row["xp"] = {"dust_mite": avg_xp, "thorn_wolf": avg_xp, "ember_elk": avg_xp}
+        pack = gear.ensure_gear(row)
+        pack["raid_ticket"] = tickets
+        hunt._save_store(store)
+    return pack
+
+
+def test_raid_tier_costs_and_deny_underfunded(tmp_path: Path):
+    import random
+
+    _seed_raid_team(tmp_path, 31, tickets=2)
+    blocked = hunt.raid(31, tier="nightmare", rng=random.Random(1))
+    assert not blocked["ok"]
+    assert "Need 3 ticket" in (blocked.get("error") or "")
+    # Hard spends 2
+    out = hunt.raid(31, tier="hard", rng=random.Random(2))
+    assert out["ok"]
+    assert out["tickets_spent"] == 2
+    assert out["tickets_left"] == 0
+    assert out["rift"] == "Void Rift"
+
+
+def test_raid_boss_scaling_easy_vs_nightmare():
+    """Easy keeps today-ish inflate; Nightmare is strictly tankier at same A."""
+    import random
+
+    player = [
+        hunt._fighter("dust_mite", 15),
+        hunt._fighter("thorn_wolf", 15),
+        hunt._fighter("ember_elk", 15),
+    ]
+    easy = hunt.build_raid_boss(player, random.Random(7), "easy")
+    hard = hunt.build_raid_boss(player, random.Random(7), "hard")
+    nm = hunt.build_raid_boss(player, random.Random(7), "nightmare")
+    assert easy[0].get("raid_boss") and nm[0].get("raid_boss")
+    assert nm[0]["max_hp"] > hard[0]["max_hp"] > easy[0]["max_hp"]
+    assert nm[0]["atk"] > hard[0]["atk"] > easy[0]["atk"]
+    # Easy ≈ today: ×1.85+40 / ×1.45+8 at mid level ~19 for A=15
+    # Spot-check Easy boss is beatable-band (not brick wall vs geared L15)
+    assert easy[0]["max_hp"] < nm[0]["max_hp"] * 0.75
+
+
+def test_raid_win_reward_floors(tmp_path: Path, monkeypatch):
+    import random
+    from groksito_discord.discord import aether_gear as gear
+    from groksito_discord.discord import aether_hunt_ext as ext
+
+    _seed_raid_team(tmp_path, 41, tickets=3, avg_xp=200_000)
+
+    def _fake_sim(player, enemy, rng=None):
+        return {
+            "result": "win",
+            "log": ["ok"],
+            "rounds": 3,
+            "player": player,
+            "enemy": enemy,
+            "frames": [],
+        }
+
+    monkeypatch.setattr(ext, "simulate_battle", _fake_sim)
+    monkeypatch.setattr(hunt, "simulate_battle", _fake_sim)
+    out = hunt.raid(41, tier="easy", rng=random.Random(0))
+    assert out["ok"] and out["result"] == "win"
+    assert out["shard_bonus"] == 8
+    assert out["xp_base"] == 300  # 200 + 100
+    snap = hunt.snapshot(41)
+    assert snap["gear"]["shards"] >= 8
+
+    _seed_raid_team(tmp_path, 42, tickets=3, avg_xp=200_000)
+    out_h = hunt.raid(42, tier="hard", rng=random.Random(0))
+    assert out_h["shard_bonus"] == 22
+    assert out_h["xp_base"] == 400
+    assert out_h["crate"] is True
+    snap_h = hunt.snapshot(42)
+    assert snap_h["gear"]["crate"] >= 1
+
+    _seed_raid_team(tmp_path, 43, tickets=3, avg_xp=200_000)
+    out_n = hunt.raid(43, tier="nightmare", rng=random.Random(0))
+    assert out_n["shard_bonus"] == 45
+    assert out_n["xp_base"] == 550
+    assert out_n["crate"] is True
+    assert out_n.get("empowered")  # guaranteed on NM
+
+
+def test_raid_loss_pity_shards_hard_nm(tmp_path: Path, monkeypatch):
+    import random
+    from groksito_discord.discord import aether_hunt_ext as ext
+
+    def _lose(player, enemy, rng=None):
+        return {
+            "result": "lose",
+            "log": ["x"],
+            "rounds": 2,
+            "player": player,
+            "enemy": enemy,
+            "frames": [],
+        }
+
+    monkeypatch.setattr(ext, "simulate_battle", _lose)
+    monkeypatch.setattr(hunt, "simulate_battle", _lose)
+
+    _seed_raid_team(tmp_path, 51, tickets=1)
+    easy = hunt.raid(51, tier="easy", rng=random.Random(1))
+    assert easy["result"] == "lose"
+    assert easy["shard_bonus"] == 0
+
+    _seed_raid_team(tmp_path, 52, tickets=2)
+    hard = hunt.raid(52, tier="hard", rng=random.Random(1))
+    assert hard["shard_bonus"] == 3
+
+    _seed_raid_team(tmp_path, 53, tickets=3)
+    nm = hunt.raid(53, tier="nightmare", rng=random.Random(1))
+    assert nm["shard_bonus"] == 6
+
+
+def test_ticket_sources_battle_hunt_checklist_shards(tmp_path: Path, monkeypatch):
+    import random
+    from groksito_discord.discord import aether_gear as gear
+    from groksito_discord.discord import aether_hunt_ext as ext
+    from groksito_discord.discord import ai_coins
+
+    hunt.set_store_path(tmp_path / "tickets.json")
+    monkeypatch.setattr(ai_coins, "get_balance", lambda _uid: 5000)
+    monkeypatch.setattr(
+        ai_coins,
+        "resolve_wager",
+        lambda uid, cost, payout, min_bet=0, max_bet=10**9: (True, 5000 - cost, None),
+    )
+
+    # Seed full team for battle
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 61)
+        row["zoo"] = {"dust_mite": 1, "thorn_wolf": 1, "ember_elk": 1}
+        row["caught"] = dict(row["zoo"])
+        row["team"] = ["dust_mite", "thorn_wolf", "ember_elk"]
+        row["xp"] = {"dust_mite": 1000, "thorn_wolf": 1000, "ember_elk": 1000}
+        pack = gear.ensure_gear(row)
+        pack["raid_ticket"] = 0
+        hunt._save_store(store)
+
+    def _win(player, enemy, rng=None):
+        return {
+            "result": "win",
+            "log": [],
+            "rounds": 1,
+            "player": player,
+            "enemy": enemy,
+            "frames": [],
+        }
+
+    monkeypatch.setattr(ext, "simulate_battle", _win)
+    monkeypatch.setattr(hunt, "simulate_battle", _win)
+
+    b1 = hunt.battle(61, rng=random.Random(1))
+    assert b1["ok"]
+    assert any(a.get("reason") == "first battle win today" for a in b1.get("ticket_awards") or [])
+    snap = hunt.snapshot(61)
+    assert snap["gear"]["raid_ticket"] == 1
+    # Second win same day: no second ticket
+    b2 = hunt.battle(61, rng=random.Random(2))
+    assert not any(a.get("reason") == "first battle win today" for a in b2.get("ticket_awards") or [])
+    assert hunt.snapshot(61)["gear"]["raid_ticket"] == 1
+
+    # Hunt streak: 10 hunts → +1 once/day
+    before = hunt.snapshot(61)["gear"]["raid_ticket"]
+    for i in range(10):
+        # bypass cooldown
+        with hunt._lock:
+            store = hunt._load_store()
+            row = hunt._ensure_user(store, 61)
+            row["last_hunt"] = 0
+            hunt._save_store(store)
+        out = hunt.hunt(61, rng=random.Random(i + 10))
+        assert out["ok"]
+    after = hunt.snapshot(61)["gear"]
+    assert after["hunt_streak"] >= 10
+    assert after["raid_ticket"] == before + 1
+
+    # Shard craft
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 61)
+        pack = gear.ensure_gear(row)
+        pack["shards"] = 30
+        hunt._save_store(store)
+    crafted = hunt.craft_raid_ticket(61)
+    assert crafted["ok"]
+    assert crafted["tickets"] == before + 2
+    assert crafted["shards"] == 0
+
+    # Checklist rarity-row: complete common tier
+    commons = [aid for aid, _n, _e, rar in hunt.ANIMALS if rar == hunt.COMMON]
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 62)
+        pack = gear.ensure_gear(row)
+        pack["raid_ticket"] = 0
+        row["caught"] = {aid: 1 for aid in commons}
+        # leave one missing then catch via helper
+        missing = commons[-1]
+        del row["caught"][missing]
+        hunt._save_store(store)
+    awards = gear.maybe_checklist_tier_ticket(
+        gear.ensure_gear(hunt._ensure_user(hunt._load_store(), 62)),
+        {**{aid: 1 for aid in commons}},
+        hunt.ANIMALS,
+        hunt.RARITY_ORDER,
+    )
+    # Direct unit on gear helper with full commons
+    pack = gear.blank_gear()
+    awards = gear.maybe_checklist_tier_ticket(
+        pack, {aid: 1 for aid in commons}, hunt.ANIMALS, hunt.RARITY_ORDER
+    )
+    assert awards and awards[0]["reason"] == "checklist common"
+    assert pack["raid_ticket"] == 1
+    # Idempotent
+    assert gear.maybe_checklist_tier_ticket(
+        pack, {aid: 1 for aid in commons}, hunt.ANIMALS, hunt.RARITY_ORDER
+    ) == []
 
 
 def test_crate_drops_on_finished_battle_not_win_only():

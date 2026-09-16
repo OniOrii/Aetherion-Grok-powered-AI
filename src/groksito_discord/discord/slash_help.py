@@ -85,7 +85,7 @@ def _embed(page: str) -> discord.Embed:
             "`/hunt` — catch. `/zoo` — grid and Zoo Points.\n"
             "`/team` `/sell` `/sacrifice` `/rename` `/checklist`\n"
             "`/battle` — 3v3 board. Phys ATK/PR, weapon MAG/MR, WP spend.\n"
-            "`/raid` — ticket 3v3 PvE. `/bestiary` (`/dex`) — animal card.\n\n"
+            "`/raid` — pick Easy/Hard/Nightmare rift (Ember/Void/Crown); spend tickets; epic clears on Hard+. Craft: 30 shards → 1 ticket. `/bestiary` (`/dex`) — animal card.\n\n"
             "`/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon` `/salvage`\n"
             "`/use hunting|lucky|empower|prism` activates gems onto hunts, not pets. "
             "Tiers go through Fabled. `/weapons` is the zoo-style armory; `/weapon id` opens the detail card."
