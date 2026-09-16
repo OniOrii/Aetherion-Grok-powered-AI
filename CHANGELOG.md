@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Changed
+
+- **Hunt details OwO feel-polish (Ori only):** manual hunt pacing is **5** Aether Coins / **15s** cooldown (was 10/10s). Catch copy matches OwO pipe layout — gem empower line with `` `[left/max]` ``, multi-find strip, team XP, optional lootbox `` `[n/3] RESETS IN` ``. `/zoo` shows locked `?` only inside unlocked ranks plus lifetime Zoo Points footer. Weapon crates can drop on any *finished* battle (win/lose/tie), not win-only; battle text under the board is denser (`L.lvl · name · weapon badge`) while the PNG board stays as-is. `/inv` active gems and daily lootbox/crate caps use `` `[n/max]` `` cadence copy. Expedition/autohunt still on hold.
+
 ### Added
 
 - **Hunt `/weapon {id}` detail embed (Ori only):** OwO-feel card with Aetherion copy — Name + emoji, ID, Salvage (shards by rarity; no invented sell currency), Quality%, WP Cost (mapped from existing strike/cleave/mend battle spend), Description from style targeting, Passives (style mark + ATK), and equipped animal when set. Thumbnail uses the painted weapon icon. Bare `/weapon` stays an ID-first dense list (equipped marker now includes animal name).

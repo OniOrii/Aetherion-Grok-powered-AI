@@ -148,8 +148,9 @@ def maybe_lootbox(blob: dict[str, Any], rng: random.Random) -> bool:
     return False
 
 def maybe_crate(blob: dict[str, Any], won: bool, rng: random.Random) -> bool:
+    """Drop a weapon crate on any *finished* battle (win/lose/tie). `won` is ignored."""
     _roll_day(blob)
-    if not won or blob["crate_today"] >= CRATE_DAILY:
+    if blob["crate_today"] >= CRATE_DAILY:
         return False
     if blob["crate_today"] == 0 or rng.random() < DROP_CHANCE:
         blob["crate"] += 1
@@ -171,7 +172,7 @@ def open_lootbox(blob: dict[str, Any], rng: random.Random | None = None) -> dict
 def open_crate(blob: dict[str, Any], rng: random.Random | None = None) -> dict[str, Any]:
     rng = rng or random.Random()
     if blob["crate"] < 1:
-        return {"ok": False, "error": "No weapon crates. Win a battle to find one."}
+        return {"ok": False, "error": "No weapon crates. Battle to find one."}
     blob["crate"] -= 1
     kind, name, emoji, style = rng.choice(WEAPONS)
     rarity = roll_rarity(CRATE_WEIGHT, rng)
@@ -320,8 +321,16 @@ def weapon_line(wep: dict[str, Any] | None) -> str:
     return f"`{wid}` {rarity_mark(rar)} {wep.get('emoji', '')} {passive} {quality}%".strip()
 
 def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
+    _roll_day(blob)
     lines = [f"===== {display_name}'s Inventory ====="]
-    lines.append(f"`050` \U0001f4e6 `{int(blob.get('lootbox') or 0)}`  `100` \U0001fab5 `{int(blob.get('crate') or 0)}`")
+    lb = int(blob.get("lootbox") or 0)
+    cr = int(blob.get("crate") or 0)
+    lb_today = int(blob.get("lb_today") or 0)
+    crate_today = int(blob.get("crate_today") or 0)
+    lines.append(f"`050` \U0001f4e6 `{lb}`  `100` \U0001fab5 `{cr}`")
+    lines.append(
+        f"Hunt lootboxes today `[{lb_today}/{LB_DAILY}]` · battle crates today `[{crate_today}/{CRATE_DAILY}]`"
+    )
     lines.append(f"`200` 🪨 `{int(blob.get('shards') or 0)}`  `300` 🎟️ `{int(blob.get('raid_ticket') or 0)}`")
     gem_bits = []
     for gid, n in sorted((blob.get("gems") or {}).items()):
@@ -345,7 +354,9 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
         if not meta or not isinstance(item, dict):
             continue
         rar = item.get("rarity") or COMMON
-        bits.append(f"{meta[2]} {RARITY_LABEL.get(rar, rar)} {meta[1]} \u00b7 {item.get('left', 0)} hunts")
+        left = int(item.get("left") or 0)
+        mx = int(GEM_HUNTS.get(rar) or left or 1)
+        bits.append(f"{meta[2]} {RARITY_LABEL.get(rar, rar)} {meta[1]} `[{left}/{mx}]`")
     if bits:
         lines.append("**Active** " + " \u00b7 ".join(bits))
     weapons = blob.get("weapons") or {}
@@ -365,7 +376,7 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
                 f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} | Quality: {q}%"
             )
     else:
-        lines.append("No weapons yet. Win a battle for a crate.")
+        lines.append("No weapons yet. Battle for a crate.")
     return "\n".join(lines)
 
 def resolve_weapon(blob: dict[str, Any], query: str | None) -> str | None:

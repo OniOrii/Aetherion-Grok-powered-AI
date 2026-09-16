@@ -18,8 +18,8 @@ from . import ai_coins
 
 logger = logging.getLogger("aetherion.hunt")
 
-HUNT_COST = 10
-HUNT_COOLDOWN = 10
+HUNT_COST = 5
+HUNT_COOLDOWN = 15
 TEAM_SIZE = 3
 LEVEL_CAP = 50
 WIN_PAYOUT = 20
@@ -561,14 +561,28 @@ def zoo_rank_tally(caught: dict[str, int]) -> str:
     letters = {MYTHIC: "M", EPIC: "E", RARE: "R", UNCOMMON: "U", COMMON: "C"}
     return ", ".join(f"{letters[r]}-{counts[r]}" for r in (MYTHIC, EPIC, RARE, UNCOMMON, COMMON))
 
+def daily_resets_in(now: float | None = None) -> str:
+    """OwO-style `RESETS IN: H M S` until local midnight (daily lb/crate caps)."""
+    from datetime import datetime, timedelta
+
+    stamp = datetime.fromtimestamp(now if now is not None else time.time())
+    nxt = (stamp + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    secs = max(0, int((nxt - stamp).total_seconds()))
+    hours, rem = divmod(secs, 3600)
+    mins, secs = divmod(rem, 60)
+    return f"{hours}H {mins}M {secs}S"
+
+
 def hunt_catch_line(
     display_name: str,
     animal_id: str,
     extras: list[str] | None = None,
     lootbox: bool = False,
     team_xp: list[tuple[str, int]] | None = None,
+    gems_hud: list[dict[str, Any]] | None = None,
+    lootbox_count: int | None = None,
 ) -> str:
-    """OwO-shaped catch: seedling | Name spent N coin and caught a/an **rank** mark emoji!"""
+    """OwO-shaped catch: seedling | spend/caught, or gem empower + You found strip."""
     row = ANIMAL_BY_ID.get(animal_id)
     if not row:
         return f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and nothing turned up."
@@ -576,16 +590,39 @@ def hunt_catch_line(
     label = RARITY_LABEL[rarity].lower()
     article = "an" if rarity in (UNCOMMON, EPIC) else "a"
     mark = rarity_mark(rarity)
-    lines = [
-        f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {mark} {emoji}!"
-    ]
-    extra_bits: list[str] = []
-    for aid in extras or []:
-        extra = ANIMAL_BY_ID.get(aid)
-        if extra:
-            extra_bits.append(extra[2])
-    if extra_bits:
-        lines.append(f"| You found: {''.join(extra_bits)}")
+    lines: list[str] = []
+    animal_ids = [animal_id] + [aid for aid in (extras or []) if aid]
+    if gems_hud:
+        gem_bits = []
+        for gem in gems_hud:
+            gem_emoji = gem.get("emoji") or "\U0001f48e"
+            left = int(gem.get("left") or 0)
+            mx = max(1, int(gem.get("max") or left or 1))
+            gem_bits.append(f"{gem_emoji}`[{left}/{mx}]`")
+        lines.append(
+            f"**\U0001f331 | {display_name}**, hunt is empowered by {' '.join(gem_bits)} !"
+        )
+        strip: list[str] = []
+        for aid in animal_ids:
+            extra = ANIMAL_BY_ID.get(aid)
+            if extra:
+                strip.append(extra[2])
+        if strip:
+            lines.append(f"| You found: {' '.join(strip)}")
+    else:
+        lines.append(
+            f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {mark} {emoji}!"
+        )
+        extra_bits: list[str] = []
+        for aid in extras or []:
+            extra = ANIMAL_BY_ID.get(aid)
+            if extra:
+                extra_bits.append(extra[2])
+        if extra_bits:
+            lines.append(f"| You found: {' '.join(extra_bits)}")
+    # Team XP: collapse pet emojis onto one OwO-style line when possible
+    xp_emojis: list[str] = []
+    xp_total = 0
     for pet_emoji, xp_n in team_xp or []:
         if not pet_emoji:
             continue
@@ -595,9 +632,15 @@ def hunt_catch_line(
             continue
         if n <= 0:
             continue
-        lines.append(f"| {pet_emoji} gained **{n}xp**!")
+        xp_emojis.append(pet_emoji)
+        xp_total = n
+    if xp_emojis:
+        lines.append(f"| {''.join(xp_emojis)} gained **{xp_total}xp**!")
     if lootbox:
-        lines.append("| You found a **lootbox**!")
+        n = max(1, int(lootbox_count or 1))
+        lines.append(
+            f"**\U0001f4e6 |** You found a **lootbox**! `[{n}/3] RESETS IN: {daily_resets_in()}`"
+        )
     return "\n".join(lines)
 
 
@@ -613,6 +656,22 @@ def zoo_points_for(caught: dict[str, int]) -> int:
         total += count * RARITY_POINTS[rarity_of(aid)]
     return total
 
+def _rank_unlocked(caught: dict[str, int], rarity: str) -> bool:
+    """Common always shows; higher ranks unlock after any lifetime catch of that rank."""
+    if rarity == COMMON:
+        return True
+    for aid, n in (caught or {}).items():
+        if aid not in ANIMAL_BY_ID:
+            continue
+        try:
+            count = int(n)
+        except (TypeError, ValueError):
+            continue
+        if count > 0 and rarity_of(aid) == rarity:
+            return True
+    return False
+
+
 def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) -> str:
     # OwO plant header (mirrored): herb seedling tree … tree seedling herb
     lines = [f"\U0001f33f \U0001f331 \U0001f333 **{display_name}'s zoo!** \U0001f333 \U0001f331 \U0001f33f"]
@@ -624,7 +683,11 @@ def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) ->
             except (TypeError, ValueError):
                 continue
     width = max(2, len(str(max(0, biggest))))
+    shown = False
     for rarity in RARITY_ORDER:
+        if not _rank_unlocked(caught or {}, rarity):
+            continue
+        shown = True
         pool = [row for row in ANIMALS if row[3] == rarity]
         cells: list[str] = []
         for aid, _name, emoji, _rar in pool:
@@ -639,6 +702,7 @@ def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) ->
             if ever > 0 or have > 0:
                 cells.append(f"{emoji}{_small_count(have, width)}")
             else:
+                # Locked ? for undiscovered species inside an unlocked rank
                 cells.append(f"\u2753{_small_count(0, width)}")
         mark = rarity_mark(rarity)
         for i in range(0, max(len(cells), 1), ZOO_COLS):
@@ -646,7 +710,17 @@ def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) ->
             # Rank mark + 3 spaces (OwO), then emoji+count units spaced with 2
             prefix = f"{mark}   " if i == 0 else "\u3000\u3000   "
             lines.append(prefix + "  ".join(chunk))
+    if not shown:
+        # Empty lifetime: still show common rank of locked ?
+        mark = rarity_mark(COMMON)
+        pool = [row for row in ANIMALS if row[3] == COMMON]
+        cells = [f"\u2753{_small_count(0, 2)}" for _ in pool]
+        for i in range(0, max(len(cells), 1), ZOO_COLS):
+            chunk = cells[i : i + ZOO_COLS]
+            prefix = f"{mark}   " if i == 0 else "\u3000\u3000   "
+            lines.append(prefix + "  ".join(chunk))
     points = zoo_points_for(caught)
+    # Lifetime Zoo Points — display only, not spendable
     lines.append(f"**Zoo Points: __{_fancy_num(points)}__**")
     lines.append(f"**{zoo_rank_tally(caught)}**")
     return "\n".join(lines)

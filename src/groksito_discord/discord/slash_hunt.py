@@ -188,6 +188,8 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 extras,
                 bool(result.get("lootbox")),
                 team_xp,
+                gems_hud=result.get("gems_hud") or None,
+                lootbox_count=int(result.get("lootbox_count") or 0) or None,
             )
         except TypeError:
             line = hunt.hunt_catch_line(_display_name(interaction), result["animal_id"])
