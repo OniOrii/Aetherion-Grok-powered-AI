@@ -431,13 +431,16 @@ def weapon_line(wep: dict[str, Any] | None) -> str:
     """Compact team/weapon row: id · rank · emoji · passive icon · quality%."""
     if not wep:
         return "no weapon"
+    from .hunt_emoji import weapon_mark
+
     wid = wep.get("wid") or "?"
     rar = wep.get("rarity") or COMMON
     style = wep.get("style") or "strike"
     kind = wep.get("kind")
     passive = _wpass.passive_icon(kind) or _STYLE_PASSIVE.get(style, "")
     quality = int(wep.get("quality") or 0)
-    return f"`{wid}` {rarity_mark(rar)} {wep.get('emoji', '')} {passive} {quality}%".strip()
+    emoji = weapon_mark(kind, unicode_fallback=str(wep.get("emoji") or ""))
+    return f"`{wid}` {rarity_mark(rar)} {emoji} {passive} {quality}%".strip()
 
 def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
     """Mobile-friendly /inv body: labeled supplies, spaced sections, short weapon rows."""

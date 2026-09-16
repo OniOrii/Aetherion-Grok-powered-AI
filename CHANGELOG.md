@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Added
+
+- **Hunt custom icon pipeline (Ori only):** optional Discord custom emojis for `/team` HUD stats (HP/WP/ATK/MAG/PR/MR), animal avatars, and weapon-row glyphs. Small PNGs under `assets/hunt_icons/` (96px); animals **reuse** existing `hunt_portraits/` (no binary duplication). `hunt_emoji.py` resolves `HUNT_EMOJI_*` / `HUNT_EMOJI_ANIMAL_<id>` / `HUNT_EMOJI_WEAPON_<kind>` → `<:name:id>` or unicode fallbacks. Settings + `.env.example` + README upload steps for Ori. Upload not required for tests.
+
 ### Fixed
 
 - **Hunt cost vs wallet tens:** `/hunt` was failing with "Bets go by 10s." because `HUNT_COST` was **5** while `ai_coins.STEP` is **10**. Cost is now **10** Aether Coins (still cheap OwO-feel pacing; **15s** cooldown unchanged). Catch-line copy, `/help`, README, and tests updated. `RENAME_FEE` (**50**) and other Hunt spends already aligned; wallet `STEP` unchanged.

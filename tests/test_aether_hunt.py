@@ -1680,3 +1680,71 @@ def test_audit_mismatch_hooks():
     battle.apply_action(cross, [cross], [foe2], rng)
     # Weapon strike + radiant convert → more than mag alone roughly
     assert foe2["hp"] < start
+
+
+def test_hunt_emoji_fallbacks_and_overrides(monkeypatch):
+    """HUD/animal/weapon marks: unicode without env; custom markup when set."""
+    from groksito_discord.discord import hunt_emoji
+    from groksito_discord.discord import aether_gear as gear
+
+    assert hunt_emoji.stat_mark("hp") == "\U0001f7e5"
+    assert hunt_emoji.stat_mark("wp") == "\U0001f7e6"
+    assert hunt_emoji.stat_mark("atk") == "\U0001f7e5"
+    assert hunt_emoji.stat_mark("mag") == "\U0001f7e6"
+    assert hunt_emoji.stat_mark("pr") == "\U0001f7e5"
+    assert hunt_emoji.stat_mark("mr") == "\U0001f7e6"
+    assert hunt_emoji.stat_png_path("hp") is not None
+    assert hunt_emoji.stat_png_path("phys") is not None
+    assert hunt_emoji.animal_portrait_path("dust_mite") is not None
+
+    monkeypatch.setenv("HUNT_EMOJI_HP", "<:hunt_hp:111>")
+    # settings may already be loaded; also patch settings attr when present
+    try:
+        from groksito_discord.config import settings as _settings
+        monkeypatch.setattr(_settings, "hunt_emoji_hp", "<:hunt_hp:111>", raising=False)
+    except Exception:
+        pass
+    assert hunt_emoji.stat_mark("hp") == "<:hunt_hp:111>"
+
+    monkeypatch.setenv("HUNT_EMOJI_ANIMAL_DUST_MITE", "<:hunt_dust_mite:222>")
+    assert hunt_emoji.animal_mark("dust_mite", unicode_fallback="🐛") == "<:hunt_dust_mite:222>"
+    assert "<:hunt_dust_mite:222>" in hunt.animal_label("dust_mite")
+
+    monkeypatch.setenv("HUNT_EMOJI_WEAPON_MIST_DAGGER", "<:hunt_mist_dagger:333>")
+    pack = gear.blank_gear()
+    pack["weapons"]["7"] = {
+        "kind": "mist_dagger",
+        "rarity": gear.UNCOMMON,
+        "quality": 77,
+        "atk": 5,
+        "style": "strike",
+        "emoji": "🗡️",
+        "wid": "7",
+    }
+    pack["equip"]["dust_mite"] = "7"
+    held = gear.equipped_weapon(pack, "dust_mite")
+    assert held is not None
+    assert "<:hunt_mist_dagger:333>" in gear.weapon_line(held)
+
+    body = "\n".join(
+        hunt.team_lines(
+            ["dust_mite", None, None],
+            {"dust_mite": 0},
+            {"dust_mite": 1},
+            pack,
+        )
+    )
+    assert "<:hunt_hp:111>" in body
+    assert "<:hunt_dust_mite:222>" in body
+    # without weapon-row override, default ⚔️ still prefixes
+    assert "⚔️" in body or hunt_emoji.weapon_row_prefix() in body
+
+
+def test_hunt_icon_png_assets_exist():
+    from groksito_discord.discord import hunt_emoji
+
+    for key in ("hp", "wp", "atk", "phys", "mag", "pr", "mr"):
+        path = hunt_emoji.stat_png_path(key)
+        assert path is not None and path.is_file()
+        assert path.stat().st_size > 100
+

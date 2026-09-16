@@ -88,7 +88,9 @@ def _embed(page: str) -> discord.Embed:
             "`/raid` — pick Easy/Hard/Nightmare rift (Ember/Void/Crown); spend tickets; epic clears on Hard+. Craft: 30 shards → 1 ticket. `/bestiary` (`/dex`) — animal card.\n\n"
             "`/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon` `/salvage`\n"
             "`/use hunting|lucky|empower|prism` activates gems onto hunts, not pets. "
-            "Tiers go through Fabled. `/weapons` is the zoo-style armory; `/weapon id` opens the detail card."
+            "Tiers go through Fabled. `/weapons` is the zoo-style armory; `/weapon id` opens the detail card.\n\n"
+            "Custom icons (optional): upload `assets/hunt_icons/` + `hunt_portraits/` as Discord emojis, "
+            "set `HUNT_EMOJI_HP` / `HUNT_EMOJI_ANIMAL_<id>` / etc. in `.env` — unicode fallbacks until then."
         )
         return embed
 
