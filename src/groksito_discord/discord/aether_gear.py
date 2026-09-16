@@ -255,10 +255,19 @@ def equip_weapon(blob: dict[str, Any], wid: str, animal_id: str) -> dict[str, An
 def unequip_slot(blob: dict[str, Any], animal_id: str) -> None:
     (blob.get("equip") or {}).pop(animal_id, None)
 
+_STYLE_PASSIVE = {"strike": "⚔️", "cleave": "💥", "mend": "💚"}
+
+
 def weapon_line(wep: dict[str, Any] | None) -> str:
+    """Compact team/weapon row: id · rank · emoji · passive · quality%."""
     if not wep:
         return "no weapon"
-    return f"{wep['emoji']} {wep['name']} {rarity_mark(wep['rarity'])}"
+    wid = wep.get("wid") or "?"
+    rar = wep.get("rarity") or COMMON
+    style = wep.get("style") or "strike"
+    passive = _STYLE_PASSIVE.get(style, "")
+    quality = int(wep.get("quality") or 0)
+    return f"`{wid}` {rarity_mark(rar)} {wep.get('emoji', '')} {passive} {quality}%".strip()
 
 def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
     lines = [f"===== {display_name}'s Inventory ====="]
@@ -299,7 +308,12 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
             if not meta:
                 continue
             rar = raw.get("rarity") or COMMON
-            lines.append(f"`{wid}` {meta[2]} {meta[1]} {rarity_mark(rar) if rar else rar} Q{int(raw.get('quality') or 0)} +{int(raw.get('atk') or 0)} ATK")
+            q = int(raw.get("quality") or 0)
+            style = raw.get("style") or meta[3]
+            passive = _STYLE_PASSIVE.get(style, "")
+            lines.append(
+                f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} | Quality: {q}%"
+            )
     else:
         lines.append("No weapons yet. Win a battle for a crate.")
     return "\n".join(lines)

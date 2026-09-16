@@ -294,6 +294,20 @@ def level_of(xp: int) -> int:
         lvl += 1
     return lvl
 
+
+def xp_progress(xp: int) -> tuple[int, int, int]:
+    """Return (level, xp_into_level, xp_needed_for_next).
+
+    At LEVEL_CAP, needed is 0. Display as ``Lvl N [cur/need]``.
+    """
+    remaining = max(0, int(xp))
+    lvl = 1
+    while lvl < LEVEL_CAP and remaining >= xp_for_level(lvl):
+        remaining -= xp_for_level(lvl)
+        lvl += 1
+    need = 0 if lvl >= LEVEL_CAP else xp_for_level(lvl)
+    return lvl, remaining, need
+
 def stats_for(animal_id: str, level: int) -> tuple[int, int]:
     hp0, atk0 = RARITY_BASE[rarity_of(animal_id)]
     extra = max(0, int(level) - 1)

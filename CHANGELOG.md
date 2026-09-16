@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Changed
+
+- **Hunt weapon art + team feel:** weapon icons are distinct per kind with rarity-tint wash (readable small). `/weapon` and `/inv` lists are ID-first denser rows (`id` · rank · emoji · name · style passive · Quality: n%). `/team` shows a compact OwO-feel card: `Lvl N [cur/need]`, red H/P/p · blue W/M/m mapped to existing fighter stats (HP/ATK/PR/WP/MAG/MR — display only, no combat rewrite), plus an ID+quality% weapon row.
+
 ### Fixed
 
 - **`/battle` board layout:** enemy-side HP/WP bars and numeric readouts no longer overlap animal silhouette portraits. Flipped cards reserve space for the right-column icon so left/right columns stay balanced with cleaner spacing; KO labels unchanged.
