@@ -38,7 +38,7 @@ zoo_points_for = base.zoo_points_for
 
 LEVEL_CAP = 50
 WIP_FOOTER = "WIP \u00b7 Test 3 \u00b7 Ori only"
-HUNT_XP = {COMMON: 8, UNCOMMON: 12, RARE: 20, EPIC: 40, MYTHIC: 80}
+HUNT_XP = {COMMON: 1, UNCOMMON: 10, RARE: 20, EPIC: 400, MYTHIC: 1000}
 BATTLE_XP = {"win": 200, "draw": 100, "lose": 50}
 
 
@@ -170,10 +170,11 @@ def hunt(user_id, rng=None):
             _catch_one(row, aid)
             animals.append(aid)
         animal_id = animals[0]
-        xp_gain = sum(HUNT_XP.get(rarity_of(aid), 8) for aid in animals)
-        targets = [mate for mate in row["team"] if mate] or animals[:1]
-        for mate in targets:
-            add_xp(row, mate, xp_gain)
+        # OwO: sum of caught-rank XP; awarded to active team pets only (not the catch itself).
+        xp_gain = sum(int(HUNT_XP.get(rarity_of(aid), 1)) for aid in animals)
+        for mate in row["team"]:
+            if mate:
+                add_xp(row, mate, xp_gain)
         dropped = gear.maybe_lootbox(pack, rng)
         row["last_hunt"] = time.time()
         _save_store(store)
@@ -545,6 +546,8 @@ def install(mod=None):
     mod.WIP_FOOTER = WIP_FOOTER
     mod.HUNT_XP = HUNT_XP
     mod.BATTLE_XP = BATTLE_XP
+    mod.xp_for_level = base.xp_for_level
+    mod.level_of = base.level_of
     for name in (
         "_fighter", "build_enemy_team", "simulate_battle", "hunt", "snapshot",
         "battle", "team_lines", "battle_card",

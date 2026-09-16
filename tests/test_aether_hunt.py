@@ -26,13 +26,64 @@ def test_rarity_roll_stays_in_catalog(tmp_path: Path):
 
 
 def test_level_and_stats_scale():
+    # OwO curve: level_of(0)==1; L1→L2 needs 1^4+1000=1001 XP
     assert hunt.level_of(0) == 1
-    assert hunt.level_of(25) == 2
-    assert hunt.level_of(10_000) == hunt.LEVEL_CAP
+    assert hunt.xp_for_level(1) == 1001
+    assert hunt.level_of(1000) == 1
+    assert hunt.level_of(1001) == 2
+    assert hunt.level_of(1001 + 1016) == 3  # through L2→L3
+    assert hunt.LEVEL_CAP == 50
+    # Huge XP still clamps at LEVEL_CAP
+    assert hunt.level_of(10**18) == hunt.LEVEL_CAP
     hp1, atk1 = hunt.stats_for("dust_mite", 1)
     hp5, atk5 = hunt.stats_for("dust_mite", 5)
     assert hp5 > hp1
     assert atk5 > atk1
+
+
+def test_hunt_xp_table_owo_manual():
+    """OwO Manual Hunting / animal.json C–M hunt XP amounts."""
+    assert hunt.HUNT_XP[hunt.COMMON] == 1
+    assert hunt.HUNT_XP[hunt.UNCOMMON] == 10
+    assert hunt.HUNT_XP[hunt.RARE] == 20
+    assert hunt.HUNT_XP[hunt.EPIC] == 400
+    assert hunt.HUNT_XP[hunt.MYTHIC] == 1000
+    assert hunt.BATTLE_XP == {"win": 200, "draw": 100, "lose": 50}
+
+
+def test_hunt_grants_team_xp_by_rarity(tmp_path: Path, monkeypatch):
+    from groksito_discord.discord import ai_coins
+
+    hunt.set_store_path(tmp_path / "hunt.json")
+    monkeypatch.setattr(ai_coins, "get_balance", lambda _uid: 500)
+    monkeypatch.setattr(
+        ai_coins,
+        "resolve_wager",
+        lambda *_a, **_k: (True, 490, ""),
+    )
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 42)
+        row["zoo"] = {"dust_mite": 1, "thorn_wolf": 1}
+        row["caught"] = {"dust_mite": 1, "thorn_wolf": 1}
+        row["team"] = ["dust_mite", "thorn_wolf", None]
+        row["xp"] = {}
+        row["last_hunt"] = 0.0
+        hunt._save_store(store)
+
+    import random
+    from groksito_discord.discord import aether_hunt_ext as ext
+
+    # Force a common catch (ext.hunt binds roll_animal from its own module)
+    monkeypatch.setattr(ext, "roll_animal", lambda rng=None: "ember_moth")
+    result = hunt.hunt(42, random.Random(1))
+    assert result["ok"]
+    assert result["xp_gain"] == 1
+    snap = hunt.snapshot(42)
+    assert snap["xp"]["dust_mite"] == 1
+    assert snap["xp"]["thorn_wolf"] == 1
+    # Caught animal not on team does not get hunt XP (OwO team-only)
+    assert snap["xp"].get("ember_moth", 0) == 0
 
 
 def test_battle_ends_with_a_result():

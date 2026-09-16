@@ -21,8 +21,7 @@ logger = logging.getLogger("aetherion.hunt")
 HUNT_COST = 10
 HUNT_COOLDOWN = 10
 TEAM_SIZE = 3
-LEVEL_CAP = 20
-XP_PER_LEVEL = 25
+LEVEL_CAP = 50
 WIN_PAYOUT = 20
 DRAW_PAYOUT = 10
 EMBED_GOLD = 0xC9A227
@@ -56,6 +55,10 @@ RARITY_EMBED = {
     MYTHIC: 0x9558EF,
 }
 RARITY_POINTS = {COMMON: 1, UNCOMMON: 5, RARE: 20, EPIC: 250, MYTHIC: 3000}
+# OwO Manual Hunting / animal.json ranks (C–M). Team pets gain this on catch.
+HUNT_XP = {COMMON: 1, UNCOMMON: 10, RARE: 20, EPIC: 400, MYTHIC: 1000}
+# OwO battle base awards (ext may add streak / level-diff on win).
+BATTLE_XP = {"win": 200, "draw": 100, "lose": 50}
 ZOO_COLS = 5
 
 ANIMALS: tuple[tuple[str, str, str, str], ...] = (
@@ -253,8 +256,23 @@ def rarity_of(animal_id: str) -> str:
 def sell_value(animal_id: str) -> int:
     return RARITY_SELL[rarity_of(animal_id)]
 
+def xp_for_level(lvl: int) -> int:
+    """OwO getXP: XP needed to advance from current level `lvl` to `lvl+1`."""
+    lvl = max(1, int(lvl))
+    return (lvl ** 4) + 1000
+
+
 def level_of(xp: int) -> int:
-    return min(LEVEL_CAP, 1 + max(0, int(xp)) // XP_PER_LEVEL)
+    """OwO toLvl: start at 1; subtract xp_for_level while XP allows; cap at LEVEL_CAP.
+
+    level_of(0) == 1. Threshold L1→L2 is 1001 (= 1^4 + 1000).
+    """
+    remaining = max(0, int(xp))
+    lvl = 1
+    while lvl < LEVEL_CAP and remaining >= xp_for_level(lvl):
+        remaining -= xp_for_level(lvl)
+        lvl += 1
+    return lvl
 
 def stats_for(animal_id: str, level: int) -> tuple[int, int]:
     hp0, atk0 = RARITY_BASE[rarity_of(animal_id)]
@@ -316,13 +334,14 @@ def hunt(user_id: int, rng: random.Random | None = None) -> dict[str, Any]:
             caught[animal_id] = int(caught.get(animal_id) or 0) + 1
         except (TypeError, ValueError):
             caught[animal_id] = 1
-        add_xp(row, animal_id, 8)
+        # OwO: hunt XP goes to team pets only (caught animal does not, unless on team).
+        xp_gain = int(HUNT_XP.get(rarity_of(animal_id), 1))
         for mate in row["team"]:
             if mate:
-                add_xp(row, mate, 4)
+                add_xp(row, mate, xp_gain)
         row["last_hunt"] = time.time()
         _save_store(store)
-        return {"ok": True, "animal_id": animal_id, "count": zoo[animal_id], "balance": balance, "new": zoo[animal_id] == 1}
+        return {"ok": True, "animal_id": animal_id, "count": zoo[animal_id], "balance": balance, "new": zoo[animal_id] == 1, "xp_gain": xp_gain}
 
 def snapshot(user_id: int) -> dict[str, Any]:
     with _lock:
@@ -454,7 +473,7 @@ def battle(user_id: int, rng: random.Random | None = None) -> dict[str, Any]:
         enemy = build_enemy_team(player, rng)
         outcome = simulate_battle(player, enemy, rng)
         result = outcome["result"]
-        xp_gain = 40 if result == "win" else 25 if result == "draw" else 15
+        xp_gain = int(BATTLE_XP.get(result, 50))
         for aid in team_ids:
             add_xp(row, aid, xp_gain)
         payout = WIN_PAYOUT if result == "win" else DRAW_PAYOUT if result == "draw" else 0
