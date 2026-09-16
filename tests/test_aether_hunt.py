@@ -68,7 +68,10 @@ def test_battle_card_looks_like_owo():
     assert "Ori goes into battle!" in card
     assert "Ori's Team" in card
     assert "Enemy Team" in card
-    assert "Turn 2 / 5" in card
+    assert "Turn 2" in card
+    assert "`" in card and "HP`" in card and "WP`" in card
+    assert "L. 19" in card
+    assert "*no weapon*" in card or "no weapon" in card
 
 
 def test_gear_catalog_has_thirty_weapons():
@@ -101,10 +104,13 @@ def test_hunt_and_zoo_match_owo_layout():
         {"dust_mite": 2, "ember_moth": 0},
         {"dust_mite": 2},
     )
-    assert "\U0001f33f \U0001f331 \U0001f333 **Ori's zoo!** \U0001f333 \U0001f331 \U0001f33f" in board
-    assert "\u2753\u2080" in board
-    assert "\U0001fab2\u2082" in board
+    # OwO plant header order: tree herb seedling on the right
+    assert "\U0001f33f \U0001f331 \U0001f333 **Ori's zoo!** \U0001f333 \U0001f33f \U0001f331" in board
+    # Unseen slots stay ? with superscript zero; owned use superscript counts
+    assert "\u2753\u2070" in board
+    assert "\U0001fab2\u00b2" in board
     assert "**Zoo Points: __2__**" in board
+    assert "**M-0, E-0, R-0, U-0, C-2**" in board
     # OwO-like row prefixes: white/green/blue/purple/pink + lowercase backtick letter
     assert hunt.rarity_mark(hunt.COMMON) == "\u2b1c`c`"
     assert hunt.rarity_mark(hunt.UNCOMMON) == "\U0001f7e9`u`"
@@ -112,6 +118,8 @@ def test_hunt_and_zoo_match_owo_layout():
     assert hunt.rarity_mark(hunt.EPIC) == "\U0001f7ea`e`"
     assert hunt.rarity_mark(hunt.MYTHIC) == "\U0001fa77`m`"
     assert hunt.rarity_mark(hunt.COMMON) in board
+    # Rank mark packs with three spaces before the emoji strip
+    assert hunt.rarity_mark(hunt.COMMON) + "   " in board
     owned = hunt.owned_catalog({"dust_mite": 2, "sol_wyrm": 0})
     assert [row[0] for row in owned] == ["dust_mite"]
 
@@ -135,6 +143,18 @@ def test_battle_image_renders():
     raw = png.getvalue()
     assert raw[:8] == b"\x89PNG\r\n\x1a\n"
     assert len(raw) > 800
+
+
+def test_battle_roster_field_is_owo_compact():
+    from groksito_discord.discord import aether_battle as board
+
+    pet = hunt._fighter("eclipse_lion", 19)
+    field = board.roster_field([pet])
+    assert field.startswith("L. 19")
+    assert " - " in field
+    assert "*no weapon*" in field
+    # Image-mode fields stay emoji-centric (no long animal names)
+    assert "Eclipse Lion" not in field
 
 
 def test_grant_daily_supplies_once(tmp_path: Path):
@@ -165,8 +185,15 @@ def test_lootbox_is_not_guaranteed():
     from groksito_discord.discord import aether_gear as gear
 
     pack = gear.blank_gear()
-    miss = random.Random(1)
-    assert gear.maybe_lootbox(pack, miss) is False
+    # First lootbox of the day is forced; later rolls are 5%
+    assert gear.maybe_lootbox(pack, random.Random(1)) is True
+    assert pack["lb_today"] == 1
+    miss = False
+    for seed in range(200):
+        if gear.maybe_lootbox(pack, random.Random(seed)) is False:
+            miss = True
+            break
+    assert miss
     found = False
     pack2 = gear.blank_gear()
     rng = random.Random(99)

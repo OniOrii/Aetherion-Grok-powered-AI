@@ -471,9 +471,34 @@ def rarity_mark(rarity: str) -> str:
     letter, square = RARITY_LETTER.get(rarity, RARITY_LETTER[COMMON])
     return f"{square}`{letter}`"
 
-def _small_count(n: int) -> str:
-    digits = "\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089"
-    return "".join(digits[int(ch)] for ch in str(max(0, int(n))))
+def _small_count(n: int, width: int = 1) -> str:
+    """OwO-style unicode superscript counts (padded to densest zoo digit width)."""
+    digits = "\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079"
+    raw = str(max(0, int(n)))
+    width = max(1, int(width or 1), len(raw))
+    raw = raw.zfill(width)
+    return "".join(digits[int(ch)] for ch in raw)
+
+
+def _fancy_num(n: int) -> str:
+    return f"{max(0, int(n)):,}"
+
+
+def zoo_rank_tally(caught: dict[str, int]) -> str:
+    """OwO-like lifetime catch shorthand: M-#, E-#, R-#, U-#, C-#."""
+    counts = {rarity: 0 for rarity in RARITY_ORDER}
+    for aid, n in (caught or {}).items():
+        if aid not in ANIMAL_BY_ID:
+            continue
+        try:
+            count = int(n)
+        except (TypeError, ValueError):
+            continue
+        if count <= 0:
+            continue
+        counts[rarity_of(aid)] += count
+    letters = {MYTHIC: "M", EPIC: "E", RARE: "R", UNCOMMON: "U", COMMON: "C"}
+    return ", ".join(f"{letters[r]}-{counts[r]}" for r in (MYTHIC, EPIC, RARE, UNCOMMON, COMMON))
 
 def hunt_catch_line(display_name: str, animal_id: str) -> str:
     row = ANIMAL_BY_ID.get(animal_id)
@@ -497,7 +522,16 @@ def zoo_points_for(caught: dict[str, int]) -> int:
     return total
 
 def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) -> str:
-    lines = [f"\U0001f33f \U0001f331 \U0001f333 **{display_name}'s zoo!** \U0001f333 \U0001f331 \U0001f33f"]
+    # OwO plant header: herb seedling tree … tree herb seedling
+    lines = [f"\U0001f33f \U0001f331 \U0001f333 **{display_name}'s zoo!** \U0001f333 \U0001f33f \U0001f331"]
+    biggest = 0
+    for source in (zoo, caught):
+        for val in (source or {}).values():
+            try:
+                biggest = max(biggest, int(val))
+            except (TypeError, ValueError):
+                continue
+    width = max(1, len(str(max(0, biggest))))
     for rarity in RARITY_ORDER:
         pool = [row for row in ANIMALS if row[3] == rarity]
         cells: list[str] = []
@@ -511,15 +545,18 @@ def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) ->
             except (TypeError, ValueError):
                 have = 0
             if ever > 0 or have > 0:
-                cells.append(f"{emoji}{_small_count(have)}")
+                cells.append(f"{emoji}{_small_count(have, width)}")
             else:
-                cells.append(f"\u2753{_small_count(0)}")
+                cells.append(f"\u2753{_small_count(0, width)}")
         mark = rarity_mark(rarity)
         for i in range(0, max(len(cells), 1), ZOO_COLS):
             chunk = cells[i : i + ZOO_COLS]
-            prefix = mark if i == 0 else "\u3000\u3000"
-            lines.append(f"{prefix}  " + "  ".join(chunk))
-    lines.append(f"**Zoo Points: __{zoo_points_for(caught)}__**")
+            # Rank mark + 3 spaces (OwO), then emoji+count units spaced with 2
+            prefix = f"{mark}   " if i == 0 else "\u3000\u3000   "
+            lines.append(prefix + "  ".join(chunk))
+    points = zoo_points_for(caught)
+    lines.append(f"**Zoo Points: __{_fancy_num(points)}__**")
+    lines.append(f"**{zoo_rank_tally(caught)}**")
     return "\n".join(lines)
 
 def owned_catalog(zoo: dict[str, int]) -> list[tuple[str, str, str, str]]:

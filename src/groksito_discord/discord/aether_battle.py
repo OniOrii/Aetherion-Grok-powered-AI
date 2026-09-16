@@ -170,11 +170,15 @@ def _card(
     mx = max(1, int(pet.get("max_hp") or 1))
     wp = max(0, int(pet.get("wp") or 0))
     wpx = max(1, int(pet.get("max_wp") or 1))
-    bar_w = max(110, (x1 - text_x) - 78)
-    _bar(draw, text_x, y0 + 58, bar_w, 14, hp, mx, HP_RED, HP_BACK)
-    draw.text((text_x + bar_w + 8, y0 + 64), f"{hp}/{mx}", font=_font(12, True), fill=INK, anchor="lm")
-    _bar(draw, text_x, y0 + 80, bar_w, 12, wp, wpx, WP_BLUE, WP_BACK)
-    draw.text((text_x + bar_w + 8, y0 + 85), f"{wp}/{wpx}", font=_font(11), fill=MUTED, anchor="lm")
+    # Leave room for HP/WP tags + numeric readouts (OwO-class scannable bars)
+    tag_w = 28
+    bar_w = max(96, (x1 - text_x) - 78 - tag_w)
+    draw.text((text_x, y0 + 64), "HP", font=_font(11, True), fill=HP_RED, anchor="lm")
+    _bar(draw, text_x + tag_w, y0 + 58, bar_w, 14, hp, mx, HP_RED, HP_BACK)
+    draw.text((text_x + tag_w + bar_w + 8, y0 + 64), f"{hp}/{mx}", font=_font(12, True), fill=INK, anchor="lm")
+    draw.text((text_x, y0 + 85), "WP", font=_font(11, True), fill=WP_BLUE, anchor="lm")
+    _bar(draw, text_x + tag_w, y0 + 80, bar_w, 12, wp, wpx, WP_BLUE, WP_BACK)
+    draw.text((text_x + tag_w + bar_w + 8, y0 + 85), f"{wp}/{wpx}", font=_font(11), fill=MUTED, anchor="lm")
 
 
 def render_battle_png(
@@ -217,6 +221,7 @@ def render_battle_png(
 
 
 def roster_field(side: list[dict[str, Any]]) -> str:
+    """OwO image-mode team field: L. lvl emoji - weapon (compact / scannable)."""
     bits = []
     for pet in side:
         wep = pet.get("weapon") if isinstance(pet.get("weapon"), dict) else None
@@ -225,8 +230,7 @@ def roster_field(side: list[dict[str, Any]]) -> str:
         else:
             gear = "*no weapon*"
         emoji = pet.get("emoji") or ""
-        name = pet.get("name") or pet.get("id") or "pet"
-        bits.append(f"L. {pet.get('level', 1)} {emoji} {name} - {gear}")
+        bits.append(f"L. {pet.get('level', 1)} {emoji} - {gear}")
     return "\n".join(bits) or "*empty*"
 
 

@@ -275,16 +275,28 @@ def team_lines(team, xp, zoo, pack=None):
 
 
 def _roster_line(pet):
+    """Compact OwO-class team line with HP/WP readouts."""
     wep = pet.get("weapon") if isinstance(pet.get("weapon"), dict) else None
-    gear_txt = gear.weapon_line(wep) if wep else "no weapon"
-    return f"L. {pet.get('level', 1)} {animal_label(pet['id'])} {rarity_mark(pet.get('rarity') or rarity_of(pet['id']))} \u00b7 {gear_txt}"
+    gear_txt = gear.weapon_line(wep) if wep else "*no weapon*"
+    emoji = pet.get("emoji") or ""
+    name = pet.get("name") or animal_label(pet["id"])
+    hp = max(0, int(pet.get("hp") or 0))
+    wp = max(0, int(pet.get("wp") or 0))
+    mark = rarity_mark(pet.get("rarity") or rarity_of(pet["id"]))
+    return (
+        f"L. {pet.get('level', 1)} {emoji} {name} {mark}\n"
+        f"`{hp} HP` `{wp} WP` · {gear_txt}"
+    )
 
 
 def _hp_bar(pet):
     hp = max(0, int(pet.get("hp") or 0))
     mx = max(1, int(pet.get("max_hp") or 1))
+    wp = max(0, int(pet.get("wp") or 0))
+    wpx = max(1, int(pet.get("max_wp") or pet.get("wp") or 1))
     filled = round(10 * hp / mx)
-    return "\u2588" * filled + "\u2591" * (10 - filled) + f" {hp}/{mx}"
+    bar = "\u2588" * filled + "\u2591" * (10 - filled)
+    return f"{bar} `{hp}/{mx} HP` `{wp}/{wpx} WP`"
 
 
 def battle_card(display_name, result):
