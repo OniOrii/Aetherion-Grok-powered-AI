@@ -55,12 +55,12 @@ Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/d
 Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt are still on hold. Save file: `data/aether_hunt.json`.
 
 - Catalog: **50** animals, **10** of each C/U/R/E/M. **42** style-based weapons. Pet level cap **50**.
-- Manual hunt: **5** Aether Coins, **15s** cooldown.
+- Manual hunt: **10** Aether Coins, **15s** cooldown.
 - `/hunt` — catch line, optional multi-find strip, team XP.
 - `/zoo` — C/U/R/E/M grid, Zoo Points, lifetime tally.
 - `/team` `/sell` `/sacrifice` `/rename` `/checklist`.
 - `/battle` — 3v3 board image (species portraits), phys ATK/PR and weapon MAG/MR with WP spend.
-- `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapon`.
+- `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon`.
 - `/bestiary` (alias `/dex`), `/salvage`, `/raid`.
 - Gems: hunting / lucky / empower / prism, tiers through Fabled. `/use` activates them onto hunts, not onto pets.
 
@@ -90,7 +90,7 @@ Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt 
 | `/balance` `/daily` `/leaderboard` | anyone | Wallet |
 | `/givecoins` | Ori | Grant coins |
 | `/hunt` `/zoo` `/sell` `/team` `/battle` | Ori | Hunt WIP |
-| `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapon` | Ori | Hunt bags and gems |
+| `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon` | Ori | Hunt bags and gems |
 | `/sacrifice` `/rename` `/checklist` `/bestiary` `/dex` `/salvage` `/raid` | Ori | Hunt extras |
 | `/audio` | anyone | Speak text in-channel |
 | `/ping` | anyone | Awake check |

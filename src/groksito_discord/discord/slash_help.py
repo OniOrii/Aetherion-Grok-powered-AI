@@ -81,14 +81,14 @@ def _embed(page: str) -> discord.Embed:
         embed.description = (
             "**Ori only WIP.** Everyone else is rejected. Expedition and autohunt are still on hold.\n\n"
             "50 original animals (10 each C/U/R/E/M). 42 weapons. Level cap 50.\n"
-            "Manual hunt costs **5** Aether Coins with a **15s** cooldown.\n\n"
+            "Manual hunt costs **10** Aether Coins with a **15s** cooldown.\n\n"
             "`/hunt` — catch. `/zoo` — grid and Zoo Points.\n"
             "`/team` `/sell` `/sacrifice` `/rename` `/checklist`\n"
             "`/battle` — 3v3 board. Phys ATK/PR, weapon MAG/MR, WP spend.\n"
             "`/raid` — ticket 3v3 PvE. `/bestiary` (`/dex`) — animal card.\n\n"
-            "`/inv` `/lootbox` `/crate` `/use` `/equip` `/weapon` `/salvage`\n"
+            "`/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon` `/salvage`\n"
             "`/use hunting|lucky|empower|prism` activates gems onto hunts, not pets. "
-            "Tiers go through Fabled. `/weapon` with an id opens the detail card."
+            "Tiers go through Fabled. `/weapons` is the zoo-style armory; `/weapon id` opens the detail card."
         )
         return embed
 

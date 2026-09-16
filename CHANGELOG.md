@@ -13,6 +13,14 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Fixed
+
+- **Hunt cost vs wallet tens:** `/hunt` was failing with "Bets go by 10s." because `HUNT_COST` was **5** while `ai_coins.STEP` is **10**. Cost is now **10** Aether Coins (still cheap OwO-feel pacing; **15s** cooldown unchanged). Catch-line copy, `/help`, README, and tests updated. `RENAME_FEE` (**50**) and other Hunt spends already aligned; wallet `STEP` unchanged.
+
+### Added
+
+- **Hunt `/weapons` zoo-style board (Ori only):** dense armory grouped by rarity with blank-line headers — `id` · rarity mark · emoji · name · `` `{quality}%` `` · equipped animal when set. Friendly empty state. `/weapon [id]` detail embed unchanged (bare `/weapon` still shows the board). Help lists `/weapons`.
+
 ### Changed
 
 - **Hunt `/team` UX polish (Ori only):** clearer slot spacing (blank line between slots), spaced `🟥 H/P/p · 🟦 W/M/m` rows, equipped weapon prefixed with ⚔️, soft `· no weapon` when empty. **Owned** animal list removed from the `/team` embed (discovery stays on `/zoo` `/bestiary` `/checklist`). Footer hint `⚙️ settings · /zoo for owned`. Team Settings cog + views unchanged.
