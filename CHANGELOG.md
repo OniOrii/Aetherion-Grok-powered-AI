@@ -18,6 +18,10 @@ _Nothing waiting. New work is dated the day it ships._
 - **Aetherion Hunt Test 2 (Ori only):** thirty original weapons, weapon crates, lootboxes, and hunting/lucky/empower gems. `/inv`, `/lootbox`, `/crate`, `/use`, `/equip`. Hunt lootboxes drop at 5% (max 3/day). First battle win drops a crate (then 5%, max 3). Gems change hunt yield. Weapons add ATK and a strike/cleave/mend style. `/inv` uses the OwO inventory header (`050` lootbox, `100` crate). `/lootbox` uses the two-line gem reveal. Pet level cap is 50.
 - **Aetherion Hunt Test 3:** `/battle` posts a 3v3 board image and edits the same message each turn. `/use hunting|lucky|empower` activates lootbox gems onto hunts (not onto pets). Hunt lootboxes drop at 5% (max 3/day). `/daily` grants Ori 5 lootboxes and 5 crates. `/sell` accepts a rarity or all. `/lootbox` can open many at once. `/weapon`, `/sacrifice` (essence), `/rename`, and `/checklist` match the OwO hunt loop. Huntbot upgrades stay later.
 
+### Changed
+
+- `/battle` now uses the OwO fight screen: author `{name} goes into battle!`, two inline team fields (`L. level` + weapon), a 3v3 HP/WP board image, and the same Discord message is edited every turn. The last frame reads `You won/lost/tied in N turns! | +XP`.
+
 ## [2026-09-15]
 
 ### Added
