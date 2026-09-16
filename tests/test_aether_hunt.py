@@ -106,9 +106,9 @@ def test_hunt_and_zoo_match_owo_layout():
     )
     # OwO plant header (mirrored): tree seedling herb on the right
     assert "\U0001f33f \U0001f331 \U0001f333 **Ori's zoo!** \U0001f333 \U0001f331 \U0001f33f" in board
-    # Unseen slots stay ? with superscript zero; owned use superscript counts
-    assert "\u2753\u2070" in board
-    assert "\U0001fab2\u00b2" in board
+    # Unseen slots stay ? with OwO-like min-2 superscript zeros; owned padded
+    assert "\u2753\u2070\u2070" in board
+    assert "\U0001fab2\u2070\u00b2" in board
     assert "**Zoo Points: __2__**" in board
     assert "**M-0, E-0, R-0, U-0, C-2**" in board
     # OwO-like row prefixes: white/green/blue/purple/pink + lowercase backtick letter

@@ -471,11 +471,11 @@ def rarity_mark(rarity: str) -> str:
     letter, square = RARITY_LETTER.get(rarity, RARITY_LETTER[COMMON])
     return f"{square}`{letter}`"
 
-def _small_count(n: int, width: int = 1) -> str:
-    """OwO-style unicode superscript counts (padded to densest zoo digit width)."""
+def _small_count(n: int, width: int = 2) -> str:
+    """OwO-style unicode superscript counts (min 2 digits like OwO 00/04; grow with densest)."""
     digits = "\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079"
     raw = str(max(0, int(n)))
-    width = max(1, int(width or 1), len(raw))
+    width = max(2, int(width or 2), len(raw))
     raw = raw.zfill(width)
     return "".join(digits[int(ch)] for ch in raw)
 
@@ -531,7 +531,7 @@ def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) ->
                 biggest = max(biggest, int(val))
             except (TypeError, ValueError):
                 continue
-    width = max(1, len(str(max(0, biggest))))
+    width = max(2, len(str(max(0, biggest))))
     for rarity in RARITY_ORDER:
         pool = [row for row in ANIMALS if row[3] == rarity]
         cells: list[str] = []
