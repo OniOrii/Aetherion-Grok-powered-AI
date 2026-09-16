@@ -271,7 +271,11 @@ def resolve_animal(query: str | None) -> str | None:
 
 def animal_label(animal_id: str) -> str:
     row = ANIMAL_BY_ID.get(animal_id)
-    return f"{row[2]} {row[1]}" if row else animal_id
+    if not row:
+        return animal_id
+    from .hunt_emoji import animal_mark
+
+    return f"{animal_mark(animal_id, unicode_fallback=row[2])} {row[1]}"
 
 def rarity_of(animal_id: str) -> str:
     row = ANIMAL_BY_ID.get(animal_id)

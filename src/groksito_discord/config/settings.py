@@ -186,6 +186,38 @@ class AetherionSettings(BaseSettings):
         description="Discord custom emoji for mythic hunt rank, e.g. <:aether_m:123>",
     )
 
+    # Hunt HUD / team custom emoji markup (<:name:id>). Empty = unicode fallback.
+    # Upload assets from discord/assets/hunt_icons/ (and hunt_portraits/ for animals).
+    # Per-animal / per-weapon overrides use env only: HUNT_EMOJI_ANIMAL_<id>, HUNT_EMOJI_WEAPON_<kind>.
+    hunt_emoji_hp: str = Field(
+        default="",
+        description="Discord custom emoji for hunt HP HUD, e.g. <:hunt_hp:123>",
+    )
+    hunt_emoji_wp: str = Field(
+        default="",
+        description="Discord custom emoji for hunt WP HUD, e.g. <:hunt_wp:123>",
+    )
+    hunt_emoji_atk: str = Field(
+        default="",
+        description="Discord custom emoji for hunt physical ATK HUD, e.g. <:hunt_atk:123>",
+    )
+    hunt_emoji_mag: str = Field(
+        default="",
+        description="Discord custom emoji for hunt MAG HUD, e.g. <:hunt_mag:123>",
+    )
+    hunt_emoji_pr: str = Field(
+        default="",
+        description="Discord custom emoji for hunt PR HUD, e.g. <:hunt_pr:123>",
+    )
+    hunt_emoji_mr: str = Field(
+        default="",
+        description="Discord custom emoji for hunt MR HUD, e.g. <:hunt_mr:123>",
+    )
+    hunt_emoji_weapon_row: str = Field(
+        default="",
+        description="Optional Discord custom emoji prefix for /team weapon rows (default ⚔️)",
+    )
+
     data_dir: Path = Field(
         default=Path("./data"),
         description="Base directory for short-term conversation context persistence.",

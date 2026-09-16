@@ -458,13 +458,15 @@ def team_lines(team, xp, zoo, pack=None):
         mr = int(snap["mr"])
         held = snap.get("weapon") if isinstance(snap.get("weapon"), dict) else None
         xp_bit = f"{into}/{need}" if need else f"{into}/—"
+        from .hunt_emoji import stat_mark, weapon_row_prefix
+
         lines.append(f"**[{i + 1}]** {animal_label(aid)}")
         lines.append(f"Lvl {lvl} [{xp_bit}]")
-        lines.append(f"🟥 H {base_hp}  ·  🟦 W {wp}")
-        lines.append(f"🟥 P {atk}  ·  🟦 M {mag}")
-        lines.append(f"🟥 p {pr}  ·  🟦 m {mr}")
+        lines.append(f"{stat_mark('hp')} H {base_hp}  ·  {stat_mark('wp')} W {wp}")
+        lines.append(f"{stat_mark('atk')} P {atk}  ·  {stat_mark('mag')} M {mag}")
+        lines.append(f"{stat_mark('pr')} p {pr}  ·  {stat_mark('mr')} m {mr}")
         if held:
-            lines.append(f"⚔️ {gear.weapon_line(held)}")
+            lines.append(f"{weapon_row_prefix()} {gear.weapon_line(held)}")
         else:
             lines.append("· no weapon")
     return lines
