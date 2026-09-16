@@ -5,14 +5,16 @@ from groksito_discord.discord import aether_hunt_ext  # noqa: F401
 from groksito_discord.llm.persona import CREATOR_DISCORD_ID, creator_is_author
 
 
-def test_catalog_has_thirty_original_animals():
-    assert len(hunt.ANIMALS) == 30
-    assert len(hunt.ANIMAL_BY_ID) == 30
+def test_catalog_has_original_animals():
+    assert len(hunt.ANIMALS) == 46
+    assert len(hunt.ANIMAL_BY_ID) == 46
     ids = [row[0] for row in hunt.ANIMALS]
-    assert len(set(ids)) == 30
+    assert len(set(ids)) == 46
     assert "cowoncy" not in " ".join(ids)
     assert hunt.resolve_animal("Sol Wyrm") == "sol_wyrm"
     assert hunt.resolve_animal("aether drake") == "aether_drake"
+    assert hunt.resolve_animal("Aether Phoenix") == "aether_phoenix"
+    assert hunt.resolve_animal("mist vole") == "mist_vole"
     assert hunt.resolve_animal("nope") is None
 
 
@@ -74,11 +76,13 @@ def test_battle_card_looks_like_owo():
     assert "*no weapon*" in card or "no weapon" in card
 
 
-def test_gear_catalog_has_thirty_weapons():
+def test_gear_catalog_has_weapons():
     from groksito_discord.discord import aether_gear as gear
 
-    assert len(gear.WEAPONS) == 30
-    assert len({row[0] for row in gear.WEAPONS}) == 30
+    assert len(gear.WEAPONS) == 42
+    assert len({row[0] for row in gear.WEAPONS}) == 42
+    assert "mist_dagger" in gear.WEAPON_BY_ID
+    assert "aether_tome" in gear.WEAPON_BY_ID
     pack = gear.blank_gear()
     pack["lootbox"] = 1
     pack["crate"] = 1
@@ -287,7 +291,7 @@ def test_checklist_marks_discovered_and_missing():
     assert "Sol Wyrm" in board
     assert "Missing" in board
     assert "Found" in board
-    assert "Discovered __2__ / 30" in board
+    assert "Discovered __2__ / 46" in board
     assert "cowoncy" not in board.lower()
     assert hunt.rarity_mark(hunt.COMMON) in board
     assert hunt.rarity_mark(hunt.EPIC) in board

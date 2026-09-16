@@ -89,6 +89,22 @@ ANIMALS: tuple[tuple[str, str, str, str], ...] = (
     ("gravemaw", "Gravemaw", "\U0001f40a", EPIC),
     ("crown_leviathan", "Crown Leviathan", "\U0001f40b", MYTHIC),
     ("sol_wyrm", "Sol Wyrm", "\U0001f432", MYTHIC),
+    ("mist_vole", "Mist Vole", "\U0001f439", COMMON),
+    ("peat_slug", "Peat Slug", "\U0001f40c", COMMON),
+    ("glass_newt", "Glass Newt", "\U0001f98e", COMMON),
+    ("sol_sparrow", "Sol Sparrow", "\U0001f426", COMMON),
+    ("rift_tick", "Rift Tick", "\U0001f577\ufe0f", COMMON),
+    ("moon_kit", "Moon Kit", "\U0001f431", COMMON),
+    ("storm_shrimp", "Storm Shrimp", "\U0001f990", COMMON),
+    ("mist_panther", "Mist Panther", "\U0001f406", UNCOMMON),
+    ("peat_bear", "Peat Bear", "\U0001f43b", UNCOMMON),
+    ("aether_kite", "Aether Kite", "\U0001f985", UNCOMMON),
+    ("void_ferret", "Void Ferret", "\U0001f9ad", UNCOMMON),
+    ("ember_griffin", "Ember Griffin", "\U0001f985", RARE),
+    ("moon_kraken", "Moon Kraken", "\U0001f991", RARE),
+    ("glass_mantis", "Glass Mantis", "\U0001fab2", RARE),
+    ("rift_colossus", "Rift Colossus", "\U0001f9a3", EPIC),
+    ("aether_phoenix", "Aether Phoenix", "\U0001f54a\ufe0f", MYTHIC),
 )
 ANIMAL_BY_ID = {row[0]: row for row in ANIMALS}
 _NAME_INDEX: dict[str, str] = {}
