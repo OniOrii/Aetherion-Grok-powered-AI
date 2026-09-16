@@ -113,30 +113,33 @@ def simulate_battle(player, enemy, rng=None):
 
 
 def _streak_bonus(streak):
+    # OwO battleUtil: largest multiple of 10/50/100/500/1000; Math.round; cap 100k.
     x = max(0, int(streak))
     if x <= 0:
         return 0
     if x % 1000 == 0:
-        return min(100000, int(250 * (x ** 0.5) + 12500))
+        return min(100000, round(250 * (x ** 0.5) + 12500))
     if x % 500 == 0:
-        return min(100000, int(100 * (x ** 0.5) + 5000))
+        return min(100000, round(100 * (x ** 0.5) + 5000))
     if x % 100 == 0:
-        return min(100000, int(50 * (x ** 0.5) + 2500))
+        return min(100000, round(50 * (x ** 0.5) + 2500))
     if x % 50 == 0:
-        return min(100000, int(30 * (x ** 0.5) + 1500))
+        return min(100000, round(30 * (x ** 0.5) + 1500))
     if x % 10 == 0:
-        return min(100000, int(10 * (x ** 0.5) + 500))
+        return min(100000, round(10 * (x ** 0.5) + 500))
     return 0
 
 
 def _level_diff_xp(player, enemy):
+    # OwO source: Math.round(600 * max(0, mean(enemy) - mean(player))); float avgs.
     if not player or not enemy:
         return 0
-    yours = round(sum(int(p["level"]) for p in player) / len(player))
-    theirs = round(sum(int(p["level"]) for p in enemy) / len(enemy))
-    if theirs <= yours:
+    yours = sum(int(p["level"]) for p in player) / len(player)
+    theirs = sum(int(p["level"]) for p in enemy) / len(enemy)
+    diff = max(0.0, theirs - yours)
+    if diff <= 0:
         return 0
-    return (theirs - yours) * 600
+    return round(600 * diff)
 
 
 def hunt(user_id, rng=None):

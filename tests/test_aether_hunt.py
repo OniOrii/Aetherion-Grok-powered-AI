@@ -51,6 +51,21 @@ def test_hunt_xp_table_owo_manual():
     assert hunt.BATTLE_XP == {"win": 200, "draw": 100, "lose": 50}
 
 
+def test_battle_bonus_xp_matches_owo_source():
+    """Streak + level-diff follow OwO battleUtil (PET_LEVELING.md / source)."""
+    from groksito_discord.discord import aether_hunt_ext as ext
+
+    assert ext._streak_bonus(10) == 532
+    assert ext._streak_bonus(50) == 1712
+    assert ext._streak_bonus(100) == 3000
+    assert ext._streak_bonus(7) == 0
+    # Float mean avgs: teams 15/23/30 vs 50/50 → round(600 * (50 - 68/3)) = 16400
+    player = [{"level": 15}, {"level": 23}, {"level": 30}]
+    enemy = [{"level": 50}, {"level": 50}]
+    assert ext._level_diff_xp(player, enemy) == 16400
+    assert ext._level_diff_xp(enemy, player) == 0
+
+
 def test_hunt_grants_team_xp_by_rarity(tmp_path: Path, monkeypatch):
     from groksito_discord.discord import ai_coins
 
