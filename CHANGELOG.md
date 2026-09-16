@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Added
+
+- **Hunt `/team` Settings cog (Ori only):** bare `/team` keeps the party embed and adds a ⚙️ cog. Cog opens an OwO-feel **Team Settings** page (Active Battle Team stub = Team 1, Slot 1/2/3 rows). Slot rows open a Select of owned animals (plus Clear) via `set_team_slot`. Back returns to the team embed + cog. Optional page 2 shows Auto Rename / Auto Team / Auto Battle / Show Stats / Level-up Ping as display-only stubs (not persisted). Slash `/team set|clear` unchanged.
+
 ### Changed
 
 - **`/help` Hunt topic:** new Hunt page (Ori-only WIP command list, 5 coin / 15s hunt, gems, battle/raid). Overview lists Hunt. Games page notes Connect Four vs Aetherion and poker Hands/My cards. Coins page notes the house wallet. Server page no longer dumps the Hunt command string.

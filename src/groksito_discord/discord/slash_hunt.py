@@ -11,6 +11,7 @@ from . import ai_coins
 from . import aether_battle as board
 from . import aether_gear as gear
 from . import aether_hunt as hunt
+from . import team_settings_views as team_ui
 
 logger = logging.getLogger("aetherion.slash_hunt")
 
@@ -279,20 +280,18 @@ def register_hunt(tree, is_guild_allowed) -> None:
                     result.get("error") or "Could not clear that slot.", ephemeral=True
                 )
                 return
-        snap = hunt.snapshot(interaction.user.id)
+        view = team_ui.TeamMainView(
+            actor_id=interaction.user.id,
+            display_name=_display_name(interaction),
+        )
+        await interaction.response.send_message(
+            embed=team_ui.build_team_embed(interaction.user.id),
+            view=view,
+        )
         try:
-            body = "\n".join(
-                hunt.team_lines(snap["team"], snap["xp"], snap["zoo"], snap.get("gear"))
-            )
-        except TypeError:
-            body = "\n".join(hunt.team_lines(snap["team"], snap["xp"], snap["zoo"]))
-        owned = hunt.owned_catalog(snap["zoo"])
-        if owned:
-            picks = ", ".join(f"{emoji} {name}" for _aid, name, emoji, _rar in owned)
-            body += f"\n\n**Owned** {picks}"
-        else:
-            body += "\n\nHunt something before you set a team."
-        await interaction.response.send_message(embed=_embed("\u2726 Team", body))
+            view.message = await interaction.original_response()
+        except discord.HTTPException:
+            pass
 
     @team_slash.autocomplete("animal")
     async def team_animal_ac(interaction: discord.Interaction, current: str):

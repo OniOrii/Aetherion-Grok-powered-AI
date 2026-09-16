@@ -751,6 +751,37 @@ def zoo_lines(zoo: dict[str, int], xp: dict[str, int]) -> list[str]:
             lines.append(f"{animal_label(aid)} \u00d7{count} \u00b7 Lv {lvl}")
     return lines
 
+
+def settings_slot_display(animal_id: str | None, xp: dict[str, int] | None = None, *, display_name: str | None = None) -> str:
+    """OwO-feel settings row: `emoji [Lvl N] name`, or `empty`."""
+    if not animal_id:
+        return "empty"
+    row = ANIMAL_BY_ID.get(animal_id)
+    if not row:
+        return "empty"
+    _aid, name, emoji, _rar = row
+    shown = (display_name or name).strip() or name
+    lvl = level_of(int((xp or {}).get(animal_id) or 0))
+    return f"{emoji} [Lvl {lvl}] {shown}"
+
+
+def team_settings_description(team: list[str | None], xp: dict[str, int] | None = None) -> str:
+    """Team Settings embed body — Active Battle Team + three slot rows."""
+    xp = xp or {}
+    lines = [
+        "`Current Active Battle Team`",
+        "Team 1",
+        "",
+    ]
+    for i in range(TEAM_SIZE):
+        aid = team[i] if i < len(team) else None
+        lines.append(f"`Animal in Team Slot {i + 1}`")
+        lines.append(settings_slot_display(aid, xp))
+        if i < TEAM_SIZE - 1:
+            lines.append("")
+    return "\n".join(lines)
+
+
 def team_lines(team: list[str | None], xp: dict[str, int], zoo: dict[str, int]) -> list[str]:
     lines: list[str] = []
     for i in range(TEAM_SIZE):
