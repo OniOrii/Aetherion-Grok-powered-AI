@@ -1,4 +1,4 @@
-"""Ori-only WIP slash commands for Aetherion Hunt Test 2."""
+"""Ori-only WIP slash commands for Aetherion Hunt Test 3."""
 from __future__ import annotations
 
 import asyncio
@@ -501,3 +501,94 @@ def register_hunt(tree, is_guild_allowed) -> None:
             if len(out) >= 25:
                 break
         return out
+
+    @tree.command(name="weapon", description="WIP Ori only. List owned crate weapons and who holds them.")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def weapon_slash(interaction: discord.Interaction):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        snap = hunt.snapshot(interaction.user.id)
+        pack = snap.get("gear")
+        if not isinstance(pack, dict):
+            with hunt._lock:
+                store = hunt._load_store()
+                row = hunt._ensure_user(store, interaction.user.id)
+                pack = gear.ensure_gear(row)
+                hunt._save_store(store)
+        body = hunt.weapon_board(_display_name(interaction), pack)
+        if len(body) > 3900:
+            body = body[:3890] + "\n\u2026"
+        await interaction.response.send_message(embed=_embed("\u2726 Armory", body))
+
+    @tree.command(name="sacrifice", description="WIP Ori only. Sacrifice extra animals into Essence.")
+    @discord.app_commands.describe(animal="Animal name", count="How many extras to sacrifice")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def sacrifice_slash(interaction: discord.Interaction, animal: str, count: int = 1):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        result = hunt.sacrifice(interaction.user.id, animal, count)
+        if not result.get("ok"):
+            await interaction.response.send_message(
+                result.get("error") or "Could not sacrifice.", ephemeral=True
+            )
+            return
+        body = (
+            f"Offered **{result['sacrificed']}\u00d7 {hunt.animal_label(result['animal_id'])}** "
+            f"to the aether.\n"
+            f"Essence gained **{result['gained']}** \u00b7 total **{result['essence']}**\n"
+            f"Left in the zoo: **{result['left']}**"
+        )
+        await interaction.response.send_message(embed=_embed("\u2726 Sacrifice", body))
+
+    @sacrifice_slash.autocomplete("animal")
+    async def sacrifice_animal_ac(interaction: discord.Interaction, current: str):
+        return await _suggest_owned(interaction, current)
+
+    @tree.command(name="rename", description="WIP Ori only. Nickname an owned animal (50 Aether Coins).")
+    @discord.app_commands.describe(
+        animal="Owned animal",
+        nickname="New nickname, or empty to clear",
+    )
+    @discord.app_commands.default_permissions(administrator=True)
+    async def rename_slash(
+        interaction: discord.Interaction,
+        animal: str,
+        nickname: str | None = None,
+    ):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        result = hunt.rename_animal(interaction.user.id, animal, nickname)
+        if not result.get("ok"):
+            await interaction.response.send_message(
+                result.get("error") or "Could not rename.", ephemeral=True
+            )
+            return
+        label = hunt.animal_label(result["animal_id"])
+        if result.get("cleared"):
+            body = f"Cleared the nickname on {label}."
+        else:
+            nick = result["nickname"]
+            pocket = ai_coins.coins(f"{int(result['balance']):,}")
+            body = (
+                f'{label} is now **"{nick}"**.\n'
+                f"Paid {ai_coins.coins(result['fee'])} \u00b7 pocket {pocket}"
+            )
+        await interaction.response.send_message(embed=_embed("\u2726 Rename", body))
+
+    @rename_slash.autocomplete("animal")
+    async def rename_animal_ac(interaction: discord.Interaction, current: str):
+        return await _suggest_owned(interaction, current)
+
+    @tree.command(name="checklist", description="WIP Ori only. Discovered vs missing animals by rarity.")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def checklist_slash(interaction: discord.Interaction):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        snap = hunt.snapshot(interaction.user.id)
+        body = hunt.checklist_board(
+            _display_name(interaction),
+            snap.get("caught") or snap["zoo"],
+        )
+        if len(body) > 3900:
+            body = body[:3890] + "\n\u2026"
+        await interaction.response.send_message(embed=_embed("\u2726 Field guide", body))
