@@ -84,7 +84,7 @@ def _embed(page: str) -> discord.Embed:
             "`/datechannel` \u2014 voice channel that shows today's date at midnight Eastern.\n"
             "`/purge` \u2014 delete up to 100 recent messages in this channel.\n\n"
             "Ori only: `/givecoins`, `/edit`, `/status`.\n"
-            "Ori only WIP: `/hunt` `/zoo` `/sell` `/team` `/battle` `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapon` `/sacrifice` `/rename` `/checklist`.\nGems from `/lootbox` activate with `/use hunting|lucky|empower`. They are not equipped on animals."
+            "Ori only WIP: `/hunt` `/zoo` `/sell` `/team` `/battle` `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapon` `/sacrifice` `/rename` `/checklist` `/bestiary` `/dex` `/salvage` `/raid`.\nGems from `/lootbox` activate with `/use hunting|lucky|empower`. They are not equipped on animals."
         )
         return embed
 

@@ -610,3 +610,147 @@ def register_hunt(tree, is_guild_allowed) -> None:
         if len(body) > 3900:
             body = body[:3890] + "\n\u2026"
         await interaction.response.send_message(embed=_embed("\u2726 Field guide", body))
+
+    async def _bestiary_impl(interaction: discord.Interaction, animal: str):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        result = hunt.bestiary(interaction.user.id, animal, _display_name(interaction))
+        if not result.get("ok"):
+            await interaction.response.send_message(
+                result.get("error") or "Could not open bestiary.", ephemeral=True
+            )
+            return
+        body = result["body"]
+        if len(body) > 3900:
+            body = body[:3890] + "\n\u2026"
+        rar = result.get("rarity") or hunt.COMMON
+        color = hunt.RARITY_EMBED.get(rar, hunt.EMBED_GOLD)
+        await interaction.response.send_message(embed=_embed("\u2726 Bestiary", body, color=color))
+
+    @tree.command(name="bestiary", description="WIP Ori only. Stats and lore for a discovered animal.")
+    @discord.app_commands.describe(animal="Animal name (must be discovered)")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def bestiary_slash(interaction: discord.Interaction, animal: str):
+        await _bestiary_impl(interaction, animal)
+
+    @bestiary_slash.autocomplete("animal")
+    async def bestiary_animal_ac(interaction: discord.Interaction, current: str):
+        if not _is_ori(interaction):
+            return []
+        snap = hunt.snapshot(interaction.user.id)
+        caught = snap.get("caught") or {}
+        zoo = snap.get("zoo") or {}
+        needle = (current or "").strip().lower()
+        out: list[discord.app_commands.Choice[str]] = []
+        for aid, name, emoji, rarity in hunt.ANIMALS:
+            if int(caught.get(aid) or 0) < 1 and int(zoo.get(aid) or 0) < 1:
+                continue
+            hay = f"{aid} {name} {rarity}"
+            if needle and needle not in hay.lower() and needle not in name.lower():
+                continue
+            out.append(discord.app_commands.Choice(name=f"{emoji} {name}", value=name))
+            if len(out) >= 25:
+                break
+        return out
+
+    @tree.command(name="dex", description="WIP Ori only. Alias for /bestiary.")
+    @discord.app_commands.describe(animal="Animal name (must be discovered)")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def dex_slash(interaction: discord.Interaction, animal: str):
+        await _bestiary_impl(interaction, animal)
+
+    @dex_slash.autocomplete("animal")
+    async def dex_animal_ac(interaction: discord.Interaction, current: str):
+        return await bestiary_animal_ac(interaction, current)
+
+    @tree.command(name="salvage", description="WIP Ori only. Scrap a crate weapon into shards.")
+    @discord.app_commands.describe(weapon="Weapon id or name from /inv")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def salvage_slash(interaction: discord.Interaction, weapon: str):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        result = hunt.salvage(interaction.user.id, weapon)
+        if not result.get("ok"):
+            await interaction.response.send_message(
+                result.get("error") or "Could not salvage.", ephemeral=True
+            )
+            return
+        rar = result.get("rarity") or hunt.COMMON
+        mark = hunt.rarity_mark(rar) if rar else rar
+        body = (
+            f"Salvaged `{result['wid']}` {result['emoji']} **{result['name']}** {mark}.\n"
+            f"Shards gained **{result['gained']}** \u00b7 total **{result['shards']}**"
+        )
+        color = hunt.RARITY_EMBED.get(rar, hunt.EMBED_GOLD)
+        await interaction.response.send_message(embed=_embed("\u2726 Salvage", body, color=color))
+
+    @salvage_slash.autocomplete("weapon")
+    async def salvage_weapon_ac(interaction: discord.Interaction, current: str):
+        return await equip_weapon_ac(interaction, current)
+
+    @tree.command(name="raid", description="WIP Ori only. Spend a raid ticket for a tough PvE boss fight.")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def raid_slash(interaction: discord.Interaction):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        await interaction.response.defer()
+        result = hunt.raid(interaction.user.id)
+        if not result.get("ok"):
+            await interaction.followup.send(result.get("error") or "Raid failed.", ephemeral=True)
+            return
+        name = _display_name(interaction)
+        icon_url = _avatar_url(interaction)
+        total = _battle_total(result)
+        frames = _playable_frames(list(result.get("frames") or []))
+        if not frames:
+            frames = [{
+                "turn": total,
+                "player": result.get("player") or [],
+                "enemy": result.get("enemy") or [],
+                "lines": result.get("log") or [],
+            }]
+        ticket_note = f"Raid ticket spent \u00b7 {int(result.get('tickets_left') or 0)} left"
+        try:
+            first = dict(frames[0])
+            first["lines"] = [ticket_note] + list(first.get("lines") or [])
+            embed0 = _battle_embed(name, result, first, final=len(frames) == 1, icon_url=icon_url)
+            author = {"name": f"{name} raids the rift!"}
+            if icon_url:
+                author["icon_url"] = icon_url
+            embed0.set_author(**author)
+            if len(frames) == 1 and result.get("shard_bonus"):
+                embed0.set_footer(
+                    text=board.result_caption(result)
+                    + f"\n+{result['shard_bonus']} shards \u00b7 {hunt.WIP_FOOTER}"
+                )
+            msg = await interaction.followup.send(
+                embed=embed0,
+                file=_battle_file(first, total),
+                wait=True,
+            )
+            for index, frame in enumerate(frames[1:], start=1):
+                await asyncio.sleep(0.9)
+                final = index == len(frames) - 1
+                embed = _battle_embed(name, result, frame, final=final, icon_url=icon_url)
+                embed.set_author(**author)
+                if final and result.get("shard_bonus"):
+                    embed.set_footer(
+                        text=board.result_caption(result)
+                        + f"\n+{result['shard_bonus']} shards \u00b7 {hunt.WIP_FOOTER}"
+                    )
+                await msg.edit(embed=embed, attachments=[_battle_file(frame, total)])
+        except Exception:
+            logger.exception("raid animation failed")
+            if hasattr(hunt, "battle_card"):
+                body = hunt.battle_card(name, result)
+            else:
+                body = "\n".join(result.get("log") or ["Raid finished."])
+            body += f"\n{board.result_caption(result)}"
+            if result.get("shard_bonus"):
+                body += f"\n+{result['shard_bonus']} shards"
+            try:
+                await interaction.edit_original_response(
+                    content=None, embed=_embed("Raid", body), attachments=[]
+                )
+            except Exception:
+                await interaction.followup.send(embed=_embed("Raid", body))

@@ -90,7 +90,7 @@ GEM_KINDS = (
 GEM_BY_KIND = {row[0]: row for row in GEM_KINDS}
 
 def blank_gear() -> dict[str, Any]:
-    return {"lootbox": 0, "crate": 0, "gems": {}, "weapons": {}, "next_wid": 1, "active": {}, "equip": {}, "day": "", "lb_today": 0, "crate_today": 0, "streak": 0, "best_streak": 0, "daily_grant": ""}
+    return {"lootbox": 0, "crate": 0, "gems": {}, "weapons": {}, "next_wid": 1, "active": {}, "equip": {}, "day": "", "lb_today": 0, "crate_today": 0, "streak": 0, "best_streak": 0, "daily_grant": "", "shards": 0, "raid_ticket": 0}
 
 def ensure_gear(row: dict[str, Any]) -> dict[str, Any]:
     blob = row.get("gear")
@@ -104,7 +104,7 @@ def ensure_gear(row: dict[str, Any]) -> dict[str, Any]:
     for key in ("gems", "weapons", "active", "equip"):
         if not isinstance(blob.get(key), dict):
             blob[key] = {}
-    for key in ("lootbox", "crate", "next_wid", "lb_today", "crate_today", "streak", "best_streak"):
+    for key in ("lootbox", "crate", "next_wid", "lb_today", "crate_today", "streak", "best_streak", "shards", "raid_ticket"):
         try:
             blob[key] = max(0 if key != "next_wid" else 1, int(blob.get(key) or 0))
         except (TypeError, ValueError):
@@ -263,6 +263,7 @@ def weapon_line(wep: dict[str, Any] | None) -> str:
 def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
     lines = [f"===== {display_name}'s Inventory ====="]
     lines.append(f"`050` \U0001f4e6 `{int(blob.get('lootbox') or 0)}`  `100` \U0001fab5 `{int(blob.get('crate') or 0)}`")
+    lines.append(f"`200` 🪨 `{int(blob.get('shards') or 0)}`  `300` 🎟️ `{int(blob.get('raid_ticket') or 0)}`")
     gem_bits = []
     for gid, n in sorted((blob.get("gems") or {}).items()):
         try:
@@ -332,14 +333,47 @@ def owned_weapons(blob: dict[str, Any]) -> list[tuple[str, str, str]]:
     return out
 
 
+SHARD_BY_RARITY = {COMMON: 1, UNCOMMON: 2, RARE: 4, EPIC: 8, MYTHIC: 15}
+
+
+def salvage_weapon(blob: dict[str, Any], wid: str) -> dict[str, Any]:
+    weapons = blob.get("weapons") or {}
+    raw = weapons.get(str(wid))
+    if not isinstance(raw, dict):
+        return {"ok": False, "error": "No weapon with that id. Check /inv or /weapon."}
+    if raw.get("favorite"):
+        return {"ok": False, "error": "That weapon is favorited. Unfavorite it before salvaging."}
+    meta = WEAPON_BY_ID.get(raw.get("kind"))
+    if not meta:
+        return {"ok": False, "error": "That weapon entry is broken."}
+    for animal_id, held in list((blob.get("equip") or {}).items()):
+        if str(held) == str(wid):
+            blob["equip"].pop(animal_id, None)
+    del weapons[str(wid)]
+    rarity = raw.get("rarity") or COMMON
+    gained = int(SHARD_BY_RARITY.get(rarity, 1))
+    blob["shards"] = int(blob.get("shards") or 0) + gained
+    return {
+        "ok": True,
+        "wid": str(wid),
+        "kind": raw.get("kind"),
+        "name": meta[1],
+        "emoji": meta[2],
+        "rarity": rarity,
+        "gained": gained,
+        "shards": int(blob["shards"]),
+    }
+
+
 def grant_daily_supplies(blob: dict[str, Any]) -> dict[str, int]:
     today = _today()
     if blob.get("daily_grant") == today:
-        return {"lootbox": 0, "crate": 0}
+        return {"lootbox": 0, "crate": 0, "raid_ticket": 0}
     blob["daily_grant"] = today
     blob["lootbox"] = int(blob.get("lootbox") or 0) + DAILY_LOOTBOX
     blob["crate"] = int(blob.get("crate") or 0) + DAILY_CRATE
-    return {"lootbox": DAILY_LOOTBOX, "crate": DAILY_CRATE}
+    blob["raid_ticket"] = int(blob.get("raid_ticket") or 0) + 1
+    return {"lootbox": DAILY_LOOTBOX, "crate": DAILY_CRATE, "raid_ticket": 1}
 
 
 def weapon_icon_png(kind: str, rarity: str | None = None, size: int = 96):
