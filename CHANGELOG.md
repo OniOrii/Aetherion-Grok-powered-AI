@@ -15,6 +15,8 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Fixed
 
+- **Hunt team settings animal picker truncation (Ori only):** Team Settings slot Select no longer stops at `_SELECT_CAP` (24). Slot pick is **paginated** (Clear + ≤24 animals per page, Prev/Next) so every owned animal is reachable.
+- **Hunt `/equip` animal autocomplete (Ori only):** suggestions are **team members only** (the 3 battle slots), not all owned. Describe text updated. Empty team returns an ephemeral hint to `/team`. Non-team animals rejected. No `/equip` Select UI to filter.
 - **Hunt cost vs wallet tens:** `/hunt` was failing with "Bets go by 10s." because `HUNT_COST` was **5** while `ai_coins.STEP` is **10**. Cost is now **10** Aether Coins (still cheap OwO-feel pacing; **15s** cooldown unchanged). Catch-line copy, `/help`, README, and tests updated. `RENAME_FEE` (**50**) and other Hunt spends already aligned; wallet `STEP` unchanged.
 
 ### Added

@@ -1306,6 +1306,65 @@ def test_set_team_slot_clear_and_swap(tmp_path: Path, monkeypatch):
     assert hunt.set_team_slot(42, 3, "dust_mite")["ok"]
 
 
+
+def test_owned_select_pages_cover_all_animals():
+    """Owned >24: page 2 reachable; every eligible id appears across pages."""
+    from groksito_discord.discord import team_settings_views as team_ui
+
+    zoo = {aid: 1 for aid, *_ in hunt.ANIMALS}
+    assert len(zoo) == 50
+    team: list[str | None] = [None, None, None]
+    eligible = team_ui._eligible_owned(zoo, team, 0)
+    assert len(eligible) > team_ui._SELECT_CAP
+    pages = team_ui._page_count(len(eligible))
+    assert pages >= 2
+
+    covered: list[str] = []
+    for p in range(pages):
+        opts, page, page_count = team_ui._owned_select_options(
+            zoo, {}, team, 0, page=p
+        )
+        assert page == p
+        assert page_count == pages
+        assert opts[0].value == "__clear__"
+        animal_vals = [o.value for o in opts if o.value != "__clear__"]
+        assert 1 <= len(animal_vals) <= team_ui._SELECT_CAP
+        assert len(opts) == len(animal_vals) + 1  # Clear + animals
+        covered.extend(animal_vals)
+
+    assert len(covered) == len(eligible)
+    assert set(covered) == {aid for aid, *_ in eligible}
+
+    # Slot occupant exclusion still applies across pages
+    team2: list[str | None] = ["dust_mite", None, None]
+    el2 = team_ui._eligible_owned(zoo, team2, 1)
+    assert "dust_mite" not in {a for a, *_ in el2}
+    opts0, _, pc = team_ui._owned_select_options(zoo, {}, team2, 1, page=0)
+    assert all(o.value != "dust_mite" for o in opts0)
+    assert pc >= 2
+
+
+def test_equip_autocomplete_team_aids_only():
+    """ /equip animal suggestions are battle-slot animals only (not all owned)."""
+    from groksito_discord.discord import slash_hunt as sh
+
+    team = ["dust_mite", None, "thorn_wolf"]
+    zoo = {"dust_mite": 2, "thorn_wolf": 1, "ember_moth": 9, "sol_wyrm": 1}
+    rows = sh._team_animal_choice_rows(team, zoo, "")
+    values = [v for _label, v in rows]
+    assert values == ["Dust Mite", "Thorn Wolf"]
+    assert "Ember Moth" not in values
+    assert "Sol Wyrm" not in values
+
+    # needle filter
+    filtered = sh._team_animal_choice_rows(team, zoo, "thorn")
+    assert [v for _, v in filtered] == ["Thorn Wolf"]
+
+    # empty team → no suggestions (slash sends ephemeral /team hint)
+    assert sh._team_animal_choice_rows([None, None, None], zoo, "") == []
+    assert sh._team_animal_choice_rows([], zoo, "") == []
+
+
 def test_weapon_kind_passives_unique():
     """Every WEAPONS kind has a distinct Aetherion passive id (P01–P42) + name."""
     from groksito_discord.discord import aether_gear as gear
