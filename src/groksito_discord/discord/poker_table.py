@@ -142,6 +142,46 @@ def render_hole_png(cards) -> bytes:
     return buf.getvalue()
 
 
+HAND_EXAMPLES = (
+    ("Straight flush", ((10, "H"), (11, "H"), (12, "H"), (13, "H"), (14, "H"))),
+    ("Four of a kind", ((14, "S"), (14, "H"), (14, "D"), (14, "C"), (13, "S"))),
+    ("Full house", ((13, "S"), (13, "H"), (13, "D"), (9, "C"), (9, "H"))),
+    ("Flush", ((14, "H"), (10, "H"), (8, "H"), (6, "H"), (3, "H"))),
+    ("Straight", ((14, "S"), (2, "H"), (3, "D"), (4, "C"), (5, "H"))),
+    ("Three of a kind", ((12, "S"), (12, "H"), (12, "D"), (7, "C"), (2, "S"))),
+    ("Two pair", ((13, "S"), (13, "H"), (7, "D"), (7, "C"), (4, "S"))),
+    ("Pair", ((11, "S"), (11, "H"), (14, "D"), (8, "C"), (3, "S"))),
+    ("High card", ((14, "S"), (12, "H"), (9, "D"), (6, "C"), (3, "S"))),
+)
+
+
+def render_hands_guide_png() -> bytes:
+    """Beginner chart. Mini faces only. Does not read anyone's hole cards."""
+    mini_w, mini_h = 38, 54
+    gap = 6
+    label_w = 168
+    pad_x, pad_y = 20, 18
+    row_h = mini_h + 14
+    width = pad_x * 2 + label_w + 5 * (mini_w + gap)
+    height = pad_y * 2 + 28 + len(HAND_EXAMPLES) * row_h
+    img = _space_field(width, height)
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle((8, 8, width - 9, height - 9), radius=22, outline=GOLD_DIM, width=2)
+    d.text((width // 2, 22), "POKER HANDS", font=_font(16), fill=GOLD, anchor="mm")
+    y = 40
+    for name, cards in HAND_EXAMPLES:
+        d.text((pad_x, y + mini_h // 2), name, font=_font(14), fill=CREAM, anchor="lm")
+        x = pad_x + label_w
+        for rank, suit in cards:
+            face = _shadow(_card_face(rank, suit, mini_w, mini_h))
+            img.paste(face, (x, y), face)
+            x += mini_w + gap
+        y += row_h
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
 def render_table_png(
     seats: list[dict],
     board: list,
