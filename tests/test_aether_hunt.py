@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from groksito_discord.discord import aether_hunt as hunt
+from groksito_discord.discord import aether_hunt_ext  # noqa: F401
 from groksito_discord.llm.persona import CREATOR_DISCORD_ID, creator_is_author
 
 
