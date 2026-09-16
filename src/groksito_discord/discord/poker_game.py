@@ -8,11 +8,10 @@ import logging
 import discord
 
 from . import ai_coins
-from .poker_table import render_hole_png, render_table_png
+from .poker_table import render_hole_png, render_table_png, render_hands_guide_png
 from .poker_logic import (
     BOT_ID, BOT_NAME, MAX_SEATS, TABLE_NAME, HOLE_NAME, THINK_SLEEP,
     EMBED_WAIT, EMBED_PLAY, EMBED_WIN, EMBED_DEAD, DEFAULT_BUYIN,
-    HAND_NAMES, best_hand,
     _tables, _last_bet, _new_id, _card_label, _hold_seat, _refund_seat, _finish,
     _deal_holes, _raise_bounds, _apply_action, _bot_action, _after_action,
     _needs_board_run, _player_busy, _bind, Seat, Table, _showdown, _advance_street,
@@ -20,35 +19,17 @@ from .poker_logic import (
 
 logger = logging.getLogger("aetherion.slash_poker")
 
-_HAND_HELP = (
-    ("Straight flush", "A 10\u2665 J\u2665 Q\u2665 K\u2665 A\u2665. Five in a row, same suit."),
-    ("Four of a kind", "Four aces. The fifth card is a kicker."),
-    ("Full house", "Three kings and two nines."),
-    ("Flush", "Five hearts, any ranks."),
-    ("Straight", "A 2 3 4 5, mixed suits."),
-    ("Three of a kind", "Three queens."),
-    ("Two pair", "Kings and sevens."),
-    ("Pair", "Two jacks."),
-    ("High card", "Nothing made. Ace high beats king high."),
-)
+HANDS_NAME = "hands.png"
 
 
-def _hands_embed(seat, table) -> discord.Embed:
-    lines = []
-    made = None
-    if seat is not None and seat.hole:
-        made = int(best_hand(seat.hole, table.board)[0])
-    for i, (name, hint) in enumerate(reversed(_HAND_HELP)):
-        rank = 8 - i
-        mark = " \u2190 you" if made is not None and rank == made else ""
-        lines.append(f"**{name}**{mark}\n{hint}")
-    desc = "\n\n".join(lines)
-    if made is not None:
-        desc = f"Your best right now: **{HAND_NAMES[made]}**.\n\n" + desc
-    else:
-        desc = "Strongest at the top.\n\n" + desc
-    embed = discord.Embed(title="\u2726 Poker hands", description=desc, color=EMBED_PLAY)
-    embed.set_footer(text="Only you see this. Use five cards from your two plus the board.")
+def _hands_embed() -> discord.Embed:
+    embed = discord.Embed(
+        title="\u2726 Poker hands",
+        description="Strongest at the top. Five cards from your two plus the board.",
+        color=EMBED_PLAY,
+    )
+    embed.set_image(url=f"attachment://{HANDS_NAME}")
+    embed.set_footer(text="Only you see this.")
     return embed
 
 
@@ -73,7 +54,8 @@ def _embed(table, *, waiting=False):
     embed.add_field(name="Buy-in", value=ai_coins.coins(f"**{table.buyin:,}**"), inline=True)
     embed.add_field(name="Pot", value=ai_coins.coins(f"**{table.pot:,}**"), inline=True)
     embed.set_image(url=f"attachment://{TABLE_NAME}")
-    embed.set_footer(text=status)
+    if not table.finished:
+        embed.set_footer(text=status)
     return embed
 
 def _table_file(table, subtitle=""):
@@ -402,8 +384,9 @@ class PlayView(discord.ui.View):
         if table is None:
             await interaction.response.send_message("This hand is over.", ephemeral=True)
             return
-        seat = table.seat_of(interaction.user.id)
-        await interaction.response.send_message(embed=_hands_embed(seat, table), ephemeral=True)
+        raw = render_hands_guide_png()
+        file = discord.File(io.BytesIO(raw), filename=HANDS_NAME)
+        await interaction.response.send_message(embed=_hands_embed(), file=file, ephemeral=True)
     async def on_timeout(self):
         table = self._table()
         if table is None or table.finished or table.street == "lobby":
