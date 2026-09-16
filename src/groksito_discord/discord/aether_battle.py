@@ -259,16 +259,22 @@ def render_battle_png(
 
 
 def roster_field(side: list[dict[str, Any]]) -> str:
-    """OwO image-mode team field: L. lvl emoji - weapon (compact / scannable)."""
+    """Dense text under the board: L.lvl · name · weapon badge (PNG board unchanged)."""
+    from .aether_gear import rarity_mark
+    from .aether_hunt import animal_label
+
     bits = []
     for pet in side:
         wep = pet.get("weapon") if isinstance(pet.get("weapon"), dict) else None
         if wep:
-            gear = f"{wep.get('emoji', '')}{wep.get('name', 'weapon')}"
+            rar = wep.get("rarity") or "common"
+            badge = f"{rarity_mark(rar)}{wep.get('emoji', '')}"
         else:
-            gear = "*no weapon*"
+            badge = "*no weapon*"
         emoji = pet.get("emoji") or ""
-        bits.append(f"L. {pet.get('level', 1)} {emoji} - {gear}")
+        name = pet.get("name") or animal_label(pet.get("id") or "")
+        lvl = pet.get("level", 1)
+        bits.append(f"L.{lvl} · {emoji} {name} · {badge}")
     return "\n".join(bits) or "*empty*"
 
 
@@ -296,7 +302,9 @@ def result_caption(result: dict[str, Any]) -> str:
     else:
         line += "!"
     if result.get("crate"):
-        line += " You found a weapon crate!"
+        n = max(1, int(result.get("crate_today") or 1))
+        from .aether_hunt import daily_resets_in
+        line += f" You found a **weapon crate**! `[{n}/3] RESETS IN: {daily_resets_in()}`"
     return line
 
 

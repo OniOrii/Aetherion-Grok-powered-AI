@@ -180,9 +180,29 @@ def hunt(user_id, rng=None):
             if mate:
                 add_xp(row, mate, xp_gain)
         dropped = gear.maybe_lootbox(pack, rng)
+        gems_hud = []
+        for kind, rar in used.items():
+            meta = gear.GEM_BY_KIND.get(kind)
+            if not meta:
+                continue
+            active = (pack.get("active") or {}).get(kind) or {}
+            left = int(active.get("left") or 0)
+            mx = int(gear.GEM_HUNTS.get(rar) or left or 1)
+            gems_hud.append({"kind": kind, "emoji": meta[2], "left": left, "max": mx, "rarity": rar})
         row["last_hunt"] = time.time()
         _save_store(store)
-        return {"ok": True, "animal_id": animal_id, "animals": animals, "count": owned_count(row, animal_id), "balance": balance, "new": owned_count(row, animal_id) == 1, "lootbox": dropped, "xp_gain": xp_gain}
+        return {
+            "ok": True,
+            "animal_id": animal_id,
+            "animals": animals,
+            "count": owned_count(row, animal_id),
+            "balance": balance,
+            "new": owned_count(row, animal_id) == 1,
+            "lootbox": dropped,
+            "lootbox_count": int(pack.get("lb_today") or 0) if dropped else 0,
+            "xp_gain": xp_gain,
+            "gems_hud": gems_hud,
+        }
 
 
 def snapshot(user_id):
@@ -234,9 +254,10 @@ def battle(user_id, rng=None):
             add_xp(row, aid, extra)
         payout = 0
         balance = ai_coins.get_balance(user_id)
-        crate = gear.maybe_crate(pack, result == "win", rng)
+        # OwO: crate chance on any finished battle (win/lose/tie), not win-only
+        crate = gear.maybe_crate(pack, True, rng)
         _save_store(store)
-        return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "frames": outcome.get("frames") or [], "xp_gain": xp_gain, "xp_base": xp_base, "xp_bonus": xp_bonus, "payout": payout, "balance": balance, "streak": int(pack.get("streak") or 0), "prev_streak": prev_streak, "best_streak": int(pack.get("best_streak") or 0), "crate": crate}
+        return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "frames": outcome.get("frames") or [], "xp_gain": xp_gain, "xp_base": xp_base, "xp_bonus": xp_bonus, "payout": payout, "balance": balance, "streak": int(pack.get("streak") or 0), "prev_streak": prev_streak, "best_streak": int(pack.get("best_streak") or 0), "crate": crate, "crate_today": int(pack.get("crate_today") or 0)}
 
 
 

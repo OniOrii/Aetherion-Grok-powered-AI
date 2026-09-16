@@ -211,6 +211,29 @@ def test_hunt_and_zoo_match_owo_layout():
     assert hunt.rarity_mark(hunt.COMMON) in board
     # Rank mark packs with three spaces before the emoji strip
     assert hunt.rarity_mark(hunt.COMMON) + "   " in board
+    # Locked ranks (no lifetime catch) stay hidden; common stays unlocked with ?
+    assert hunt.rarity_mark(hunt.EPIC) not in board
+    assert hunt.rarity_mark(hunt.MYTHIC) not in board
+    # Cost / CD pacing matches OwO feel (5 / 15s)
+    assert hunt.HUNT_COST == 5
+    assert hunt.HUNT_COOLDOWN == 15
+    assert "spent 5" in line
+    # Gem empower HUD + lootbox [n/3] RESETS IN
+    gemmed = hunt.hunt_catch_line(
+        "Ori",
+        "dust_mite",
+        extras=["ember_moth"],
+        gems_hud=[{"kind": "hunting", "emoji": "💎", "left": 24, "max": 25}],
+        lootbox=True,
+        lootbox_count=1,
+        team_xp=[("🐮", 2)],
+    )
+    assert "hunt is empowered by" in gemmed
+    assert "`[24/25]`" in gemmed
+    assert "| You found:" in gemmed
+    assert "**📦 |** You found a **lootbox**!" in gemmed
+    assert "`[1/3] RESETS IN:" in gemmed
+    assert "gained **2xp**!" in gemmed
     owned = hunt.owned_catalog({"dust_mite": 2, "sol_wyrm": 0})
     assert [row[0] for row in owned] == ["dust_mite"]
 
@@ -251,11 +274,11 @@ def test_battle_roster_field_is_owo_compact():
 
     pet = hunt._fighter("eclipse_lion", 19)
     field = board.roster_field([pet])
-    assert field.startswith("L. 19")
-    assert " - " in field
+    assert field.startswith("L.19")
+    assert " · " in field
     assert "*no weapon*" in field
-    # Image-mode fields stay emoji-centric (no long animal names)
-    assert "Eclipse Lion" not in field
+    # Dense text under the board includes animal name + weapon badge
+    assert "Eclipse Lion" in field
 
 
 def test_grant_daily_supplies_once(tmp_path: Path):
@@ -525,3 +548,47 @@ def test_raid_spends_ticket_and_fights(tmp_path: Path):
     # second raid without ticket fails
     blocked = hunt.raid(23, random.Random(3))
     assert not blocked["ok"]
+
+
+def test_crate_drops_on_finished_battle_not_win_only():
+    import random
+    from groksito_discord.discord import aether_gear as gear
+
+    pack = gear.blank_gear()
+    # First of day is forced even when "won" is False (lose/tie)
+    assert gear.maybe_crate(pack, False, random.Random(1)) is True
+    assert pack["crate_today"] == 1
+    assert pack["crate"] == 1
+    # Cap still applies
+    pack["crate_today"] = 3
+    assert gear.maybe_crate(pack, True, random.Random(1)) is False
+
+
+def test_inventory_shows_daily_cadence_brackets():
+    from groksito_discord.discord import aether_gear as gear
+
+    pack = gear.blank_gear()
+    pack["lootbox"] = 2
+    pack["crate"] = 1
+    pack["lb_today"] = 1
+    pack["crate_today"] = 2
+    pack["day"] = __import__("datetime").date.today().isoformat()
+    pack["active"] = {"hunting": {"rarity": "common", "left": 20}}
+    text = gear.inventory_text("Ori", pack)
+    assert "`[1/3]`" in text
+    assert "`[2/3]`" in text
+    assert "Hunt lootboxes today" in text
+    assert "battle crates today" in text
+    assert "`[20/25]`" in text
+
+
+def test_battle_result_caption_crate_has_cadence():
+    from groksito_discord.discord import aether_battle as board
+
+    line = board.result_caption(
+        {"result": "lose", "rounds": 4, "xp_base": 50, "xp_bonus": 0, "crate": True, "crate_today": 1}
+    )
+    assert "You lost" in line
+    assert "weapon crate" in line
+    assert "`[1/3] RESETS IN:" in line
+
