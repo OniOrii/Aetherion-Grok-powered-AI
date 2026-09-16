@@ -256,6 +256,56 @@ def unequip_slot(blob: dict[str, Any], animal_id: str) -> None:
     (blob.get("equip") or {}).pop(animal_id, None)
 
 _STYLE_PASSIVE = {"strike": "⚔️", "cleave": "💥", "mend": "💚"}
+# Matches aether_battle.apply_action WP spend — display + combat stay in sync.
+STYLE_WP_COST = {"strike": 8, "cleave": 12, "mend": 10}
+_STYLE_LABEL = {"strike": "Strike", "cleave": "Cleave", "mend": "Mend"}
+_STYLE_DESC = {
+    "strike": "Deals weapon-boosted ATK to one random opponent (vs MR).",
+    "cleave": "Deals ~70% ATK to all opponents (vs PR).",
+    "mend": "Restores ~55% MAG HP to the lowest-health ally.",
+}
+
+
+def style_wp_cost(style: str | None) -> int:
+    return int(STYLE_WP_COST.get(style or "strike", 8))
+
+
+def style_description(style: str | None) -> str:
+    return _STYLE_DESC.get(style or "strike", _STYLE_DESC["strike"])
+
+
+def weapon_detail_text(
+    wep: dict[str, Any],
+    *,
+    display_name: str = "Hunter",
+    holder_label: str | None = None,
+) -> str:
+    """OwO-feel detail card fields with Aetherion copy (no six-stat invention)."""
+    wid = wep.get("wid") or "?"
+    name = wep.get("name") or "Weapon"
+    emoji = wep.get("emoji") or ""
+    rar = wep.get("rarity") or COMMON
+    quality = int(wep.get("quality") or 0)
+    atk = int(wep.get("atk") or 0)
+    style = wep.get("style") or "strike"
+    passive = _STYLE_PASSIVE.get(style, "")
+    label = _STYLE_LABEL.get(style, style.title())
+    shards = int(SHARD_BY_RARITY.get(rar, 1))
+    wp = style_wp_cost(style)
+    lines = [
+        f"**Name** {emoji} {name}".rstrip(),
+        f"**ID** `{wid}`",
+        f"**Salvage** {shards} shards",
+        f"**Quality** {quality}%",
+        f"**WP Cost** {wp}",
+        f"**Description** {style_description(style)}",
+        f"**Passives** {passive} {label} · +{atk} ATK while equipped",
+    ]
+    if holder_label:
+        lines.append(f"**Equipped** {holder_label}")
+    else:
+        lines.append("**Equipped** none — use `/equip` with this id")
+    return "\n".join(lines)
 
 
 def weapon_line(wep: dict[str, Any] | None) -> str:

@@ -442,6 +442,66 @@ def test_salvage_weapon_to_shards(tmp_path: Path):
     assert "favorite" in blocked["error"].lower()
 
 
+
+def test_weapon_detail_embed_fields(tmp_path: Path):
+    from groksito_discord.discord import aether_gear as gear
+
+    hunt.set_store_path(tmp_path / "hunt.json")
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 31)
+        pack = gear.ensure_gear(row)
+        pack["weapons"]["7"] = {
+            "kind": "rift_blade",
+            "rarity": gear.RARE,
+            "quality": 62,
+            "atk": 12,
+            "style": "cleave",
+        }
+        pack["equip"]["dust_mite"] = "7"
+        hunt._save_store(store)
+
+    missing = hunt.weapon_detail(31, "999", "Ori")
+    assert not missing["ok"]
+
+    out = hunt.weapon_detail(31, "7", "Ori")
+    assert out["ok"]
+    body = out["body"]
+    assert "**Name**" in body and "Rift Blade" in body
+    assert "**ID** `7`" in body
+    assert "**Salvage**" in body and "shards" in body
+    assert "**Quality** 62%" in body
+    assert "**WP Cost**" in body
+    assert str(gear.style_wp_cost("cleave")) in body
+    assert "**Description**" in body and "opponents" in body.lower()
+    assert "**Passives**" in body and "Cleave" in body
+    assert "**Equipped**" in body and "Dust Mite" in body
+    assert "cowoncy" not in body.lower()
+    assert "owo" not in body.lower()
+
+    board = hunt.weapon_board("Ori", pack, row)
+    assert "`7`" in board
+    assert "Quality: 62%" in board
+    assert "Dust Mite" in board
+
+
+def test_weapon_detail_text_styles():
+    from groksito_discord.discord import aether_gear as gear
+
+    strike = gear.weapon_detail_text(
+        {"wid": "1", "name": "Rift Blade", "emoji": "x", "rarity": gear.COMMON, "quality": 40, "atk": 5, "style": "strike"}
+    )
+    mend = gear.weapon_detail_text(
+        {"wid": "2", "name": "Lantern Staff", "emoji": "y", "rarity": gear.EPIC, "quality": 90, "atk": 20, "style": "mend"}
+    )
+    assert gear.style_wp_cost("strike") == 8
+    assert gear.style_wp_cost("mend") == 10
+    assert "one random opponent" in strike
+    assert "lowest-health ally" in mend or "ally" in mend.lower()
+    assert "Salvage" in mend
+
+
+
 def test_raid_spends_ticket_and_fights(tmp_path: Path):
     import random
     from groksito_discord.discord import aether_gear as gear

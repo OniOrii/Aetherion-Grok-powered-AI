@@ -308,7 +308,8 @@ def apply_action(attacker: dict[str, Any], allies: list[dict[str, Any]], foes: l
         return ""
     wep = attacker.get("weapon") if isinstance(attacker.get("weapon"), dict) else None
     style = (wep or {}).get("style") or "strike"
-    cost = {"strike": 8, "cleave": 12, "mend": 10}.get(style, 8)
+    from .aether_gear import style_wp_cost
+    cost = style_wp_cost(style)
     used_weapon = bool(wep) and attacker["wp"] >= cost
     if used_weapon:
         attacker["wp"] -= cost
