@@ -15,7 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
-- `/poker` **Hands** button next to My cards. Private chart of the nine ranks with mini card examples. It does not read your hole cards.
+- `/poker` **Hands** button next to My cards. Private chart of the ten ranks, including royal flush, with readable mini card examples. It does not read your hole cards.
 
 ### Changed
 
@@ -33,6 +33,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Fixed
 
+- `/poker` Hands cards were too small. Jacks read as J, ranks sit in the corners, and royal flush is the top row.
 - `/poker` Hands no longer claims your current best hand. It is a reference chart only.
 - `/poker` winner text stays in the embed title block and on the felt. The extra copy under the image is gone.
 - `/blackjack` states the result once, in the embed title, including coins won or lost. The footer and the painted table line no longer repeat it.
