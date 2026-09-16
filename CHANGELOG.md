@@ -15,6 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
+- **Aetherion Hunt WIP (Test 1, Ori only):** `/hunt`, `/zoo`, `/sell`, `/team`, `/battle`. Thirty original animals, Aether Coin hunt cost, menagerie save in `data/aether_hunt.json`, three-slot team, PvE wild battles with XP. Crates and huntbot are not in this slice. Non-Ori users are rejected.
 - `/poker` **Hands** button next to My cards. Private chart of the ten ranks, including royal flush, with readable mini card examples and a short note under each rank. It does not read your hole cards.
 
 ### Changed
