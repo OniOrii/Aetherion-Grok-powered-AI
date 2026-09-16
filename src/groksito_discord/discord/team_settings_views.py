@@ -69,6 +69,7 @@ def toggles_embed(display_name: str) -> discord.Embed:
 
 
 def build_team_embed(user_id: int) -> discord.Embed:
+    """Party card only — Owned catalog lives on /zoo /bestiary /checklist."""
     snap = hunt.snapshot(user_id)
     try:
         body = "\n".join(
@@ -76,14 +77,10 @@ def build_team_embed(user_id: int) -> discord.Embed:
         )
     except TypeError:
         body = "\n".join(hunt.team_lines(snap["team"], snap["xp"], snap["zoo"]))
-    owned = hunt.owned_catalog(snap["zoo"])
-    if owned:
-        picks = ", ".join(f"{emoji} {name}" for _aid, name, emoji, _rar in owned)
-        body += f"\n\n**Owned** {picks}"
-    else:
+    if not hunt.owned_catalog(snap["zoo"]):
         body += "\n\nHunt something before you set a team."
     embed = discord.Embed(title="\u2726 Team", description=body, color=hunt.EMBED_GOLD)
-    embed.set_footer(text=hunt.WIP_FOOTER)
+    embed.set_footer(text=f"{hunt.WIP_FOOTER} · \u2699\ufe0f settings · /zoo for owned")
     return embed
 
 
