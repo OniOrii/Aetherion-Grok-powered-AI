@@ -148,7 +148,79 @@ def _fighter(animal_id, level, weapon=None):
     return pet
 
 
+# Wild weapons: softer than player crates (PASSIVE_COMBAT_AUDIT.md).
+_WILD_WEAPON_WEIGHT = {
+    COMMON: 500,
+    UNCOMMON: 300,
+    RARE: 140,
+    EPIC: 50,
+    MYTHIC: 10,
+}
+_ENEMY_ARM_RATE = 0.55
+_WEAPON_RARITY_RANK = (COMMON, UNCOMMON, RARE, EPIC, MYTHIC)
+
+
+def _player_gear_caps(player: list) -> tuple[int, int]:
+    """Max equipped rarity rank + avg quality (defaults when team is naked)."""
+    ranks: list[int] = []
+    qualities: list[int] = []
+    for pet in player or []:
+        wep = pet.get("weapon") if isinstance(pet.get("weapon"), dict) else None
+        if not wep:
+            continue
+        rar = str(wep.get("rarity") or COMMON)
+        if rar in _WEAPON_RARITY_RANK:
+            ranks.append(_WEAPON_RARITY_RANK.index(rar))
+        try:
+            qualities.append(int(wep.get("quality") or 50))
+        except (TypeError, ValueError):
+            qualities.append(50)
+    max_rank = max(ranks) if ranks else 0  # Common soft-cap when naked
+    avg_q = int(round(sum(qualities) / len(qualities))) if qualities else 40
+    return max_rank, avg_q
+
+
+def _roll_enemy_weapon(player: list, rng: random.Random) -> dict[str, Any]:
+    """Wild weapon soft-capped to player gear (+1 rarity tier); quality 20..min(85, avg+15)."""
+    max_rank, avg_q = _player_gear_caps(player)
+    kind, name, emoji, style = rng.choice(gear.WEAPONS)
+    rarity = gear.roll_rarity(_WILD_WEAPON_WEIGHT, rng)
+    idx = _WEAPON_RARITY_RANK.index(rarity) if rarity in _WEAPON_RARITY_RANK else 0
+    cap = min(len(_WEAPON_RARITY_RANK) - 1, max_rank + 1)
+    if idx > cap:
+        rarity = _WEAPON_RARITY_RANK[cap]
+    lo, hi = gear.WEAPON_ATK[rarity]
+    q_hi = max(20, min(85, avg_q + 15))
+    quality = rng.randint(20, q_hi)
+    atk = rng.randint(lo, hi)
+    return {
+        "kind": kind,
+        "name": name,
+        "emoji": emoji,
+        "style": style,
+        "rarity": rarity,
+        "quality": quality,
+        "atk": atk,
+    }
+
+
+def _mark_wild_boss(enemy: list) -> None:
+    """Bossbrand target in wild PvE: highest animal-rarity foe (HP tie-break)."""
+    if not enemy:
+        return
+    rank = {COMMON: 0, UNCOMMON: 1, RARE: 2, EPIC: 3, MYTHIC: 4}
+    best = max(
+        enemy,
+        key=lambda p: (
+            rank.get(str(p.get("rarity") or COMMON), 0),
+            int(p.get("max_hp") or 0),
+        ),
+    )
+    best["wild_boss"] = True
+
+
 def build_enemy_team(player, rng):
+    """Wild 3v3 — ~55% armed; rarity/quality soft-capped vs player gear; one wild boss."""
     size = TEAM_SIZE
     avg = sum(int(pet.get("level") or 1) for pet in player) / max(1, len(player))
     out = []
@@ -159,7 +231,9 @@ def build_enemy_team(player, rng):
         pick = next((aid for aid in pool if aid not in used), pool[0])
         used.add(pick)
         lvl = min(LEVEL_CAP, max(1, int(round(avg)) + rng.randint(-1, 1)))
-        out.append(_fighter(pick, lvl))
+        wep = _roll_enemy_weapon(player, rng) if rng.random() < _ENEMY_ARM_RATE else None
+        out.append(_fighter(pick, lvl, wep))
+    _mark_wild_boss(out)
     return out
 
 
@@ -304,22 +378,6 @@ def battle(user_id, rng=None):
             return {"ok": False, "error": f"Battle is 3v3. Fill all {TEAM_SIZE} team slots with /team first."}
         player = [_fighter(aid, level_of(xp_of(row, aid)), gear.equipped_weapon(pack, aid)) for aid in team_ids]
         enemy = build_enemy_team(player, rng)
-        for foe in enemy:
-            if rng.random() < 0.55:
-                kind, name, emoji, style = rng.choice(gear.WEAPONS)
-                rarity = gear.roll_rarity(gear.CRATE_WEIGHT, rng)
-                lo, hi = gear.WEAPON_ATK[rarity]
-                quality = rng.randint(40, 100)
-                foe["weapon"] = {
-                    "kind": kind,
-                    "name": name,
-                    "emoji": emoji,
-                    "style": style,
-                    "rarity": rarity,
-                    "quality": quality,
-                    "atk": rng.randint(lo, hi),
-                }
-                _apply_weapon_passives(foe, foe["weapon"])
         outcome = simulate_battle(player, enemy, rng)
         result = outcome["result"]
         prev_streak = int(pack.get("streak") or 0)
@@ -803,22 +861,22 @@ def build_raid_boss(player, rng):
     epics = [aid for aid, _n, _e, rar in ANIMALS if rar == EPIC] or mythics
     boss_id = rng.choice(mythics)
     boss_lvl = min(LEVEL_CAP, max(5, int(round(avg)) + rng.randint(4, 8)))
-    boss = _fighter(boss_id, boss_lvl)
-    # Boss pressure: more HP/ATK/WP
-    boss["max_hp"] = int(boss["max_hp"] * 1.85) + 40
-    boss["hp"] = boss["max_hp"]
-    boss["atk"] = int(boss["atk"] * 1.45) + 8
-    boss["wp"] = int(boss.get("wp") or 40) + 30
-    boss["max_wp"] = boss["wp"]
-    boss["raid_boss"] = True
     kind, name, emoji, style = rng.choice(gear.WEAPONS)
     rarity = MYTHIC
     lo, hi = gear.WEAPON_ATK[rarity]
-    boss["weapon"] = {
+    boss_wep = {
         "kind": kind, "name": name, "emoji": emoji, "style": style,
         "rarity": rarity, "quality": 90, "atk": rng.randint(lo, hi) + 6,
     }
-    _apply_weapon_passives(boss, boss["weapon"])
+    boss = _fighter(boss_id, boss_lvl, boss_wep)
+    # Boss pressure: more HP/ATK/WP (after weapon ATK + passives)
+    boss["max_hp"] = int(boss["max_hp"] * 1.85) + 40
+    boss["hp"] = boss["max_hp"]
+    boss["atk"] = int(boss["atk"] * 1.45) + 8
+    boss["mag"] = int(boss.get("mag") or boss["atk"]) + 8
+    boss["wp"] = int(boss.get("wp") or 40) + 30
+    boss["max_wp"] = boss["wp"]
+    boss["raid_boss"] = True
     out = [boss]
     used = {boss_id}
     pool = [aid for aid in (epics + mythics) if aid not in used]
@@ -826,16 +884,10 @@ def build_raid_boss(player, rng):
     for aid in pool[:2]:
         used.add(aid)
         lvl = min(LEVEL_CAP, max(3, int(round(avg)) + rng.randint(2, 5)))
-        escort = _fighter(aid, lvl)
-        if rng.random() < 0.7:
-            kind, name, emoji, style = rng.choice(gear.WEAPONS)
-            rarity = gear.roll_rarity(gear.CRATE_WEIGHT, rng)
-            lo, hi = gear.WEAPON_ATK[rarity]
-            escort["weapon"] = {
-                "kind": kind, "name": name, "emoji": emoji, "style": style,
-                "rarity": rarity, "quality": rng.randint(40, 100), "atk": rng.randint(lo, hi),
-            }
-            _apply_weapon_passives(escort, escort["weapon"])
+        escort_wep = None
+        if rng.random() < 0.85:
+            escort_wep = _roll_enemy_weapon(player, rng)
+        escort = _fighter(aid, lvl, escort_wep)
         out.append(escort)
     return out
 
@@ -960,6 +1012,7 @@ def install(mod=None):
         "essence_of", "nick_of", "nick_label", "weapon_board", "weapon_detail",
         "sacrifice", "rename_animal", "checklist_board",
         "bestiary_card", "bestiary", "salvage", "build_raid_boss", "raid",
+        "_roll_enemy_weapon", "_player_gear_caps", "_apply_weapon_passives", "_mark_wild_boss",
         "RENAME_FEE", "ESSENCE_BY_RARITY", "LORE_BY_RARITY",
     ):
         setattr(mod, name, globals()[name])

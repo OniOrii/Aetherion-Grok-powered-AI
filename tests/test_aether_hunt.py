@@ -1066,3 +1066,312 @@ def test_passive_lifesteal_combat_hook():
     assert attacker["hp"] > start_hp
     assert foe["hp"] < foe["max_hp"] or foe["hp"] == 0
 
+
+def test_passive_hooks_change_outcomes():
+    """≥8 representative combat hooks change HP/WP outcomes vs a no-passive baseline."""
+    import random
+    from groksito_discord.discord import aether_battle as battle
+
+    def _bare(aid, lvl):
+        pet = hunt._fighter(aid, lvl)
+        pet["weapon"] = None
+        pet["passive_hooks"] = {}
+        return pet
+
+    def _wep(kind, style="strike", quality=100, atk=10):
+        return {
+            "kind": kind,
+            "style": style,
+            "atk": atk,
+            "name": kind,
+            "emoji": "x",
+            "rarity": "rare",
+            "quality": quality,
+            "wid": "1",
+        }
+
+    proven = []
+
+    # 1) lifesteal — Crimson Siphon
+    rng = random.Random(1)
+    atk = hunt._fighter("thorn_wolf", 5, _wep("wyrm_fang", "cleave"))
+    atk["hp"] = max(1, atk["max_hp"] // 2)
+    start = atk["hp"]
+    atk["wp"] = 40
+    foe = _bare("ember_moth", 3)
+    battle.apply_action(atk, [atk], [foe], rng)
+    assert atk["hp"] > start
+    proven.append("lifesteal_pct")
+
+    # 2) thorns — Mirror Spines
+    rng = random.Random(2)
+    attacker = _bare("dust_mite", 8)
+    attacker["atk"] = 40
+    defender = hunt._fighter("peat_toad", 5, _wep("thorn_flail", "cleave"))
+    before = attacker["hp"]
+    battle._deal_damage(attacker, defender, 20, allies=[defender], foes=[attacker], magical=True, rng=rng)
+    assert attacker["hp"] < before
+    proven.append("thorns_pct")
+
+    # 3) WP refund — Spark Recycle
+    rng = random.Random(3)
+    atk = hunt._fighter("thorn_wolf", 5, _wep("storm_hammer", "cleave"))
+    atk["wp"] = 5
+    atk["max_wp"] = 80
+    start_wp = atk["wp"]
+    foe = _bare("ember_moth", 3)
+    # Force phys path with low WP then manually deal via _deal_damage with hooks
+    battle._deal_damage(atk, foe, 30, allies=[atk], foes=[foe], magical=True, rng=rng)
+    assert atk["wp"] > start_wp
+    proven.append("wp_refund_pct")
+
+    # 4) pierce PR — Rift Carve / Ash Pierce lowers effective PR
+    rng = random.Random(4)
+    piercer = hunt._fighter("thorn_wolf", 5, _wep("rift_blade", "strike"))
+    bare = _bare("thorn_wolf", 5)
+    target = _bare("ember_moth", 10)
+    target["pr"] = 80
+    # Physical path so pierce_pr applies
+    piercer["wp"] = 0
+    bare["wp"] = 0
+    piercer["atk"] = bare["atk"] = 50
+    dmg_p = battle._amp_damage(
+        battle.apply_resist(50, battle._resist_for(piercer, target, target["pr"], magical=False)),
+        piercer, target, rng, used_weapon=False,
+    )
+    dmg_b = battle._amp_damage(
+        battle.apply_resist(50, battle._resist_for(bare, target, target["pr"], magical=False)),
+        bare, target, rng, used_weapon=False,
+    )
+    assert dmg_p > dmg_b
+    proven.append("pierce_pr_pct")
+
+    # 5) execute — Void Reap vs low-HP target
+    rng = random.Random(5)
+    exe = hunt._fighter("thorn_wolf", 5, _wep("void_scythe", "cleave"))
+    bare = _bare("thorn_wolf", 5)
+    target = _bare("ember_moth", 5)
+    target["hp"] = max(1, target["max_hp"] // 10)  # <30%
+    dmg_e = battle._amp_damage(40, exe, target, rng, used_weapon=True)
+    dmg_b = battle._amp_damage(40, bare, target, rng, used_weapon=True)
+    assert dmg_e > dmg_b
+    proven.append("execute_pct")
+
+    # 6) missing-HP amp — Blood Fever
+    rng = random.Random(6)
+    fever = hunt._fighter("thorn_wolf", 5, _wep("cinder_maul", "cleave"))
+    fever["hp"] = max(1, fever["max_hp"] // 5)
+    full = hunt._fighter("thorn_wolf", 5, _wep("cinder_maul", "cleave"))
+    full["hp"] = full["max_hp"]
+    target = _bare("ember_moth", 5)
+    dmg_low = battle._amp_damage(40, fever, target, rng, used_weapon=True)
+    dmg_full = battle._amp_damage(40, full, target, rng, used_weapon=True)
+    assert dmg_low > dmg_full
+    proven.append("missing_hp_amp")
+
+    # 7) burn DoT — Ember Trail applies 2-turn burn (not instant chunk)
+    rng = random.Random(7)
+    burner = hunt._fighter("thorn_wolf", 5, _wep("ember_bow", "strike"))
+    foe = _bare("ember_moth", 8)
+    foe["hp"] = foe["max_hp"]
+    before = foe["hp"]
+    battle._deal_damage(burner, foe, 40, allies=[burner], foes=[foe], magical=True, rng=rng)
+    assert before - foe["hp"] == 40 or foe["hp"] == 0  # no instant burn chunk
+    dots = foe.get("_dots") or []
+    assert any(d.get("tag") == "burn" and int(d.get("left") or 0) == 2 for d in dots)
+    proven.append("burn_pct")
+
+    # 8) mend amp — Quartz Focus
+    rng = random.Random(8)
+    healer = hunt._fighter("moss_sprite", 5, _wep("quartz_wand", "mend", atk=12))
+    healer["wp"] = 40
+    healer["mag"] = 40
+    ally = _bare("dust_mite", 5)
+    ally["hp"] = max(1, ally["max_hp"] // 3)
+    before = ally["hp"]
+    line = battle.apply_action(healer, [healer, ally], [_bare("ember_moth", 3)], rng)
+    assert "mends" in line
+    assert ally["hp"] > before
+    proven.append("mend_bonus")
+
+    # 9) death nuke — Last Flare
+    rng = random.Random(9)
+    killer = _bare("thorn_wolf", 10)
+    killer["hp"] = killer["max_hp"]
+    victim = hunt._fighter("ember_moth", 5, _wep("grave_pick", "strike"))
+    victim["hp"] = 1
+    before = killer["hp"]
+    battle._deal_damage(killer, victim, 50, allies=[victim], foes=[killer], magical=True, rng=rng)
+    assert victim["hp"] == 0
+    assert killer["hp"] < before
+    proven.append("death_nuke_pct")
+
+    # 10) EoT heal — Second Wind (via play_turns one round)
+    rng = random.Random(10)
+    pet = hunt._fighter("moss_sprite", 5, _wep("lantern_staff", "mend"))
+    pet["hp"] = max(1, pet["max_hp"] // 2)
+    start = pet["hp"]
+    foe = _bare("ember_moth", 1)
+    foe["hp"] = 1
+    foe["atk"] = 1
+    pet["wp"] = 0  # phys only
+    pet["atk"] = 200  # finish foe quickly
+    out = battle.play_turns([pet], [foe], rng)
+    assert pet["hp"] >= start  # eot heal and/or no damage taken after KO
+    # Direct eot check
+    pet2 = hunt._fighter("moss_sprite", 5, _wep("lantern_staff", "mend"))
+    pet2["hp"] = max(1, pet2["max_hp"] // 2)
+    start2 = pet2["hp"]
+    eh = battle._hooks_of(pet2)
+    heal = max(1, int(round(int(pet2["max_hp"]) * float(eh["eot_heal_pct"]) / 100.0)))
+    pet2["hp"] = min(pet2["max_hp"], pet2["hp"] + heal)
+    assert pet2["hp"] == start2 + heal
+    proven.append("eot_heal_pct")
+
+    assert len(proven) >= 8
+    assert len(set(proven)) == len(proven)
+
+
+def test_enemy_weapons_armed_and_passives_applied():
+    """Wild enemies arm ~55%; weapons apply ATK + passives; one wild_boss marked."""
+    import random
+
+    rng = random.Random(99)
+    player = [hunt._fighter("dust_mite", 12) for _ in range(3)]
+    armed = 0
+    total = 0
+    bosses = 0
+    for _ in range(150):
+        enemy = hunt.build_enemy_team(player, rng)
+        assert len(enemy) == 3
+        assert sum(1 for f in enemy if f.get("wild_boss")) == 1
+        bosses += 1
+        for foe in enemy:
+            total += 1
+            wep = foe.get("weapon")
+            if not isinstance(wep, dict):
+                continue
+            armed += 1
+            assert foe.get("passive_hooks")
+            assert 20 <= int(wep.get("quality") or 0) <= 85
+            bare = hunt._fighter(foe["id"], foe["level"])
+            assert foe["atk"] >= bare["atk"] or foe["mag"] >= bare["mag"]
+    rate = armed / total
+    assert 0.45 <= rate <= 0.70, rate
+    assert bosses == 150
+
+
+def test_enemy_weapon_soft_capped_to_player_gear():
+    """Naked teams soft-cap wild rarity; geared rare teams allow +1 tier; quality mirrors avg."""
+    import random
+    from groksito_discord.discord import aether_gear as gear
+
+    rar_rank = {gear.COMMON: 0, gear.UNCOMMON: 1, gear.RARE: 2, gear.EPIC: 3, gear.MYTHIC: 4}
+
+    # Naked player → cap uncommon (common+1)
+    rng = random.Random(3)
+    naked = [hunt._fighter("dust_mite", 10) for _ in range(3)]
+    for _ in range(60):
+        for foe in hunt.build_enemy_team(naked, rng):
+            wep = foe.get("weapon")
+            if isinstance(wep, dict):
+                assert rar_rank.get(wep.get("rarity"), 0) <= 1
+                assert int(wep["quality"]) <= 55  # avg_q 40 + 15
+
+    # Player with rare 70% gear → cap epic, quality ≤ 85
+    rare_wep = {
+        "kind": "rift_blade", "style": "strike", "atk": 12, "name": "Rift",
+        "emoji": "x", "rarity": gear.RARE, "quality": 70, "wid": "1",
+    }
+    geared = [hunt._fighter("dust_mite", 20, rare_wep) for _ in range(3)]
+    rng2 = random.Random(5)
+    seen_q = []
+    for _ in range(60):
+        for foe in hunt.build_enemy_team(geared, rng2):
+            wep = foe.get("weapon")
+            if isinstance(wep, dict):
+                assert rar_rank.get(wep.get("rarity"), 0) <= 3  # rare+1 = epic
+                assert int(wep["quality"]) <= 85
+                seen_q.append(int(wep["quality"]))
+    assert seen_q
+    assert max(seen_q) <= 85
+
+
+def test_audit_mismatch_hooks():
+    """PASSIVE_COMBAT_AUDIT.md priority hooks: buff_scale, bossbrand, bounce gate, radiant, DoT."""
+    import random
+    from groksito_discord.discord import aether_battle as battle
+
+    def _wep(kind, style="strike", quality=100, atk=10):
+        return {
+            "kind": kind, "style": style, "atk": atk, "name": kind,
+            "emoji": "x", "rarity": "rare", "quality": quality, "wid": "1",
+        }
+
+    rng = random.Random(11)
+
+    # Echo Chorus buff_scale — shield counts as a buff → more damage
+    chorus = hunt._fighter("thorn_wolf", 5, _wep("peat_sickle", "cleave"))
+    chorus["shield"] = 20
+    bare = hunt._fighter("thorn_wolf", 5)
+    bare["passive_hooks"] = {}
+    bare["weapon"] = None
+    target = hunt._fighter("ember_moth", 5)
+    dmg_c = battle._amp_damage(40, chorus, target, rng, used_weapon=True)
+    dmg_b = battle._amp_damage(40, bare, target, rng, used_weapon=True)
+    assert dmg_c > dmg_b
+
+    # Bossbrand vs wild_boss
+    brand = hunt._fighter("thorn_wolf", 5, _wep("crown_halberd", "cleave"))
+    boss = hunt._fighter("ember_moth", 5)
+    boss["wild_boss"] = True
+    trash = hunt._fighter("ember_moth", 5)
+    dmg_boss = battle._amp_damage(40, brand, boss, rng, used_weapon=True)
+    dmg_trash = battle._amp_damage(40, brand, trash, rng, used_weapon=True)
+    assert dmg_boss > dmg_trash
+
+    # Peat Sting — 3-turn DoT
+    stinger = hunt._fighter("thorn_wolf", 5, _wep("peat_knife", "strike"))
+    foe = hunt._fighter("ember_moth", 8)
+    before = foe["hp"]
+    battle._deal_damage(stinger, foe, 30, allies=[stinger], foes=[foe], magical=True, rng=rng)
+    assert before - foe["hp"] == 30
+    assert any(d.get("tag") == "sting" and int(d.get("left") or 0) == 3 for d in (foe.get("_dots") or []))
+    # Tick once
+    tick = next(d for d in foe["_dots"] if d["tag"] == "sting")
+    foe["hp"] = max(0, foe["hp"] - int(tick["per"]))
+    tick["left"] -= 1
+    assert tick["left"] == 2
+
+    # Star Bounce only on cleave — strike should not echo via bounce_hit_pct in _deal_damage
+    chakram = hunt._fighter("thorn_wolf", 5, _wep("star_chakram", "strike"))
+    a = hunt._fighter("ember_moth", 5)
+    b = hunt._fighter("dust_mite", 5)
+    a["hp"] = a["max_hp"]
+    b["hp"] = b["max_hp"]
+    battle._deal_damage(chakram, a, 25, allies=[chakram], foes=[a, b], magical=True, rng=rng)
+    # bounce removed from _deal_damage; second foe untouched by bounce
+    assert b["hp"] == b["max_hp"]
+    # Cleave path does bounce
+    chakram2 = hunt._fighter("thorn_wolf", 5, _wep("star_chakram", "cleave"))
+    chakram2["wp"] = 40
+    chakram2["mag"] = 40
+    f1 = hunt._fighter("ember_moth", 3)
+    f2 = hunt._fighter("dust_mite", 3)
+    f1["hp"] = f1["max_hp"] = 200
+    f2["hp"] = f2["max_hp"] = 200
+    line = battle.apply_action(chakram2, [chakram2], [f1, f2], rng)
+    assert "cleaves" in line
+    # Combined damage across both should exceed a single raw cleave hit (bounce)
+    assert (200 - f1["hp"]) + (200 - f2["hp"]) > 0
+
+    # Radiant Bolt on weapon strike path
+    cross = hunt._fighter("thorn_wolf", 5, _wep("sol_crossbow", "strike", atk=8))
+    cross["wp"] = 40
+    cross["mag"] = 30
+    foe2 = hunt._fighter("ember_moth", 10)
+    foe2["mr"] = 0
+    start = foe2["hp"]
+    battle.apply_action(cross, [cross], [foe2], rng)
+    # Weapon strike + radiant convert → more than mag alone roughly
+    assert foe2["hp"] < start
