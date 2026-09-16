@@ -522,8 +522,8 @@ def zoo_points_for(caught: dict[str, int]) -> int:
     return total
 
 def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) -> str:
-    # OwO plant header: herb seedling tree … tree herb seedling
-    lines = [f"\U0001f33f \U0001f331 \U0001f333 **{display_name}'s zoo!** \U0001f333 \U0001f33f \U0001f331"]
+    # OwO plant header (mirrored): herb seedling tree … tree seedling herb
+    lines = [f"\U0001f33f \U0001f331 \U0001f333 **{display_name}'s zoo!** \U0001f333 \U0001f331 \U0001f33f"]
     biggest = 0
     for source in (zoo, caught):
         for val in (source or {}).values():

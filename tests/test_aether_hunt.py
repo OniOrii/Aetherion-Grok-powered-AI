@@ -104,8 +104,8 @@ def test_hunt_and_zoo_match_owo_layout():
         {"dust_mite": 2, "ember_moth": 0},
         {"dust_mite": 2},
     )
-    # OwO plant header order: tree herb seedling on the right
-    assert "\U0001f33f \U0001f331 \U0001f333 **Ori's zoo!** \U0001f333 \U0001f33f \U0001f331" in board
+    # OwO plant header (mirrored): tree seedling herb on the right
+    assert "\U0001f33f \U0001f331 \U0001f333 **Ori's zoo!** \U0001f333 \U0001f331 \U0001f33f" in board
     # Unseen slots stay ? with superscript zero; owned use superscript counts
     assert "\u2753\u2070" in board
     assert "\U0001fab2\u00b2" in board
