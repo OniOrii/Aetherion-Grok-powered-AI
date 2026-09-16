@@ -36,20 +36,28 @@ def _embed(title: str, body: str, color: int = hunt.EMBED_GOLD) -> discord.Embed
     return embed
 
 
-async def _suggest_animals(
+def _display_name(interaction: discord.Interaction) -> str:
+    user = interaction.user
+    return getattr(user, "display_name", None) or getattr(user, "name", "Hunter")
+
+
+async def _suggest_owned(
     interaction: discord.Interaction, current: str
 ) -> list[discord.app_commands.Choice[str]]:
     if not _is_ori(interaction):
         return []
+    snap = hunt.snapshot(interaction.user.id)
+    owned = hunt.owned_catalog(snap["zoo"])
     needle = (current or "").strip().lower()
     out: list[discord.app_commands.Choice[str]] = []
-    for aid, name, emoji, rarity in hunt.ANIMALS:
+    for aid, name, emoji, rarity in owned:
         hay = f"{aid} {name} {rarity}"
         if needle and needle not in hay.lower() and needle not in name.lower():
             continue
+        have = int(snap["zoo"].get(aid) or 0)
         out.append(
             discord.app_commands.Choice(
-                name=f"{emoji} {name} ({hunt.RARITY_LABEL[rarity]})",
+                name=f"{emoji} {name} ×{have}",
                 value=name,
             )
         )
@@ -70,17 +78,8 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 result.get("error") or "Hunt failed.", ephemeral=True
             )
             return
-        aid = result["animal_id"]
-        rarity = hunt.RARITY_LABEL[hunt.rarity_of(aid)]
-        first = " New to the menagerie." if result.get("new") else ""
-        pocket = ai_coins.coins(f"**{int(result['balance']):,}**")
-        body = (
-            f"You found **{hunt.animal_label(aid)}** · {rarity}.{first}\n"
-            f"Owned: **{result['count']}**\n"
-            f"Pocket · {pocket}\n"
-            f"Hunt cost {ai_coins.coins(hunt.HUNT_COST)}."
-        )
-        await interaction.response.send_message(embed=_embed("\u2726 Hunt", body))
+        line = hunt.hunt_catch_line(_display_name(interaction), result["animal_id"])
+        await interaction.response.send_message(line)
 
     @tree.command(name="zoo", description="WIP Ori only. Show hunted animals.")
     @discord.app_commands.default_permissions(administrator=True)
@@ -88,14 +87,14 @@ def register_hunt(tree, is_guild_allowed) -> None:
         if not await _gate(interaction, is_guild_allowed):
             return
         snap = hunt.snapshot(interaction.user.id)
-        lines = hunt.zoo_lines(snap["zoo"], snap["xp"])
-        total = sum(int(n) for n in snap["zoo"].values())
-        kinds = len(snap["zoo"])
-        header = f"{kinds} kinds · {total} animals\n\n"
-        body = header + "\n".join(lines)
-        if len(body) > 3900:
-            body = body[:3890] + "\n\u2026"
-        await interaction.response.send_message(embed=_embed("\u2726 Menagerie", body))
+        board = hunt.zoo_board(
+            _display_name(interaction),
+            snap["zoo"],
+            snap.get("caught") or snap["zoo"],
+        )
+        if len(board) > 1900:
+            board = board[:1890] + "\n…"
+        await interaction.response.send_message(board)
 
     @tree.command(name="sell", description="WIP Ori only. Sell extra animals for Aether Coins.")
     @discord.app_commands.describe(animal="Animal name", count="How many to sell")
@@ -111,22 +110,22 @@ def register_hunt(tree, is_guild_allowed) -> None:
             return
         pocket = ai_coins.coins(f"**{int(result['balance']):,}**")
         body = (
-            f"Sold **{result['sold']}\u00d7 {hunt.animal_label(result['animal_id'])}** "
+            f"Sold **{result['sold']}× {hunt.animal_label(result['animal_id'])}** "
             f"for {ai_coins.coins(result['payout'])}.\n"
             f"Left: **{result['left']}**\n"
             f"Pocket · {pocket}"
         )
-        await interaction.response.send_message(embed=_embed("\u2726 Sold", body))
+        await interaction.response.send_message(embed=_embed("✦ Sold", body))
 
     @sell_slash.autocomplete("animal")
     async def sell_animal_ac(interaction: discord.Interaction, current: str):
-        return await _suggest_animals(interaction, current)
+        return await _suggest_owned(interaction, current)
 
     @tree.command(name="team", description="WIP Ori only. Set the three-animal battle team.")
     @discord.app_commands.describe(
         action="show, set, or clear",
         animal="Animal to put in the slot",
-        slot="Team slot 1-3",
+        slot="Team slot 1–3",
     )
     @discord.app_commands.choices(
         action=[
@@ -166,11 +165,17 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 return
         snap = hunt.snapshot(interaction.user.id)
         body = "\n".join(hunt.team_lines(snap["team"], snap["xp"], snap["zoo"]))
-        await interaction.response.send_message(embed=_embed("\u2726 Team", body))
+        owned = hunt.owned_catalog(snap["zoo"])
+        if owned:
+            picks = ", ".join(f"{emoji} {name}" for _aid, name, emoji, _rar in owned)
+            body += f"\n\n**Owned** {picks}"
+        else:
+            body += "\n\nHunt something before you set a team."
+        await interaction.response.send_message(embed=_embed("✦ Team", body))
 
     @team_slash.autocomplete("animal")
     async def team_animal_ac(interaction: discord.Interaction, current: str):
-        return await _suggest_animals(interaction, current)
+        return await _suggest_owned(interaction, current)
 
     @tree.command(name="battle", description="WIP Ori only. Fight a wild team with your animals.")
     @discord.app_commands.default_permissions(administrator=True)
@@ -211,5 +216,5 @@ def register_hunt(tree, is_guild_allowed) -> None:
             f"Pocket · {pocket}"
         )
         await interaction.response.send_message(
-            embed=_embed(f"\u2726 Battle · {headline}", body, color)
+            embed=_embed(f"✦ Battle · {headline}", body, color)
         )
