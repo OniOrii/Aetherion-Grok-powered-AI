@@ -21,6 +21,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- **Hunt rarity display (OwO-class look):** remapped C/U/R/E/M marks to OwO community colors — Common white ⬜`c`, Uncommon green 🟩`u`, Rare blue 🟦`r`, Epic purple 🟪`e`, Mythic pink 🩷`m` (pink heart; Unicode has no pink square). `/hunt` catch one-liner no longer appends the rarity mark after the word (OwO: `caught a/an {rarity} {emoji}`). `/zoo`, `/checklist`, and weapon rarity marks share the same mapping. `/sell` and `/sacrifice` success embeds use matching rarity colors. Zoo Points and five tiers unchanged. Patreon/Legendary/Fabled tiers are a later gap — not in this change.
 - `/battle` now uses the OwO fight screen: author `{name} goes into battle!`, two inline team fields (`L. level` + weapon), a 3v3 HP/WP board image, and the same Discord message is edited every turn.
 - `/battle` fights until one team is fully KO'd (safety cap 99), not a fixed 5 turns. Awards match OwO: 200 XP win / 100 tie / 50 lose, plus streak and higher-level bonus XP only on a win. Footer is `You won in N turns! Your team gained 200 xp + bonus xp! Streak: X` (or the lost-streak line). No PvE coin payout. Team fields are one line each. Result sits in the footer like OwO.
 

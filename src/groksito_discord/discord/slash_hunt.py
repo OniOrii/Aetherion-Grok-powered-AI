@@ -213,7 +213,9 @@ def register_hunt(tree, is_guild_allowed) -> None:
             f"Left: **{result['left']}**\n"
             f"Pocket \u00b7 {pocket}"
         )
-        await interaction.response.send_message(embed=_embed("\u2726 Sold", body))
+        rar = hunt.rarity_of(result["animal_id"])
+        color = hunt.RARITY_EMBED.get(rar, hunt.EMBED_GOLD)
+        await interaction.response.send_message(embed=_embed("\u2726 Sold", body, color=color))
 
     @sell_slash.autocomplete("animal")
     async def sell_animal_ac(interaction: discord.Interaction, current: str):
@@ -538,7 +540,9 @@ def register_hunt(tree, is_guild_allowed) -> None:
             f"Essence gained **{result['gained']}** \u00b7 total **{result['essence']}**\n"
             f"Left in the zoo: **{result['left']}**"
         )
-        await interaction.response.send_message(embed=_embed("\u2726 Sacrifice", body))
+        rar = hunt.rarity_of(result["animal_id"])
+        color = hunt.RARITY_EMBED.get(rar, hunt.EMBED_GOLD)
+        await interaction.response.send_message(embed=_embed("\u2726 Sacrifice", body, color=color))
 
     @sacrifice_slash.autocomplete("animal")
     async def sacrifice_animal_ac(interaction: discord.Interaction, current: str):

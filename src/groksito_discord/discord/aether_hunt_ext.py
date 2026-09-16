@@ -241,12 +241,13 @@ def hunt_catch_line(display_name, animal_id, extras=None, lootbox=False):
     _aid, _name, emoji, rarity = row
     label = RARITY_LABEL[rarity].lower()
     article = "an" if rarity in (UNCOMMON, EPIC) else "a"
-    line = f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {rarity_mark(rarity)} {emoji}!"
+    # OwO catch one-liner: rarity as lowercase word only — no color-square mark in the line.
+    line = f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {emoji}!"
     extra_bits = []
     for aid in extras or []:
         extra = ANIMAL_BY_ID.get(aid)
         if extra:
-            extra_bits.append(f"{rarity_mark(extra[3])} {extra[2]}")
+            extra_bits.append(extra[2])
     if extra_bits:
         line += " +" + " ".join(extra_bits)
     if lootbox:
