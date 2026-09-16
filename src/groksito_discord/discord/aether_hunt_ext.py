@@ -1,0 +1,397 @@
+"""Test 3 overlay installed onto aether_hunt at import time."""
+from __future__ import annotations
+
+import random
+import time
+from typing import Any
+
+from . import aether_gear as gear
+from . import aether_hunt as base
+from . import ai_coins
+
+COMMON, UNCOMMON, RARE, EPIC, MYTHIC = base.COMMON, base.UNCOMMON, base.RARE, base.EPIC, base.MYTHIC
+ANIMALS = base.ANIMALS
+ANIMAL_BY_ID = base.ANIMAL_BY_ID
+TEAM_SIZE = base.TEAM_SIZE
+HUNT_COST = base.HUNT_COST
+WIN_PAYOUT = base.WIN_PAYOUT
+DRAW_PAYOUT = base.DRAW_PAYOUT
+RARITY_LABEL = base.RARITY_LABEL
+RARITY_WEIGHT = base.RARITY_WEIGHT
+_lock = base._lock
+_load_store = base._load_store
+_save_store = base._save_store
+_ensure_user = base._ensure_user
+owned_count = base.owned_count
+xp_of = base.xp_of
+add_xp = base.add_xp
+level_of = base.level_of
+stats_for = base.stats_for
+rarity_of = base.rarity_of
+rarity_mark = base.rarity_mark
+animal_label = base.animal_label
+resolve_animal = base.resolve_animal
+roll_animal = base.roll_animal
+cooldown_left = base.cooldown_left
+active_team = base.active_team
+zoo_points_for = base.zoo_points_for
+
+LEVEL_CAP = 50
+WIP_FOOTER = "WIP \u00b7 Test 3 \u00b7 Ori only"
+HUNT_XP = {COMMON: 8, UNCOMMON: 12, RARE: 20, EPIC: 40, MYTHIC: 80}
+BATTLE_XP = {"win": 200, "draw": 100, "lose": 50}
+
+
+def _catch_one(row, animal_id):
+    zoo = row.setdefault("zoo", {})
+    zoo[animal_id] = owned_count(row, animal_id) + 1
+    caught = row.setdefault("caught", {})
+    try:
+        caught[animal_id] = int(caught.get(animal_id) or 0) + 1
+    except (TypeError, ValueError):
+        caught[animal_id] = 1
+
+
+def _fighter(animal_id, level, weapon=None):
+    hp, atk = stats_for(animal_id, level)
+    wep = dict(weapon) if isinstance(weapon, dict) else None
+    bonus = int((wep or {}).get("atk") or 0)
+    style = (wep or {}).get("style") or "strike"
+    row = ANIMAL_BY_ID.get(animal_id)
+    return {
+        "id": animal_id,
+        "name": row[1] if row else animal_id,
+        "emoji": row[2] if row else "",
+        "rarity": row[3] if row else COMMON,
+        "level": level,
+        "hp": hp,
+        "max_hp": hp,
+        "atk": atk + (bonus if style != "mend" else 0),
+        "mag": atk + (bonus if style == "mend" else max(4, atk // 3)),
+        "wp": 40 + max(0, int(level)) * 8,
+        "max_wp": 40 + max(0, int(level)) * 8,
+        "pr": min(60, 16 + max(0, int(level))),
+        "mr": min(60, 16 + max(0, int(level)) // 2),
+        "side": "",
+        "weapon": wep,
+    }
+
+
+def build_enemy_team(player, rng):
+    size = TEAM_SIZE
+    avg = sum(int(pet.get("level") or 1) for pet in player) / max(1, len(player))
+    out = []
+    used = set()
+    pool = [aid for aid, *_rest in ANIMALS]
+    rng.shuffle(pool)
+    for _i in range(size):
+        pick = next((aid for aid in pool if aid not in used), pool[0])
+        used.add(pick)
+        lvl = min(LEVEL_CAP, max(1, int(round(avg)) + rng.randint(-1, 1)))
+        out.append(_fighter(pick, lvl))
+    return out
+
+
+def simulate_battle(player, enemy, rng=None):
+    rng = rng or random.Random()
+    for pet in player:
+        pet["side"] = "you"
+        pet.setdefault("wp", 40 + int(pet.get("level") or 1) * 8)
+        pet.setdefault("max_wp", pet["wp"])
+        pet.setdefault("mag", max(4, int(pet.get("atk") or 8) // 3))
+        pet.setdefault("pr", 16)
+        pet.setdefault("mr", 16)
+    for pet in enemy:
+        pet["side"] = "foe"
+        pet.setdefault("wp", 40 + int(pet.get("level") or 1) * 8)
+        pet.setdefault("max_wp", pet["wp"])
+        pet.setdefault("mag", max(4, int(pet.get("atk") or 8) // 3))
+        pet.setdefault("pr", 16)
+        pet.setdefault("mr", 16)
+    from .aether_battle import play_turns
+    return play_turns(player, enemy, rng)
+
+
+def _streak_bonus(streak):
+    x = max(0, int(streak))
+    if x <= 0:
+        return 0
+    if x % 10 == 0:
+        return min(100000, int(10 * (x ** 0.5) + 500))
+    return 0
+
+
+def _level_diff_xp(player, enemy):
+    if not player or not enemy:
+        return 0
+    yours = round(sum(int(p["level"]) for p in player) / len(player))
+    theirs = round(sum(int(p["level"]) for p in enemy) / len(enemy))
+    if theirs <= yours:
+        return 0
+    return (theirs - yours) * 600
+
+
+def hunt(user_id, rng=None):
+    rng = rng or random.Random()
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        wait = cooldown_left(row)
+        if wait > 0:
+            return {"ok": False, "error": f"Hunt is cooling down. Wait {int(wait + 0.99)}s."}
+        pocket = ai_coins.get_balance(user_id)
+        if pocket < HUNT_COST:
+            return {"ok": False, "error": f"Hunt costs {ai_coins.coins(HUNT_COST)}. You have {ai_coins.coins(pocket)}."}
+        ok, balance, err = ai_coins.resolve_wager(user_id, HUNT_COST, 0, min_bet=HUNT_COST, max_bet=HUNT_COST)
+        if not ok:
+            return {"ok": False, "error": err or "Could not spend Aether Coins."}
+        used = gear.consume_gems(pack)
+        weights = RARITY_WEIGHT
+        if "lucky" in used:
+            weights = gear.lucky_weights(dict(RARITY_WEIGHT), used["lucky"])
+        extra = gear.extra_catches(used)
+        animals = []
+        for _i in range(1 + extra):
+            if "lucky" in used:
+                rarity = gear.roll_rarity(weights, rng)
+                pool = [aid for aid, _n, _e, rar in ANIMALS if rar == rarity] or list(ANIMAL_BY_ID)
+                aid = rng.choice(pool)
+            else:
+                aid = roll_animal(rng)
+            _catch_one(row, aid)
+            animals.append(aid)
+        animal_id = animals[0]
+        xp_gain = sum(HUNT_XP.get(rarity_of(aid), 8) for aid in animals)
+        targets = [mate for mate in row["team"] if mate] or animals[:1]
+        for mate in targets:
+            add_xp(row, mate, xp_gain)
+        dropped = gear.maybe_lootbox(pack, rng)
+        row["last_hunt"] = time.time()
+        _save_store(store)
+        return {"ok": True, "animal_id": animal_id, "animals": animals, "count": owned_count(row, animal_id), "balance": balance, "new": owned_count(row, animal_id) == 1, "lootbox": dropped, "xp_gain": xp_gain}
+
+
+def snapshot(user_id):
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        _save_store(store)
+        return {"zoo": dict(row["zoo"]), "caught": dict(row.get("caught") or {}), "team": list(row["team"]), "xp": dict(row["xp"]), "last_hunt": float(row["last_hunt"]), "cooldown": cooldown_left(row), "points": zoo_points_for(row.get("caught") or {}), "gear": pack, "streak": int(pack.get("streak") or 0), "best_streak": int(pack.get("best_streak") or 0)}
+
+
+def battle(user_id, rng=None):
+    rng = rng or random.Random()
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        team_ids = active_team(row)
+        if len(team_ids) < TEAM_SIZE:
+            return {"ok": False, "error": f"Battle is 3v3. Fill all {TEAM_SIZE} team slots with /team first."}
+        player = [_fighter(aid, level_of(xp_of(row, aid)), gear.equipped_weapon(pack, aid)) for aid in team_ids]
+        enemy = build_enemy_team(player, rng)
+        for foe in enemy:
+            if rng.random() < 0.55:
+                kind, name, emoji, style = rng.choice(gear.WEAPONS)
+                rarity = gear.roll_rarity(gear.CRATE_WEIGHT, rng)
+                lo, hi = gear.WEAPON_ATK[rarity]
+                foe["weapon"] = {"kind": kind, "name": name, "emoji": emoji, "style": style, "rarity": rarity, "atk": rng.randint(lo, hi)}
+        outcome = simulate_battle(player, enemy, rng)
+        result = outcome["result"]
+        if result == "win":
+            pack["streak"] = int(pack.get("streak") or 0) + 1
+        else:
+            pack["streak"] = 0
+        pack["best_streak"] = max(int(pack.get("best_streak") or 0), int(pack.get("streak") or 0))
+        xp_gain = BATTLE_XP[result] + _streak_bonus(pack["streak"]) + _level_diff_xp(player, enemy)
+        highest = max(level_of(xp_of(row, aid)) for aid in team_ids)
+        for aid in team_ids:
+            extra = xp_gain
+            gap = highest - level_of(xp_of(row, aid))
+            if gap > 0:
+                extra = int(extra * min(10.0, 2 + 0.1 * gap))
+            add_xp(row, aid, extra)
+        payout = WIN_PAYOUT if result == "win" else DRAW_PAYOUT if result == "draw" else 0
+        balance = ai_coins.get_balance(user_id)
+        if payout:
+            ok, balance, err = ai_coins.grant_coins(user_id, payout)
+            if not ok:
+                payout = 0
+        crate = gear.maybe_crate(pack, result == "win", rng)
+        _save_store(store)
+        return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "frames": outcome.get("frames") or [], "xp_gain": xp_gain, "payout": payout, "balance": balance, "streak": int(pack.get("streak") or 0), "best_streak": int(pack.get("best_streak") or 0), "crate": crate}
+
+
+def hunt_catch_line(display_name, animal_id, extras=None, lootbox=False):
+    row = ANIMAL_BY_ID.get(animal_id)
+    if not row:
+        return f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and nothing turned up."
+    _aid, _name, emoji, rarity = row
+    label = RARITY_LABEL[rarity].lower()
+    article = "an" if rarity in (UNCOMMON, EPIC) else "a"
+    line = f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {rarity_mark(rarity)} {emoji}!"
+    extra_bits = []
+    for aid in extras or []:
+        extra = ANIMAL_BY_ID.get(aid)
+        if extra:
+            extra_bits.append(f"{rarity_mark(extra[3])} {extra[2]}")
+    if extra_bits:
+        line += " +" + " ".join(extra_bits)
+    if lootbox:
+        line += " \U0001f4e6"
+    return line
+
+
+def team_lines(team, xp, zoo, pack=None):
+    lines = []
+    for i in range(TEAM_SIZE):
+        aid = team[i] if i < len(team) else None
+        if not aid:
+            lines.append(f"**{i + 1}.** empty")
+            continue
+        lvl = level_of(int(xp.get(aid) or 0))
+        hp, atk = stats_for(aid, lvl)
+        have = int(zoo.get(aid) or 0)
+        wep = ""
+        if pack:
+            held = gear.equipped_weapon(pack, aid)
+            if held:
+                wep = f" \u00b7 {gear.weapon_line(held)}"
+        lines.append(f"**{i + 1}.** {animal_label(aid)} \u00b7 Lv {lvl} \u00b7 {hp} HP / {atk} ATK \u00b7 owned {have}{wep}")
+    return lines
+
+
+def _roster_line(pet):
+    wep = pet.get("weapon") if isinstance(pet.get("weapon"), dict) else None
+    gear_txt = gear.weapon_line(wep) if wep else "no weapon"
+    return f"L. {pet.get('level', 1)} {animal_label(pet['id'])} {rarity_mark(pet.get('rarity') or rarity_of(pet['id']))} \u00b7 {gear_txt}"
+
+
+def _hp_bar(pet):
+    hp = max(0, int(pet.get("hp") or 0))
+    mx = max(1, int(pet.get("max_hp") or 1))
+    filled = round(10 * hp / mx)
+    return "\u2588" * filled + "\u2591" * (10 - filled) + f" {hp}/{mx}"
+
+
+def battle_card(display_name, result):
+    you = result.get("player") or []
+    foe = result.get("enemy") or []
+    log = result.get("log") or []
+    rounds = max(1, int(result.get("rounds") or 1))
+    lines = [f"{display_name} goes into battle!", f"**{display_name}'s Team**"]
+    lines.extend(_roster_line(p) for p in you)
+    lines.append("**Enemy Team**")
+    lines.extend(_roster_line(p) for p in foe)
+    lines.append("")
+    for p in you:
+        lines.append(f"{animal_label(p['id'])} {_hp_bar(p)}")
+    lines.append("")
+    for p in foe:
+        lines.append(f"{animal_label(p['id'])} {_hp_bar(p)}")
+    if log:
+        lines.append("")
+        lines.extend(log[-6:])
+    lines.append(f"Turn {rounds} / 5")
+    xp = int(result.get("xp_gain") or 0)
+    streak = int(result.get("streak") or 0)
+    lines.append(f"Team XP +{xp} \u00b7 streak {streak}")
+    return "\n".join(lines)
+
+
+def open_lootbox(user_id):
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        out = gear.open_lootbox(gear.ensure_gear(row))
+        _save_store(store)
+        return out
+
+
+def open_crate(user_id):
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        out = gear.open_crate(gear.ensure_gear(row))
+        _save_store(store)
+        return out
+
+
+def use_gem(user_id, kind, rarity=None):
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        out = gear.use_gem(gear.ensure_gear(row), kind, rarity)
+        _save_store(store)
+        return out
+
+
+def equip_weapon(user_id, query, animal_query):
+    animal_id = resolve_animal(animal_query)
+    if animal_id is None:
+        return {"ok": False, "error": "I do not know that animal. Check /zoo."}
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        wid = gear.resolve_weapon(pack, query)
+        if not wid:
+            return {"ok": False, "error": "No matching weapon. Use the id from /inv."}
+        out = gear.equip_weapon(pack, wid, animal_id)
+        if out.get("ok"):
+            out["animal_id"] = animal_id
+            out["label"] = gear.weapon_line(gear.equipped_weapon(pack, animal_id))
+        _save_store(store)
+        return out
+
+
+def grant_daily_supplies(user_id):
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        out = gear.grant_daily_supplies(gear.ensure_gear(row))
+        _save_store(store)
+        return out
+
+
+def grant_supplies(user_id, kind, amount=1):
+    kind = str(kind or "").strip().lower()
+    if kind in {"lootbox", "lootboxes", "box", "boxes"}:
+        key, label = "lootbox", "lootbox"
+    elif kind in {"crate", "crates", "weapon", "weapons"}:
+        key, label = "crate", "weapon crate"
+    else:
+        return {"ok": False, "error": "Give a lootbox or a crate."}
+    try:
+        amount = int(amount)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "Amount has to be a whole number."}
+    if amount < 1 or amount > 100:
+        return {"ok": False, "error": "Give between 1 and 100."}
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        pack[key] = int(pack.get(key) or 0) + amount
+        _save_store(store)
+        return {"ok": True, "kind": key, "label": label, "amount": amount, "left": int(pack[key])}
+
+
+def install(mod=None):
+    mod = mod or base
+    mod.LEVEL_CAP = 50
+    mod.WIP_FOOTER = WIP_FOOTER
+    mod.HUNT_XP = HUNT_XP
+    mod.BATTLE_XP = BATTLE_XP
+    for name in (
+        "_fighter", "build_enemy_team", "simulate_battle", "hunt", "snapshot",
+        "battle", "hunt_catch_line", "team_lines", "battle_card",
+        "open_lootbox", "open_crate", "use_gem", "equip_weapon",
+        "grant_daily_supplies", "grant_supplies",
+    ):
+        setattr(mod, name, globals()[name])
+
+
+install()
