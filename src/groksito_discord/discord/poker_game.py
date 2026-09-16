@@ -25,7 +25,7 @@ HANDS_NAME = "hands.png"
 def _hands_embed() -> discord.Embed:
     embed = discord.Embed(
         title="\u2726 Poker hands",
-        description="Strongest at the top. Five cards from your two plus the board.",
+        description="Ranked strongest to weakest.",
         color=EMBED_PLAY,
     )
     embed.set_image(url=f"attachment://{HANDS_NAME}")
