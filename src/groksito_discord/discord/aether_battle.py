@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import hashlib
 import io
+from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
 from .aether_gear import COMMON, WEAPON_BY_ID
 from .weapon_art import weapon_icon_png
+
+_PORTRAIT_DIR = Path(__file__).resolve().parent / "assets" / "hunt_portraits"
 
 MAX_TURNS = 99
 BOARD_W = 900
@@ -121,18 +124,50 @@ def _family(animal_id: str) -> str:
     return "beast"
 
 
+def _load_portrait_asset(animal_id: str, size: int) -> Image.Image | None:
+    """Load a pre-baked Aetherion species portrait if present."""
+    aid = (animal_id or "").strip().lower()
+    if not aid:
+        return None
+    path = _PORTRAIT_DIR / f"{aid}.png"
+    if not path.is_file():
+        return None
+    try:
+        raw = Image.open(path).convert("RGBA")
+    except OSError:
+        return None
+    if raw.size != (size, size):
+        raw = raw.resize((size, size), Image.Resampling.LANCZOS)
+    return raw
+
+
 def _portrait(pet: dict[str, Any], size: int = 96) -> Image.Image:
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
+    """Battle-board animal tile — prefer species PNG, else procedural silhouette."""
     rar = pet.get("rarity") or COMMON
     rim = RARITY_TINT.get(rar, (140, 140, 140))
-    fill = _tint(str(pet.get("id") or ""))
     dead = int(pet.get("hp") or 0) <= 0
-    if dead:
-        fill = tuple(max(18, c // 3) for c in fill)
-        rim = (90, 90, 96)
-    draw.rounded_rectangle((1, 1, size - 2, size - 2), radius=14, fill=(18, 20, 28, 255), outline=rim + (255,), width=4)
-    _shape(draw, _family(str(pet.get("id") or "")), (8, 8, size - 8, size - 8), fill)
+    asset = _load_portrait_asset(str(pet.get("id") or ""), size)
+    if asset is not None:
+        img = asset
+        if dead:
+            # Dim KO portraits so living species still read first
+            img = ImageEnhance.Brightness(img).enhance(0.38)
+            img = ImageEnhance.Color(img).enhance(0.35)
+    else:
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        fill = _tint(str(pet.get("id") or ""))
+        if dead:
+            fill = tuple(max(18, c // 3) for c in fill)
+            rim = (90, 90, 96)
+        draw.rounded_rectangle(
+            (1, 1, size - 2, size - 2),
+            radius=14,
+            fill=(18, 20, 28, 255),
+            outline=rim + (255,),
+            width=4,
+        )
+        _shape(draw, _family(str(pet.get("id") or "")), (8, 8, size - 8, size - 8), fill)
     wep = pet.get("weapon")
     if isinstance(wep, dict) and wep.get("kind"):
         icon = Image.open(weapon_icon_png(str(wep["kind"]), wep.get("rarity"), size=28)).convert("RGBA")
