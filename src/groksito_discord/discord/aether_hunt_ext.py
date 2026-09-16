@@ -158,14 +158,18 @@ def hunt(user_id, rng=None):
         ok, balance, err = ai_coins.resolve_wager(user_id, HUNT_COST, 0, min_bet=HUNT_COST, max_bet=HUNT_COST)
         if not ok:
             return {"ok": False, "error": err or "Could not spend Aether Coins."}
-        used = gear.consume_gems(pack)
-        weights = RARITY_WEIGHT
+        # Peek actives first — durability spend needs final animal count (OwO role rules).
+        used = gear.active_gems(pack)
+        weights = dict(RARITY_WEIGHT)
         if "lucky" in used:
-            weights = gear.lucky_weights(dict(RARITY_WEIGHT), used["lucky"])
+            weights = gear.lucky_weights(weights, used["lucky"])
+        if "prism" in used:
+            weights = gear.prism_weights(weights)
+        need_weighted = "lucky" in used or "prism" in used
         extra = gear.extra_catches(used)
         animals = []
         for _i in range(1 + extra):
-            if "lucky" in used:
+            if need_weighted:
                 rarity = gear.roll_rarity(weights, rng)
                 pool = [aid for aid, _n, _e, rar in ANIMALS if rar == rarity] or list(ANIMAL_BY_ID)
                 aid = rng.choice(pool)
@@ -174,6 +178,9 @@ def hunt(user_id, rng=None):
             _catch_one(row, aid)
             animals.append(aid)
         animal_id = animals[0]
+        # Role-based durability after n is known (HUD [left/max] is post-spend).
+        if used:
+            gear.spend_gems(pack, used, len(animals))
         # OwO: sum of caught-rank XP; awarded to active team pets only (not the catch itself).
         xp_gain = sum(int(HUNT_XP.get(rarity_of(aid), 1)) for aid in animals)
         for mate in row["team"]:
@@ -181,14 +188,15 @@ def hunt(user_id, rng=None):
                 add_xp(row, mate, xp_gain)
         dropped = gear.maybe_lootbox(pack, rng)
         gems_hud = []
-        for kind, rar in used.items():
-            meta = gear.GEM_BY_KIND.get(kind)
-            if not meta:
+        # Stable HUD order: GEM_KINDS order, only gems that were used this hunt.
+        for kind, _label, emoji, _desc in gear.GEM_KINDS:
+            if kind not in used:
                 continue
+            rar = used[kind]
             active = (pack.get("active") or {}).get(kind) or {}
             left = int(active.get("left") or 0)
             mx = int(gear.GEM_HUNTS.get(rar) or left or 1)
-            gems_hud.append({"kind": kind, "emoji": meta[2], "left": left, "max": mx, "rarity": rar})
+            gems_hud.append({"kind": kind, "emoji": emoji, "left": left, "max": mx, "rarity": rar})
         row["last_hunt"] = time.time()
         _save_store(store)
         return {

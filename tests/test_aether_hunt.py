@@ -592,3 +592,115 @@ def test_battle_result_caption_crate_has_cadence():
     assert "weapon crate" in line
     assert "`[1/3] RESETS IN:" in line
 
+def test_gem_durability_spend_by_role():
+    """OwO-like role burn: hunting −1, empower −⌊n/2⌋, lucky/prism −n or −⌊n/2⌋."""
+    from groksito_discord.discord import aether_gear as gear
+
+    kinds = {"hunting", "empower", "lucky"}
+    assert gear.gem_durability_spend("hunting", 4, kinds) == 1
+    assert gear.gem_durability_spend("empower", 4, kinds) == 2
+    assert gear.gem_durability_spend("lucky", 4, kinds) == 2  # all three → half
+    assert gear.gem_durability_spend("lucky", 4, {"lucky"}) == 4
+    assert gear.gem_durability_spend("prism", 5, {"prism"}) == 5
+    assert gear.gem_durability_spend("prism", 5, {"hunting", "empower", "prism"}) == 2
+
+
+def test_gem_tiers_include_legendary_fabled_and_prism():
+    from groksito_discord.discord import aether_gear as gear
+
+    assert gear.LEGENDARY in gear.RARITY_ORDER
+    assert gear.FABLED in gear.RARITY_ORDER
+    assert gear.GEM_EXTRA[gear.LEGENDARY] == 7
+    assert gear.GEM_EXTRA[gear.FABLED] == 9
+    assert gear.GEM_HUNTS[gear.LEGENDARY] == 100
+    assert gear.GEM_HUNTS[gear.FABLED] == 100
+    assert "prism" in gear.GEM_BY_KIND
+    assert gear.GEM_BY_KIND["prism"][1] == "Prism Gem"
+    # Drop table includes L/F; weapon crate table stays C–M
+    assert gear.LEGENDARY in gear.GEM_WEIGHT
+    assert gear.FABLED in gear.GEM_WEIGHT
+    assert gear.LEGENDARY not in gear.CRATE_WEIGHT
+
+
+def test_spend_gems_updates_left_and_clears_expired():
+    from groksito_discord.discord import aether_gear as gear
+
+    pack = gear.blank_gear()
+    pack["gems"]["hunting_common"] = 1
+    pack["gems"]["lucky_common"] = 1
+    assert gear.use_gem(pack, "hunting", "common")["ok"]
+    assert gear.use_gem(pack, "lucky", "common")["ok"]
+    used = gear.active_gems(pack)
+    assert set(used) == {"hunting", "lucky"}
+    # n=3, no empower → hunting −1, lucky −3
+    gear.spend_gems(pack, used, 3)
+    assert pack["active"]["hunting"]["left"] == 24
+    assert pack["active"]["lucky"]["left"] == 22
+    # Drain lucky to 0
+    pack["active"]["lucky"]["left"] = 2
+    gear.spend_gems(pack, {"lucky": "common"}, 3)  # spend 3 → expire
+    assert "lucky" not in pack["active"]
+    assert "hunting" in pack["active"]
+
+
+def test_prism_weights_double_epic_mythic():
+    from groksito_discord.discord import aether_gear as gear
+
+    base = {"common": 100, "uncommon": 50, "rare": 20, "epic": 10, "mythic": 5}
+    out = gear.prism_weights(base)
+    assert out["epic"] == 20
+    assert out["mythic"] == 10
+    assert out["common"] == 100
+
+
+def test_hunt_applies_role_durability_and_hud(tmp_path: Path, monkeypatch):
+    import random
+    from groksito_discord.discord import aether_gear as gear
+    from groksito_discord.discord import ai_coins
+
+    hunt.set_store_path(tmp_path / "hunt.json")
+    monkeypatch.setattr(ai_coins, "get_balance", lambda _uid: 500)
+    monkeypatch.setattr(
+        ai_coins,
+        "resolve_wager",
+        lambda *_a, **_k: (True, 495, ""),
+    )
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 99)
+        row["last_hunt"] = 0.0
+        pack = gear.ensure_gear(row)
+        pack["gems"]["hunting_common"] = 1
+        pack["gems"]["empower_common"] = 1
+        assert gear.use_gem(pack, "hunting", "common")["ok"]
+        assert gear.use_gem(pack, "empower", "common")["ok"]
+        hunt._save_store(store)
+    # hunting +1 + empower double → extra = 1*2+1 = 3 → n = 4
+    out = hunt.hunt(99, random.Random(1))
+    assert out["ok"]
+    assert len(out["animals"]) == 4
+    hud = {g["kind"]: g for g in out.get("gems_hud") or []}
+    assert "hunting" in hud and "empower" in hud
+    # Post-spend: hunting 25−1=24; empower 25−⌊4/2⌋=23
+    assert hud["hunting"]["left"] == 24
+    assert hud["hunting"]["max"] == 25
+    assert hud["empower"]["left"] == 23
+    assert hud["empower"]["max"] == 25
+    # Persisted
+    snap = hunt.snapshot(99)
+    assert snap["gear"]["active"]["hunting"]["left"] == 24
+    assert snap["gear"]["active"]["empower"]["left"] == 23
+
+
+def test_inventory_lists_prism_and_fabled_tiers():
+    from groksito_discord.discord import aether_gear as gear
+
+    pack = gear.blank_gear()
+    pack["gems"]["prism_fabled"] = 2
+    pack["gems"]["hunting_legendary"] = 1
+    pack["active"] = {"prism": {"rarity": "fabled", "left": 80}}
+    text = gear.inventory_text("Ori", pack)
+    assert "Prism Gem" in text
+    assert "Fabled" in text
+    assert "Legendary" in text
+    assert "`[80/100]`" in text
