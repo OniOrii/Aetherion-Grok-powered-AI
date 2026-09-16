@@ -195,6 +195,7 @@ class Table:
     busy: bool = False
     reason: str = ""
     winner_ids: list = field(default_factory=list)
+    awarded: int = 0
     def seat_of(self, user_id):
         for s in self.seats:
             if s.user_id == user_id:
@@ -346,6 +347,7 @@ def _advance_street(table):
 def _award_pot(table, winners):
     if not winners:
         return
+    table.awarded = table.pot
     share = table.pot // len(winners)
     extra = table.pot - share * len(winners)
     for i, w in enumerate(winners):
@@ -357,7 +359,7 @@ def _showdown(table):
     if len(live) == 1:
         winner = live[0]
         _award_pot(table, [winner])
-        _finish(table, f"{winner.name} takes the pot. Everyone else folded.", [winner.user_id])
+        _finish(table, f"{winner.name} takes the pot. {ai_coins.won_line(winner.stack - table.buyin)}. Everyone else folded.", [winner.user_id])
         return
     ranked = sorted(live, key=lambda s: best_hand(s.hole, table.board), reverse=True)
     best = best_hand(ranked[0].hole, table.board)
@@ -370,7 +372,8 @@ def _showdown(table):
         beaten = " Beat " + " \u00b7 ".join(f"{s.name} {_hole_text(s)} ({HAND_NAMES[best_hand(s.hole, table.board)[0]]})" for s in others)
     holes = " ".join(_hole_text(w) for w in winners)
     _award_pot(table, winners)
-    _finish(table, f"{names} wins with {label} ({holes}).{beaten}", [w.user_id for w in winners])
+    payouts = "; ".join(f"{s.name} {ai_coins.won_line(s.stack - table.buyin)}" for s in table.seats)
+    _finish(table, f"{names} wins with {label} ({holes}).{beaten} {payouts}.", [w.user_id for w in winners])
 
 def _one_left(table):
     return len(table.live()) == 1
