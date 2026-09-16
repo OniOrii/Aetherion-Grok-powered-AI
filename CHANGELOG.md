@@ -15,7 +15,8 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
-- **Aetherion Hunt Test 2 (Ori only):** thirty original weapons, weapon crates, lootboxes, and hunting/lucky/empower gems. `/inv`, `/lootbox`, `/crate`, `/use`, `/equip`. First hunt of the day drops a lootbox (then 5%, max 3). First battle win drops a crate (then 5%, max 3). Gems change hunt yield. Weapons add ATK and a strike/cleave/mend style. `/battle` prints `{name} goes into battle!`, both rosters with rarity marks and weapons, HP bars, turn count, and streak XP. `/inv` uses the OwO inventory header (`050` lootbox, `100` crate). `/lootbox` uses the two-line gem reveal. Pet level cap is 50.
+- **Aetherion Hunt Test 2 (Ori only):** thirty original weapons, weapon crates, lootboxes, and hunting/lucky/empower gems. `/inv`, `/lootbox`, `/crate`, `/use`, `/equip`. Hunt lootboxes drop at 5% (max 3/day). First battle win drops a crate (then 5%, max 3). Gems change hunt yield. Weapons add ATK and a strike/cleave/mend style. `/inv` uses the OwO inventory header (`050` lootbox, `100` crate). `/lootbox` uses the two-line gem reveal. Pet level cap is 50.
+- **Aetherion Hunt Test 3 display:** `/battle` posts a 3v3 board image and edits the same message each turn (OwO short mode). Roster fields stay L. level + animal + weapon. `/use hunting|lucky|empower` activates a lootbox gem onto hunts; gems are not equipped on animals. `/daily` grants Ori 5 lootboxes and 5 weapon crates once per Eastern day.
 
 ## [2026-09-15]
 
