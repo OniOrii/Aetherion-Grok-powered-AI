@@ -157,7 +157,7 @@ class SlotsView(discord.ui.View):
     async def see_payouts(self, interaction: discord.Interaction, button: discord.ui.Button):
         session = _sessions.get(self.user_id) or {"machine": DEFAULT_MACHINE}
         machine = MACHINES.get(str(session.get("machine") or DEFAULT_MACHINE), COSMOS)
-        embed = discord.Embed(title=machine.name, description=payouts_text(machine), color=machine.color)
+        embed = discord.Embed(title=f"\u2726 {machine.name} \u00b7 Payouts", description=payouts_text(machine), color=machine.color)
         embed.set_footer(text=f"Bet {coins(SLOTS_MIN_BET)} \u2013 {coins(SLOTS_MAX_BET)}")
         thumb = _cabinet_file(machine.key)
         if thumb:
@@ -169,12 +169,12 @@ class SlotsView(discord.ui.View):
 
 def _cabinet_embed(*, machine, pocket: int, winnings_text: str, net_text: str, grid: str, bet: int, color: int) -> discord.Embed:
     body = (
-        f"Pocket: {coins(f'**{pocket:,}**')}\n"
-        f"Winnings: {coins(f'**{winnings_text}**')}\n"
-        f"Net: {coins(f'**{net_text}**')}\n\n"
+        f"**Pocket** \u00b7 {coins(f'**{pocket:,}**')}\n"
+        f"**Winnings** \u00b7 {coins(f'**{winnings_text}**')}\n"
+        f"**Net** \u00b7 {coins(f'**{net_text}**')}\n\n"
         f"{grid}"
     )
-    embed = discord.Embed(title=machine.name, description=body, color=color)
+    embed = discord.Embed(title=f"\u2726 {machine.name}", description=body, color=color)
     embed.set_footer(text=f"Bet: {coins(f'{bet:,}')}  |  Min: {coins(f'{SLOTS_MIN_BET:,}')}  |  Max: {coins(f'{SLOTS_MAX_BET:,}')}")
     embed.set_thumbnail(url=f"attachment://{THUMB_NAME}")
     return embed
@@ -306,7 +306,7 @@ async def _run_spin(interaction: discord.Interaction, *, user_id: int, machine_k
 
 
 def register_slots(tree, is_guild_allowed) -> None:
-    @tree.command(name="slots", description="Spin Aetherion slots for Aether Coins")
+    @tree.command(name="slots", description="Spin Aetherion slots for Aether Coins.")
     @discord.app_commands.describe(
         bet=f"Wager in Aether Coins ({SLOTS_MIN_BET}\u2013{SLOTS_MAX_BET})",
         machine="Which cabinet to sit at",
