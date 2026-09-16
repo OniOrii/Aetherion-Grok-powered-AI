@@ -153,11 +153,14 @@ def _card(
     draw.rounded_rectangle(box, radius=12, fill=PANEL_DEAD if dead else PANEL, outline=PANEL_EDGE)
     port = _portrait(pet)
     if flip:
+        # Enemy column: portrait on the right — keep bars/numbers clear of it
         img.paste(port, (x1 - 106, y0 + 16), port)
         text_x = x0 + 14
+        content_right = x1 - 112
     else:
         img.paste(port, (x0 + 10, y0 + 16), port)
         text_x = x0 + 118
+        content_right = x1 - 10
     name = str(pet.get("name") or pet.get("id") or "pet")
     label = f"L.{pet.get('level', 1)}  {name}"
     if dead:
@@ -170,9 +173,9 @@ def _card(
     mx = max(1, int(pet.get("max_hp") or 1))
     wp = max(0, int(pet.get("wp") or 0))
     wpx = max(1, int(pet.get("max_wp") or 1))
-    # Leave room for HP/WP tags + numeric readouts (OwO-class scannable bars)
+    # Leave room for HP/WP tags + numeric readouts; never spill into the portrait
     tag_w = 28
-    bar_w = max(96, (x1 - text_x) - 78 - tag_w)
+    bar_w = max(80, content_right - text_x - 78 - tag_w)
     draw.text((text_x, y0 + 64), "HP", font=_font(11, True), fill=HP_RED, anchor="lm")
     _bar(draw, text_x + tag_w, y0 + 58, bar_w, 14, hp, mx, HP_RED, HP_BACK)
     draw.text((text_x + tag_w + bar_w + 8, y0 + 64), f"{hp}/{mx}", font=_font(12, True), fill=INK, anchor="lm")
