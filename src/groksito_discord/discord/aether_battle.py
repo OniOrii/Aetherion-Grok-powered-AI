@@ -334,6 +334,31 @@ def _hooks_of(pet: dict[str, Any]) -> dict[str, float]:
     return weapon_hooks(wep.get("kind"), wep.get("quality") or 50)
 
 
+def _note_proc(pet: dict[str, Any], note: str) -> None:
+    """Brief notable-passive tag (cap 2 per action to keep battle log spam low)."""
+    if not note:
+        return
+    notes = pet.setdefault("_proc_notes", [])
+    if note in notes or len(notes) >= 2:
+        return
+    notes.append(note)
+
+
+def _status_buffs(pet: dict[str, Any]) -> int:
+    n = 0
+    if int(pet.get("shield") or 0) > 0:
+        n += 1
+    if int(pet.get("_hit_stacks") or 0) > 0:
+        n += 1
+    if int(pet.get("_adapt_pr") or 0) or int(pet.get("_adapt_mr") or 0):
+        n += 1
+    return n
+
+
+def _status_debuffs(pet: dict[str, Any]) -> int:
+    return 1 if pet.get("_marked_by") else 0
+
+
 def _amp_damage(raw: float, attacker: dict[str, Any], target: dict[str, Any], rng, *, used_weapon: bool = False) -> int:
     """Apply SoT passive damage amps (missing-HP, execute, hybrid, spend, crit, boss…)."""
     hooks = _hooks_of(attacker)
@@ -356,6 +381,12 @@ def _amp_damage(raw: float, attacker: dict[str, Any], target: dict[str, Any], rn
     hybrid = float(hooks.get("hybrid_amp_pct") or 0)
     if hybrid:
         dmg *= 1.0 + hybrid / 100.0
+    # Echo Chorus: +% damage per soft buff on attacker
+    buff_s = float(hooks.get("buff_scale_pct") or 0)
+    if buff_s:
+        stacks = _status_buffs(attacker)
+        if stacks:
+            dmg *= 1.0 + (stacks * buff_s / 100.0)
     if used_weapon:
         post = float(hooks.get("post_spend_dmg_pct") or 0)
         if post:
@@ -379,12 +410,20 @@ def _amp_damage(raw: float, attacker: dict[str, Any], target: dict[str, Any], rn
     if mark_b and target.get("_marked_by") == attacker.get("id"):
         dmg *= 1.0 + mark_b / 100.0
     boss_pct = float(hooks.get("boss_bonus_pct") or 0)
-    if boss_pct and (target.get("raid_boss") or int(target.get("max_hp") or 0) >= 160):
+    if boss_pct and (
+        target.get("raid_boss")
+        or target.get("wild_boss")
+        or int(target.get("max_hp") or 0) >= 160
+    ):
         dmg *= 1.0 + boss_pct / 100.0
+        _note_proc(attacker, "bossbrand")
     chance = float(hooks.get("crit_chance") or 0)
     crit_d = float(hooks.get("crit_damage") or 0)
     if chance and crit_d and rng.random() * 100.0 < chance:
         dmg *= 1.0 + crit_d / 100.0
+        _note_proc(attacker, "crit")
+    if exe and t_ratio < 0.30:
+        _note_proc(attacker, "reap")
     return max(1, int(round(dmg)))
 
 
@@ -428,7 +467,16 @@ def _deal_damage(
     # Mist Step evade
     evade = float(th.get("evade_pct") or 0)
     if evade and rng.random() * 100.0 < evade:
+        _note_proc(attacker, "evade")
         return 0
+    # Echo Chorus: −% damage taken per soft debuff on defender
+    buff_s = float(th.get("buff_scale_pct") or 0)
+    if buff_s:
+        stacks = _status_debuffs(target)
+        if stacks:
+            dmg = max(0, int(round(dmg * (1.0 - stacks * buff_s / 100.0))))
+            if dmg <= 0:
+                return 0
     # Aegis Spend: negate % by spending WP
     mit = float(th.get("wp_mitigate_pct") or 0)
     if mit and int(target.get("wp") or 0) > 0:
@@ -457,6 +505,7 @@ def _deal_damage(
     if thorns and attacker.get("hp", 0) > 0:
         reflect = max(1, int(round(dmg * thorns / 100.0)))
         attacker["hp"] = max(0, int(attacker["hp"]) - reflect)
+        _note_proc(attacker, "thorns")
     # Death nuke / parting gift
     if int(target.get("hp") or 0) <= 0:
         nuke = float(th.get("death_nuke_pct") or 0)
@@ -464,6 +513,7 @@ def _deal_damage(
             chunk = max(1, int(round(int(target.get("max_hp") or 1) * nuke / 100.0)))
             chunk = apply_resist(chunk, attacker.get("mr"))
             attacker["hp"] = max(0, int(attacker["hp"]) - chunk)
+            _note_proc(attacker, "last flare")
         heal_p = float(th.get("death_ally_heal_pct") or 0)
         wp_p = float(th.get("death_ally_wp_pct") or 0)
         if allies and (heal_p or wp_p):
@@ -486,6 +536,7 @@ def _deal_damage(
     if life and attacker.get("hp", 0) > 0:
         heal = max(1, int(round(dmg * life / 100.0)))
         attacker["hp"] = min(int(attacker["max_hp"]), int(attacker["hp"]) + heal)
+        _note_proc(attacker, "siphon")
     refund = float(ah.get("wp_refund_pct") or 0)
     if refund:
         gain = max(1, int(round(dmg * refund / 100.0)))
@@ -505,13 +556,21 @@ def _deal_damage(
         stolen = max(1, int(round(dmg * drain / 100.0)))
         target["wp"] = max(0, int(target.get("wp") or 0) - stolen)
         attacker["wp"] = min(int(attacker.get("max_wp") or 0), int(attacker.get("wp") or 0) + stolen)
-    # Burn / DoT approximated as immediate bonus true damage chunk
-    burn = float(ah.get("burn_pct") or 0) + float(ah.get("dot_pct") or 0)
-    if burn and int(target.get("hp") or 0) > 0:
-        extra = max(1, int(round(dmg * burn / 100.0)))
-        target["hp"] = max(0, int(target["hp"]) - extra)
-    # Splash / chain / bounce to a second foe
-    splash_pct = float(ah.get("mag_splash_pct") or 0) + float(ah.get("chain_splash_pct") or 0) + float(ah.get("bounce_hit_pct") or 0)
+    # Ember Trail / Peat Sting — real multi-turn DoT (2 / 3 ticks), not an instant chunk
+    if int(target.get("hp") or 0) > 0:
+        dots = target.setdefault("_dots", [])
+        burn_pct = float(ah.get("burn_pct") or 0)
+        if burn_pct:
+            total = max(1, int(round(dmg * burn_pct / 100.0)))
+            dots.append({"left": 2, "per": max(1, total // 2), "tag": "burn"})
+            _note_proc(attacker, "burn")
+        dot_pct = float(ah.get("dot_pct") or 0)
+        if dot_pct:
+            total = max(1, int(round(dmg * dot_pct / 100.0)))
+            dots.append({"left": 3, "per": max(1, total // 3), "tag": "sting"})
+            _note_proc(attacker, "sting")
+    # Splash / chain to a second foe (Star Bounce is cleave-gated in apply_action)
+    splash_pct = float(ah.get("mag_splash_pct") or 0) + float(ah.get("chain_splash_pct") or 0)
     if splash_pct and foes:
         living = [p for p in foes if int(p.get("hp") or 0) > 0 and p is not target]
         if living:
@@ -525,6 +584,13 @@ def _deal_damage(
     return dmg
 
 
+def _with_procs(attacker: dict[str, Any], line: str) -> str:
+    notes = attacker.pop("_proc_notes", None) or []
+    if not notes or not line:
+        return line
+    return f"{line} · {' · '.join(notes)}"
+
+
 def apply_action(attacker: dict[str, Any], allies: list[dict[str, Any]], foes: list[dict[str, Any]], rng) -> str:
     """One auto action: physical (ATK/STR vs PR) or weapon (MAG vs MR, spends WP).
 
@@ -533,6 +599,7 @@ def apply_action(attacker: dict[str, Any], allies: list[dict[str, Any]], foes: l
     from .aether_hunt import animal_label
     from .aether_gear import style_wp_cost
 
+    attacker.pop("_proc_notes", None)
     living = [p for p in foes if p["hp"] > 0]
     if not living:
         return ""
@@ -548,7 +615,7 @@ def apply_action(attacker: dict[str, Any], allies: list[dict[str, Any]], foes: l
         wounded = [p for p in allies if p["hp"] > 0]
         if not wounded:
             attacker["acted"] = True
-            return f"{name} has no ally to mend (weapon)."
+            return _with_procs(attacker, f"{name} has no ally to mend (weapon).")
         target = min(wounded, key=lambda p: p["hp"] / max(1, p["max_hp"]))
         heal = max(6, int(attacker.get("mag") or 0) * 55 // 100 + rng.randint(-2, 3))
         mend_b = float(hooks.get("mend_bonus") or 0)
@@ -571,18 +638,29 @@ def apply_action(attacker: dict[str, Any], allies: list[dict[str, Any]], foes: l
                 nuke = max(1, apply_resist(int(round(heal * glow / 100.0)), foe.get("mr")))
                 _deal_damage(attacker, foe, nuke, allies=allies, foes=foes, magical=True, rng=rng)
         attacker["acted"] = True
-        return f"{name} mends {animal_label(target['id'])} for {heal} HP (weapon)."
+        return _with_procs(attacker, f"{name} mends {animal_label(target['id'])} for {heal} HP (weapon).")
     if used_weapon and style == "cleave":
         bits = []
         raw = max(1, int(attacker.get("mag") or 0) * 70 // 100)
+        primary = 0
         for target in list(living):
             resist = _resist_for(attacker, target, target.get("mr"), magical=True)
             taken = _amp_damage(apply_resist(raw, resist) + rng.randint(-2, 2), attacker, target, rng, used_weapon=True)
             dealt = _deal_damage(attacker, target, taken, allies=allies, foes=foes, magical=True, rng=rng)
+            primary = max(primary, dealt)
             mark = "KO" if target["hp"] <= 0 else f"{target['hp']} HP"
             bits.append(f"{animal_label(target['id'])} {dealt} ({mark})")
+        # Star Bounce: echo after a cleave only
+        bounce = float(hooks.get("bounce_hit_pct") or 0)
+        if bounce and primary > 0:
+            living2 = [p for p in foes if int(p.get("hp") or 0) > 0]
+            if living2:
+                echo_t = rng.choice(living2)
+                echo = max(1, apply_resist(int(round(primary * bounce / 100.0)), echo_t.get("mr")))
+                _deal_damage(attacker, echo_t, echo, allies=allies, foes=foes, magical=True, rng=rng)
+                _note_proc(attacker, "star bounce")
         attacker["acted"] = True
-        return f"{name} cleaves " + ", ".join(bits) + " (weapon)."
+        return _with_procs(attacker, f"{name} cleaves " + ", ".join(bits) + " (weapon).")
     target = rng.choice(living)
     if used_weapon:
         raw = max(1, int(attacker.get("mag") or 0))
@@ -598,15 +676,16 @@ def apply_action(attacker: dict[str, Any], allies: list[dict[str, Any]], foes: l
         magical = False
     dmg = _amp_damage(apply_resist(raw, resist) + rng.randint(-2, 2), attacker, target, rng, used_weapon=used_weapon)
     dealt = _deal_damage(attacker, target, dmg, allies=allies, foes=foes, magical=magical, rng=rng)
-    # Radiant Bolt: phys also deals MAG portion
-    if not used_weapon:
+    # Radiant Bolt: % of the strike (phys or weapon) also as MAG vs MR
+    if path in ("phys", "weapon"):
         conv = float(hooks.get("convert_phys_to_mag_pct") or 0)
         if conv and int(target.get("hp") or 0) > 0:
-            extra = max(1, apply_resist(int(round(dmg * conv / 100.0)), target.get("mr")))
+            extra = max(1, apply_resist(int(round(dealt * conv / 100.0)), target.get("mr")))
             _deal_damage(attacker, target, extra, allies=allies, foes=foes, magical=True, rng=rng)
+            _note_proc(attacker, "radiant")
     attacker["acted"] = True
     mark = "KO" if target["hp"] <= 0 else f"{target['hp']} HP"
-    return f"{name} {verb} {animal_label(target['id'])} for {dealt} ({path}). {mark}."
+    return _with_procs(attacker, f"{name} {verb} {animal_label(target['id'])} for {dealt} ({path}). {mark}.")
 
 
 
@@ -634,8 +713,22 @@ def play_turns(player: list[dict[str, Any]], enemy: list[dict[str, Any]], rng) -
             if line:
                 lines.append(line)
                 log.append(line)
-        # End-of-turn passives (Second Wind / Ley Tick)
+        # End-of-turn: DoT ticks, then Second Wind / Ley Tick
         for pet in list(player) + list(enemy):
+            if int(pet.get("hp") or 0) <= 0:
+                continue
+            dots = list(pet.get("_dots") or [])
+            if dots:
+                remaining = []
+                for dot in dots:
+                    if int(pet.get("hp") or 0) <= 0:
+                        break
+                    tick = max(1, int(dot.get("per") or 1))
+                    pet["hp"] = max(0, int(pet["hp"]) - tick)
+                    left = int(dot.get("left") or 1) - 1
+                    if left > 0 and int(pet.get("hp") or 0) > 0:
+                        remaining.append({"left": left, "per": tick, "tag": dot.get("tag")})
+                pet["_dots"] = remaining
             if int(pet.get("hp") or 0) <= 0:
                 continue
             eh = _hooks_of(pet)
