@@ -9,7 +9,9 @@ from . import aether_gear as gear
 from . import aether_hunt as base
 from . import ai_coins
 
-COMMON, UNCOMMON, RARE, EPIC, MYTHIC = base.COMMON, base.UNCOMMON, base.RARE, base.EPIC, base.MYTHIC
+COMMON, UNCOMMON, RARE, EPIC, MYTHIC, ASTRAL, PRIMORDIAL = (
+    base.COMMON, base.UNCOMMON, base.RARE, base.EPIC, base.MYTHIC, base.ASTRAL, base.PRIMORDIAL
+)
 ANIMALS = base.ANIMALS
 ANIMAL_BY_ID = base.ANIMAL_BY_ID
 TEAM_SIZE = base.TEAM_SIZE
@@ -39,7 +41,15 @@ zoo_points_for = base.zoo_points_for
 
 LEVEL_CAP = 50
 WIP_FOOTER = "WIP \u00b7 Test 3 \u00b7 Ori only"
-HUNT_XP = {COMMON: 1, UNCOMMON: 10, RARE: 20, EPIC: 400, MYTHIC: 1000}
+HUNT_XP = {
+    COMMON: 1,
+    UNCOMMON: 10,
+    RARE: 20,
+    EPIC: 400,
+    MYTHIC: 1000,
+    ASTRAL: 2500,
+    PRIMORDIAL: 6000,
+}
 BATTLE_XP = {"win": 200, "draw": 100, "lose": 50}
 
 
@@ -157,7 +167,7 @@ _WILD_WEAPON_WEIGHT = {
     MYTHIC: 10,
 }
 _ENEMY_ARM_RATE = 0.55
-_WEAPON_RARITY_RANK = (COMMON, UNCOMMON, RARE, EPIC, MYTHIC)
+_WEAPON_RARITY_RANK = (COMMON, UNCOMMON, RARE, EPIC, MYTHIC, ASTRAL, PRIMORDIAL)
 
 
 def _player_gear_caps(player: list) -> tuple[int, int]:
@@ -208,7 +218,7 @@ def _mark_wild_boss(enemy: list) -> None:
     """Bossbrand target in wild PvE: highest animal-rarity foe (HP tie-break)."""
     if not enemy:
         return
-    rank = {COMMON: 0, UNCOMMON: 1, RARE: 2, EPIC: 3, MYTHIC: 4}
+    rank = {COMMON: 0, UNCOMMON: 1, RARE: 2, EPIC: 3, MYTHIC: 4, ASTRAL: 5, PRIMORDIAL: 6}
     best = max(
         enemy,
         key=lambda p: (
@@ -830,6 +840,8 @@ LORE_BY_RARITY = {
     RARE: "Rift-touched and wary. Meeting one is luck; keeping one is skill.",
     EPIC: "A legend half-written. The aether bends around its stride.",
     MYTHIC: "Older than the maps. Catching sight of it rewrites what you thought the wilds could hold.",
+    ASTRAL: "Drawn from omen-sky and constellation. It arrives like a quiet prophecy.",
+    PRIMORDIAL: "First-world flesh. The peat remembers its footprint from before names existed.",
 }
 
 

@@ -6,16 +6,18 @@ from groksito_discord.llm.persona import CREATOR_DISCORD_ID, creator_is_author
 
 
 def test_catalog_has_original_animals():
-    assert len(hunt.ANIMALS) == 50
-    assert len(hunt.ANIMAL_BY_ID) == 50
+    assert len(hunt.ANIMALS) == 62
+    assert len(hunt.ANIMAL_BY_ID) == 62
     ids = [row[0] for row in hunt.ANIMALS]
-    assert len(set(ids)) == 50
+    assert len(set(ids)) == 62
     assert "cowoncy" not in " ".join(ids)
     assert hunt.resolve_animal("Sol Wyrm") == "sol_wyrm"
     assert hunt.resolve_animal("aether drake") == "aether_drake"
     assert hunt.resolve_animal("Aether Phoenix") == "aether_phoenix"
     assert hunt.resolve_animal("storm basilisk") == "storm_basilisk"
     assert hunt.resolve_animal("Cosmos Manticore") == "cosmos_manticore"
+    assert hunt.resolve_animal("Starfall Lynx") == "starfall_lynx"
+    assert hunt.resolve_animal("Firstroot Wyrm") == "firstroot_wyrm"
     from collections import Counter
     rarity_counts = Counter(row[3] for row in hunt.ANIMALS)
     assert rarity_counts == {
@@ -24,6 +26,8 @@ def test_catalog_has_original_animals():
         hunt.RARE: 10,
         hunt.EPIC: 10,
         hunt.MYTHIC: 10,
+        hunt.ASTRAL: 6,
+        hunt.PRIMORDIAL: 6,
     }
     assert hunt.resolve_animal("nope") is None
 
@@ -54,12 +58,14 @@ def test_level_and_stats_scale():
 
 
 def test_hunt_xp_table_owo_manual():
-    """OwO Manual Hunting / animal.json C–M hunt XP amounts."""
+    """OwO Manual Hunting C–M + Aetherion Astral/Primordial XP."""
     assert hunt.HUNT_XP[hunt.COMMON] == 1
     assert hunt.HUNT_XP[hunt.UNCOMMON] == 10
     assert hunt.HUNT_XP[hunt.RARE] == 20
     assert hunt.HUNT_XP[hunt.EPIC] == 400
     assert hunt.HUNT_XP[hunt.MYTHIC] == 1000
+    assert hunt.HUNT_XP[hunt.ASTRAL] == 2500
+    assert hunt.HUNT_XP[hunt.PRIMORDIAL] == 6000
     assert hunt.BATTLE_XP == {"win": 200, "draw": 100, "lose": 50}
 
 
@@ -200,7 +206,7 @@ def test_hunt_and_zoo_match_owo_layout():
     assert "\u2753\u2070\u2070" in board
     assert "\U0001fab2\u2070\u00b2" in board
     assert "**Zoo Points: __2__**" in board
-    assert "**M-0, E-0, R-0, U-0, C-2**" in board
+    assert "**P-0, A-0, M-0, E-0, R-0, U-0, C-2**" in board
     # Brick/teal/gold/blue/purple unicode fallbacks (no backtick letters)
     assert hunt.rarity_mark(hunt.COMMON) == "\U0001f7e5C"
     assert hunt.rarity_mark(hunt.UNCOMMON) == "\U0001fa75U"
@@ -253,7 +259,7 @@ def test_rarity_marks_match_gear_and_checklist():
 def test_hunt_rank_png_assets_exist():
     from groksito_discord.discord import hunt_ranks
 
-    for rar in (hunt.COMMON, hunt.UNCOMMON, hunt.RARE, hunt.EPIC, hunt.MYTHIC):
+    for rar in (hunt.COMMON, hunt.UNCOMMON, hunt.RARE, hunt.EPIC, hunt.MYTHIC, hunt.ASTRAL, hunt.PRIMORDIAL):
         png_path = hunt_ranks.rank_png_path(rar)
         assert png_path is not None and png_path.is_file()
         raw = hunt_ranks.rank_png_bytes(rar)
@@ -394,7 +400,7 @@ def test_checklist_marks_discovered_and_missing():
     assert "Sol Wyrm" in board
     assert "Missing" in board
     assert "Found" in board
-    assert "Discovered __2__ / 50" in board
+    assert "Discovered __2__ / 62" in board
     assert "cowoncy" not in board.lower()
     assert hunt.rarity_mark(hunt.COMMON) in board
     assert hunt.rarity_mark(hunt.EPIC) in board
@@ -995,10 +1001,20 @@ def test_spend_gems_updates_left_and_clears_expired():
 def test_prism_weights_double_epic_mythic():
     from groksito_discord.discord import aether_gear as gear
 
-    base = {"common": 100, "uncommon": 50, "rare": 20, "epic": 10, "mythic": 5}
+    base = {
+        "common": 100,
+        "uncommon": 50,
+        "rare": 20,
+        "epic": 10,
+        "mythic": 5,
+        "astral": 4,
+        "primordial": 1,
+    }
     out = gear.prism_weights(base)
     assert out["epic"] == 20
     assert out["mythic"] == 10
+    assert out["astral"] == 8
+    assert out["primordial"] == 2
     assert out["common"] == 100
 
 
@@ -1312,7 +1328,7 @@ def test_owned_select_pages_cover_all_animals():
     from groksito_discord.discord import team_settings_views as team_ui
 
     zoo = {aid: 1 for aid, *_ in hunt.ANIMALS}
-    assert len(zoo) == 50
+    assert len(zoo) == 62
     team: list[str | None] = [None, None, None]
     eligible = team_ui._eligible_owned(zoo, team, 0)
     assert len(eligible) > team_ui._SELECT_CAP
@@ -1807,3 +1823,47 @@ def test_hunt_icon_png_assets_exist():
         assert path is not None and path.is_file()
         assert path.stat().st_size > 100
 
+
+
+def test_astral_primordial_curves():
+    """AETHERION_TOP_TIERS.md animal/combat curves above Mythic."""
+    assert hunt.RARITY_BASE[hunt.ASTRAL] == (160, 38)
+    assert hunt.RARITY_BASE[hunt.PRIMORDIAL] == (200, 48)
+    assert hunt.RARITY_PR[hunt.ASTRAL] == 26
+    assert hunt.RARITY_MR[hunt.ASTRAL] == 26
+    assert hunt.RARITY_WP_MAX[hunt.ASTRAL] == 110
+    assert hunt.RARITY_PR[hunt.PRIMORDIAL] == 34
+    assert hunt.RARITY_MR[hunt.PRIMORDIAL] == 34
+    assert hunt.RARITY_WP_MAX[hunt.PRIMORDIAL] == 135
+    assert hunt.RARITY_SELL[hunt.ASTRAL] == 400
+    assert hunt.RARITY_SELL[hunt.PRIMORDIAL] == 1000
+    assert hunt.RARITY_POINTS[hunt.ASTRAL] == 12000
+    assert hunt.RARITY_POINTS[hunt.PRIMORDIAL] == 50000
+    assert hunt.RARITY_WEIGHT == {
+        hunt.COMMON: 500,
+        hunt.UNCOMMON: 250,
+        hunt.RARE: 130,
+        hunt.EPIC: 35,
+        hunt.MYTHIC: 12,
+        hunt.ASTRAL: 4,
+        hunt.PRIMORDIAL: 1,
+    }
+    # Relative drop feel: A ≈ ⅓ M, P ≈ ¼ A
+    assert hunt.RARITY_WEIGHT[hunt.ASTRAL] * 3 == hunt.RARITY_WEIGHT[hunt.MYTHIC]
+    assert hunt.RARITY_WEIGHT[hunt.PRIMORDIAL] * 4 == hunt.RARITY_WEIGHT[hunt.ASTRAL]
+    astral = hunt._fighter("starfall_lynx", 1)
+    mythic = hunt._fighter("sol_wyrm", 1)
+    primordial = hunt._fighter("firstroot_wyrm", 1)
+    assert astral["max_hp"] > mythic["max_hp"]
+    assert primordial["max_hp"] > astral["max_hp"]
+    assert astral["pr"] > mythic["pr"]
+    assert primordial["wp"] > astral["wp"]
+    assert hunt.rarity_mark(hunt.ASTRAL) == "🔵A"
+    assert hunt.rarity_mark(hunt.PRIMORDIAL) == "🟧P"
+    from groksito_discord.discord import aether_gear as gear
+    assert gear.SHARD_BY_RARITY[gear.ASTRAL] == 30
+    assert gear.SHARD_BY_RARITY[gear.PRIMORDIAL] == 60
+    assert gear.WEAPON_ATK[gear.ASTRAL] == (30, 42)
+    assert gear.WEAPON_ATK[gear.PRIMORDIAL] == (40, 55)
+    assert gear.ASTRAL in gear.CRATE_WEIGHT
+    assert gear.PRIMORDIAL in gear.CRATE_WEIGHT

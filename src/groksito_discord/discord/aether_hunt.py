@@ -34,22 +34,84 @@ UNCOMMON = "uncommon"
 RARE = "rare"
 EPIC = "epic"
 MYTHIC = "mythic"
-RARITY_ORDER = (COMMON, UNCOMMON, RARE, EPIC, MYTHIC)
-RARITY_LABEL = {COMMON: "Common", UNCOMMON: "Uncommon", RARE: "Rare", EPIC: "Epic", MYTHIC: "Mythic"}
-RARITY_WEIGHT = {COMMON: 550, UNCOMMON: 270, RARE: 120, EPIC: 45, MYTHIC: 15}
-RARITY_SELL = {COMMON: 10, UNCOMMON: 20, RARE: 40, EPIC: 80, MYTHIC: 150}
-# Source: owo-research/AETHERION_WEAPON_PASSIVES.md §3
-RARITY_BASE = {COMMON: (40, 8), UNCOMMON: (52, 11), RARE: (72, 16), EPIC: (96, 22), MYTHIC: (128, 30)}
-RARITY_PR = {COMMON: 6, UNCOMMON: 8, RARE: 11, EPIC: 15, MYTHIC: 20}
-RARITY_MR = {COMMON: 6, UNCOMMON: 8, RARE: 11, EPIC: 15, MYTHIC: 20}
-RARITY_WP_MAX = {COMMON: 40, UNCOMMON: 48, RARE: 58, EPIC: 72, MYTHIC: 90}
-# Letter aliases stay c/u/r/e/m; marks resolve via hunt_ranks (emoji ID or unicode).
+ASTRAL = "astral"
+PRIMORDIAL = "primordial"
+# Ladder: C→U→R→E→M→A→P (owo-research/AETHERION_TOP_TIERS.md).
+RARITY_ORDER = (COMMON, UNCOMMON, RARE, EPIC, MYTHIC, ASTRAL, PRIMORDIAL)
+RARITY_LABEL = {
+    COMMON: "Common",
+    UNCOMMON: "Uncommon",
+    RARE: "Rare",
+    EPIC: "Epic",
+    MYTHIC: "Mythic",
+    ASTRAL: "Astral",
+    PRIMORDIAL: "Primordial",
+}
+# Retuned: commons less trivial; Epic/Mythic spicier; A≈⅓ Mythic, P≈¼ Astral (sum 932).
+RARITY_WEIGHT = {
+    COMMON: 500,
+    UNCOMMON: 250,
+    RARE: 130,
+    EPIC: 35,
+    MYTHIC: 12,
+    ASTRAL: 4,
+    PRIMORDIAL: 1,
+}
+RARITY_SELL = {
+    COMMON: 10,
+    UNCOMMON: 20,
+    RARE: 40,
+    EPIC: 80,
+    MYTHIC: 150,
+    ASTRAL: 400,
+    PRIMORDIAL: 1000,
+}
+# Source: owo-research/AETHERION_TOP_TIERS.md (+ prior Mythic floor).
+RARITY_BASE = {
+    COMMON: (40, 8),
+    UNCOMMON: (52, 11),
+    RARE: (72, 16),
+    EPIC: (96, 22),
+    MYTHIC: (128, 30),
+    ASTRAL: (160, 38),
+    PRIMORDIAL: (200, 48),
+}
+RARITY_PR = {
+    COMMON: 6,
+    UNCOMMON: 8,
+    RARE: 11,
+    EPIC: 15,
+    MYTHIC: 20,
+    ASTRAL: 26,
+    PRIMORDIAL: 34,
+}
+RARITY_MR = {
+    COMMON: 6,
+    UNCOMMON: 8,
+    RARE: 11,
+    EPIC: 15,
+    MYTHIC: 20,
+    ASTRAL: 26,
+    PRIMORDIAL: 34,
+}
+RARITY_WP_MAX = {
+    COMMON: 40,
+    UNCOMMON: 48,
+    RARE: 58,
+    EPIC: 72,
+    MYTHIC: 90,
+    ASTRAL: 110,
+    PRIMORDIAL: 135,
+}
+# Letter aliases c/u/r/e/m/a/p; marks resolve via hunt_ranks.
 RARITY_LETTER = {
     COMMON: "c",
     UNCOMMON: "u",
     RARE: "r",
     EPIC: "e",
     MYTHIC: "m",
+    ASTRAL: "a",
+    PRIMORDIAL: "p",
 }
 RARITY_EMBED = {
     COMMON: 0x9A4442,
@@ -57,10 +119,28 @@ RARITY_EMBED = {
     RARE: 0xD4A746,
     EPIC: 0x4057E1,
     MYTHIC: 0x9558EF,
+    ASTRAL: 0x7EC8FF,
+    PRIMORDIAL: 0xC45C26,
 }
-RARITY_POINTS = {COMMON: 1, UNCOMMON: 5, RARE: 20, EPIC: 250, MYTHIC: 3000}
-# OwO Manual Hunting / animal.json ranks (C–M). Team pets gain this on catch.
-HUNT_XP = {COMMON: 1, UNCOMMON: 10, RARE: 20, EPIC: 400, MYTHIC: 1000}
+RARITY_POINTS = {
+    COMMON: 1,
+    UNCOMMON: 5,
+    RARE: 20,
+    EPIC: 250,
+    MYTHIC: 3000,
+    ASTRAL: 12000,
+    PRIMORDIAL: 50000,
+}
+# OwO Manual Hunting C–M + Aetherion top-tier XP (AETHERION_TOP_TIERS.md).
+HUNT_XP = {
+    COMMON: 1,
+    UNCOMMON: 10,
+    RARE: 20,
+    EPIC: 400,
+    MYTHIC: 1000,
+    ASTRAL: 2500,
+    PRIMORDIAL: 6000,
+}
 # OwO battle base awards (ext may add streak / level-diff on win).
 BATTLE_XP = {"win": 200, "draw": 100, "lose": 50}
 ZOO_COLS = 5
@@ -116,6 +196,20 @@ ANIMALS: tuple[tuple[str, str, str, str], ...] = (
     ("dawn_leviathan", "Dawn Leviathan", "\U0001f40b", MYTHIC),
     ("starforge_drake", "Starforge Drake", "\U0001f409", MYTHIC),
     ("cosmos_manticore", "Cosmos Manticore", "\U0001f981", MYTHIC),
+    # Astral — constellation / omen / night-sky (AETHERION_TOP_TIERS.md)
+    ("starfall_lynx", "Starfall Lynx", "\U0001f406", ASTRAL),
+    ("comet_heron", "Comet Heron", "\U0001f989", ASTRAL),
+    ("zodiac_moth", "Zodiac Moth", "\U0001f98b", ASTRAL),
+    ("nebula_otter", "Nebula Otter", "\U0001f9a6", ASTRAL),
+    ("orbit_crane", "Orbit Crane", "\U0001f54a\ufe0f", ASTRAL),
+    ("pulsar_fox", "Pulsar Fox", "\U0001f98a", ASTRAL),
+    # Primordial — origin / deep-time / first-world
+    ("firstroot_wyrm", "Firstroot Wyrm", "\U0001f409", PRIMORDIAL),
+    ("ashen_genesis", "Ashen Genesis", "\U0001f525", PRIMORDIAL),
+    ("worldspine_boar", "Worldspine Boar", "\U0001f417", PRIMORDIAL),
+    ("tideborn_colossus", "Tideborn Colossus", "\U0001f40b", PRIMORDIAL),
+    ("stoneblood_titan", "Stoneblood Titan", "\U0001f5ff", PRIMORDIAL),
+    ("origin_wisp", "Origin Wisp", "\u2728", PRIMORDIAL),
 )
 ANIMAL_BY_ID = {row[0]: row for row in ANIMALS}
 _NAME_INDEX: dict[str, str] = {}
@@ -554,7 +648,7 @@ def _fancy_num(n: int) -> str:
 
 
 def zoo_rank_tally(caught: dict[str, int]) -> str:
-    """OwO-like lifetime catch shorthand: M-#, E-#, R-#, U-#, C-#."""
+    """OwO-like lifetime catch shorthand: P-#, A-#, M-#, E-#, R-#, U-#, C-#."""
     counts = {rarity: 0 for rarity in RARITY_ORDER}
     for aid, n in (caught or {}).items():
         if aid not in ANIMAL_BY_ID:
@@ -566,8 +660,17 @@ def zoo_rank_tally(caught: dict[str, int]) -> str:
         if count <= 0:
             continue
         counts[rarity_of(aid)] += count
-    letters = {MYTHIC: "M", EPIC: "E", RARE: "R", UNCOMMON: "U", COMMON: "C"}
-    return ", ".join(f"{letters[r]}-{counts[r]}" for r in (MYTHIC, EPIC, RARE, UNCOMMON, COMMON))
+    letters = {
+        PRIMORDIAL: "P",
+        ASTRAL: "A",
+        MYTHIC: "M",
+        EPIC: "E",
+        RARE: "R",
+        UNCOMMON: "U",
+        COMMON: "C",
+    }
+    order = (PRIMORDIAL, ASTRAL, MYTHIC, EPIC, RARE, UNCOMMON, COMMON)
+    return ", ".join(f"{letters[r]}-{counts[r]}" for r in order)
 
 def daily_resets_in(now: float | None = None) -> str:
     """OwO-style `RESETS IN: H M S` until local midnight (daily lb/crate caps)."""
@@ -596,7 +699,7 @@ def hunt_catch_line(
         return f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and nothing turned up."
     _aid, _name, emoji, rarity = row
     label = RARITY_LABEL[rarity].lower()
-    article = "an" if rarity in (UNCOMMON, EPIC) else "a"
+    article = "an" if rarity in (UNCOMMON, EPIC, ASTRAL) else "a"
     mark = rarity_mark(rarity)
     lines: list[str] = []
     animal_ids = [animal_id] + [aid for aid in (extras or []) if aid]

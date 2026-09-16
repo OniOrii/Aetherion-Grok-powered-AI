@@ -54,10 +54,10 @@ Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/d
 ### Aetherion Hunt (Ori only, WIP)
 Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt are still on hold. Save file: `data/aether_hunt.json`.
 
-- Catalog: **50** animals, **10** of each C/U/R/E/M. **42** style-based weapons. Pet level cap **50**.
+- Catalog: **62** animals — **10** each C/U/R/E/M plus **6 Astral** and **6 Primordial**. **42** style-based weapons. Pet level cap **50**.
 - Manual hunt: **10** Aether Coins, **15s** cooldown.
 - `/hunt` — catch line, optional multi-find strip, team XP.
-- `/zoo` — C/U/R/E/M grid, Zoo Points, lifetime tally.
+- `/zoo` — C/U/R/E/M/A/P grid, Zoo Points, lifetime tally.
 - `/team` `/sell` `/sacrifice` `/rename` `/checklist`.
 - `/battle` — 3v3 board image (species portraits), phys ATK/PR and weapon MAG/MR with WP spend.
 - `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon`.

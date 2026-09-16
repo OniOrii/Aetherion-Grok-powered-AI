@@ -8,30 +8,37 @@ from typing import Any
 from . import hunt_ranks as _hunt_ranks
 from . import weapon_passives as _wpass
 
-COMMON, UNCOMMON, RARE, EPIC, MYTHIC, LEGENDARY, FABLED = (
+COMMON, UNCOMMON, RARE, EPIC, MYTHIC, ASTRAL, PRIMORDIAL, LEGENDARY, FABLED = (
     "common",
     "uncommon",
     "rare",
     "epic",
     "mythic",
+    "astral",
+    "primordial",
     "legendary",
     "fabled",
 )
-RARITY_ORDER = (COMMON, UNCOMMON, RARE, EPIC, MYTHIC, LEGENDARY, FABLED)
+# Animal/weapon ladder includes Astral/Primordial; Legendary/Fabled remain gem-only tiers.
+RARITY_ORDER = (COMMON, UNCOMMON, RARE, EPIC, MYTHIC, ASTRAL, PRIMORDIAL, LEGENDARY, FABLED)
 RARITY_LABEL = {
     COMMON: "Common",
     UNCOMMON: "Uncommon",
     RARE: "Rare",
     EPIC: "Epic",
     MYTHIC: "Mythic",
+    ASTRAL: "Astral",
+    PRIMORDIAL: "Primordial",
     LEGENDARY: "Legendary",
     FABLED: "Fabled",
 }
 RARITY_MARK = _hunt_ranks.RARITY_MARK
 rarity_mark = _hunt_ranks.rarity_mark
 
-CRATE_WEIGHT = {COMMON: 420, UNCOMMON: 280, RARE: 180, EPIC: 90, MYTHIC: 30}
-# Gem drop % ≈ OwO gems.json (C→F). Weapon crates keep their own CRATE_WEIGHT (C–M only).
+CRATE_WEIGHT = {
+    COMMON: 380, UNCOMMON: 260, RARE: 170, EPIC: 110, MYTHIC: 50, ASTRAL: 22, PRIMORDIAL: 8,
+}
+# Gem drop % ≈ OwO gems.json (C→F). Weapon crates use CRATE_WEIGHT (C–P; gem L/F stay gem-only).
 GEM_WEIGHT = {
     COMMON: 22,
     UNCOMMON: 22,
@@ -62,8 +69,11 @@ GEM_HUNTS = {
     LEGENDARY: 100,
     FABLED: 100,
 }
-WEAPON_ATK = {COMMON: (4, 8), UNCOMMON: (7, 12), RARE: (11, 18), EPIC: (16, 24), MYTHIC: (22, 32)}
-HUNT_XP = {COMMON: 1, UNCOMMON: 10, RARE: 20, EPIC: 400, MYTHIC: 1000}
+WEAPON_ATK = {
+    COMMON: (4, 8), UNCOMMON: (7, 12), RARE: (11, 18), EPIC: (16, 24), MYTHIC: (22, 32),
+    ASTRAL: (30, 42), PRIMORDIAL: (40, 55),
+}
+HUNT_XP = {COMMON: 1, UNCOMMON: 10, RARE: 20, EPIC: 400, MYTHIC: 1000, ASTRAL: 2500, PRIMORDIAL: 6000}
 LB_DAILY = 3
 CRATE_DAILY = 3
 DAILY_LOOTBOX = 5
@@ -120,7 +130,7 @@ GEM_KINDS = (
     ("lucky", "Lucky Gem", "\U0001f340", "rarer animals"),
     ("empower", "Empowering Gem", "\u2728", "double the catch"),
     # Aetherion name for OwO-feel Special: event-style rare-tier weight bump (no event pipeline yet).
-    ("prism", "Prism Gem", "\u2b50", "boosts epic/mythic hunt weight"),
+    ("prism", "Prism Gem", "\u2b50", "boosts epic+ hunt weight"),
 )
 GEM_BY_KIND = {row[0]: row for row in GEM_KINDS}
 
@@ -187,16 +197,19 @@ def lucky_weights(base: dict[str, int], rarity: str) -> dict[str, int]:
     out[RARE] = out.get(RARE, 0) + bump
     out[EPIC] = out.get(EPIC, 0) + bump
     out[MYTHIC] = out.get(MYTHIC, 0) + max(4, bump // 2)
+    if ASTRAL in out:
+        out[ASTRAL] = out.get(ASTRAL, 0) + max(2, bump // 4)
+    if PRIMORDIAL in out:
+        out[PRIMORDIAL] = out.get(PRIMORDIAL, 0) + max(1, bump // 8)
     return out
 
 
 def prism_weights(base: dict[str, int]) -> dict[str, int]:
-    """OwO Special ≈ ×2 special-rank chance. No special animals yet → ×2 epic/mythic weight."""
+    """OwO Special ≈ ×2 top-rank chance → ×2 epic/mythic/astral/primordial weight."""
     out = dict(base)
-    if EPIC in out:
-        out[EPIC] = max(1, int(out[EPIC]) * 2)
-    if MYTHIC in out:
-        out[MYTHIC] = max(1, int(out[MYTHIC]) * 2)
+    for key in (EPIC, MYTHIC, ASTRAL, PRIMORDIAL):
+        if key in out:
+            out[key] = max(1, int(out[key]) * 2)
     return out
 
 def maybe_lootbox(blob: dict[str, Any], rng: random.Random) -> bool:
@@ -542,7 +555,7 @@ def owned_weapons(blob: dict[str, Any]) -> list[tuple[str, str, str]]:
     return out
 
 
-SHARD_BY_RARITY = {COMMON: 1, UNCOMMON: 2, RARE: 4, EPIC: 8, MYTHIC: 15}
+SHARD_BY_RARITY = {COMMON: 1, UNCOMMON: 2, RARE: 4, EPIC: 8, MYTHIC: 15, ASTRAL: 30, PRIMORDIAL: 60}
 
 
 def salvage_weapon(blob: dict[str, Any], wid: str) -> dict[str, Any]:
