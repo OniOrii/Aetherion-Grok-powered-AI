@@ -53,40 +53,99 @@ def _catch_one(row, animal_id):
         caught[animal_id] = 1
 
 
+def _rarity_pools(rarity: str, level: int) -> tuple[int, int, int]:
+    """PR / MR / WP_MAX from rarity tables, plus light level growth."""
+    lvl = max(0, int(level))
+    pr0 = int(getattr(base, "RARITY_PR", {}).get(rarity, 6))
+    mr0 = int(getattr(base, "RARITY_MR", {}).get(rarity, 6))
+    wp0 = int(getattr(base, "RARITY_WP_MAX", {}).get(rarity, 40))
+    # Keep a modest level bump so high-level commons still grow.
+    pr = min(80, pr0 + lvl)
+    mr = min(80, mr0 + lvl // 2)
+    wp = wp0 + lvl * 8
+    return pr, mr, wp
+
+
+def _apply_weapon_passives(pet: dict, wep: dict | None) -> None:
+    """Flat % hooks + start shield from unique weapon passive (quality-scaled)."""
+    if not wep:
+        return
+    hooks = gear.weapon_hooks(wep.get("kind"), wep.get("quality") or 50)
+    pet["passive_hooks"] = hooks
+    if not hooks:
+        return
+    phys_pct = float(hooks.get("bonus_phys_pct") or 0)
+    mag_pct = float(hooks.get("bonus_mag_pct") or 0)
+    hp_pct = float(hooks.get("bonus_hp_pct") or 0)
+    wp_pct = float(hooks.get("bonus_wp_pct") or 0)
+    pr_pct = float(hooks.get("bonus_pr_pct") or 0)
+    mr_pct = float(hooks.get("bonus_mr_pct") or 0)
+    if phys_pct:
+        pet["atk"] = max(1, int(round(pet["atk"] * (1.0 + phys_pct / 100.0))))
+    if mag_pct:
+        pet["mag"] = max(1, int(round(pet["mag"] * (1.0 + mag_pct / 100.0))))
+    if hp_pct:
+        boost = max(1, int(round(pet["max_hp"] * hp_pct / 100.0)))
+        pet["max_hp"] += boost
+        pet["hp"] += boost
+    if wp_pct:
+        boost = max(1, int(round(pet["max_wp"] * wp_pct / 100.0)))
+        pet["max_wp"] += boost
+        pet["wp"] += boost
+    if pr_pct:
+        pet["pr"] = int(round(pet["pr"] * (1.0 + pr_pct / 100.0)))
+    if mr_pct:
+        pet["mr"] = int(round(pet["mr"] * (1.0 + mr_pct / 100.0)))
+    shield_pct = float(hooks.get("start_shield_pct") or 0)
+    if shield_pct:
+        pet["shield"] = max(1, int(round(pet["max_hp"] * shield_pct / 100.0)))
+    xp_pct = float(hooks.get("xp_bonus_pct") or 0)
+    if xp_pct:
+        pet["xp_bonus_pct"] = xp_pct
+
+
 def _fighter(animal_id, level, weapon=None):
     """Build a battle pet. P/ATK vs PR for physical; M/MAG vs MR for weapon skills.
 
     Weapon ATK bonus: strike/cleave raise physical ATK; all equipped weapons raise MAG
     so WP-gated skills scale with gear. Mend puts the full bonus on MAG only.
+    Rarity scales HP/ATK via stats_for and WP/PR/MR via RARITY_POOL_MULT.
     """
     hp, atk = stats_for(animal_id, level)
     wep = dict(weapon) if isinstance(weapon, dict) else None
     bonus = int((wep or {}).get("atk") or 0) if wep else 0
     style = (wep or {}).get("style") or "strike"
     row = ANIMAL_BY_ID.get(animal_id)
+    rarity = row[3] if row else COMMON
     if style == "mend":
         phys = atk  # mend kits punch with base STR only
         mag = atk + bonus
     else:
         phys = atk + bonus
         mag = max(4, atk // 3) + bonus
-    return {
+    pr, mr, wp = _rarity_pools(rarity, level)
+    pet = {
         "id": animal_id,
         "name": row[1] if row else animal_id,
         "emoji": row[2] if row else "",
-        "rarity": row[3] if row else COMMON,
+        "rarity": rarity,
         "level": level,
         "hp": hp,
         "max_hp": hp,
         "atk": phys,
         "mag": mag,
-        "wp": 40 + max(0, int(level)) * 8,
-        "max_wp": 40 + max(0, int(level)) * 8,
-        "pr": min(60, 16 + max(0, int(level))),
-        "mr": min(60, 16 + max(0, int(level)) // 2),
+        "wp": wp,
+        "max_wp": wp,
+        "pr": pr,
+        "mr": mr,
+        "shield": 0,
         "side": "",
         "weapon": wep,
+        "acted": False,
+        "passive_hooks": {},
     }
+    _apply_weapon_passives(pet, wep)
+    return pet
 
 
 def build_enemy_team(player, rng):
@@ -250,7 +309,17 @@ def battle(user_id, rng=None):
                 kind, name, emoji, style = rng.choice(gear.WEAPONS)
                 rarity = gear.roll_rarity(gear.CRATE_WEIGHT, rng)
                 lo, hi = gear.WEAPON_ATK[rarity]
-                foe["weapon"] = {"kind": kind, "name": name, "emoji": emoji, "style": style, "rarity": rarity, "atk": rng.randint(lo, hi)}
+                quality = rng.randint(40, 100)
+                foe["weapon"] = {
+                    "kind": kind,
+                    "name": name,
+                    "emoji": emoji,
+                    "style": style,
+                    "rarity": rarity,
+                    "quality": quality,
+                    "atk": rng.randint(lo, hi),
+                }
+                _apply_weapon_passives(foe, foe["weapon"])
         outcome = simulate_battle(player, enemy, rng)
         result = outcome["result"]
         prev_streak = int(pack.get("streak") or 0)
@@ -265,11 +334,19 @@ def battle(user_id, rng=None):
             xp_bonus = _streak_bonus(pack["streak"]) + _level_diff_xp(player, enemy)
         xp_gain = xp_base + xp_bonus
         highest = max(level_of(xp_of(row, aid)) for aid in team_ids)
+        by_aid = {p["id"]: p for p in player}
         for aid in team_ids:
             extra = xp_gain
             gap = highest - level_of(xp_of(row, aid))
             if gap > 0:
                 extra = int(extra * min(10.0, 2 + 0.1 * gap))
+            # Field Tutor / Codex Tutor: bearer XP bump (meta hook).
+            pet = by_aid.get(aid) or {}
+            xp_pct = float(pet.get("xp_bonus_pct") or 0)
+            if not xp_pct:
+                xp_pct = float((pet.get("passive_hooks") or {}).get("xp_bonus_pct") or 0)
+            if xp_pct:
+                extra = int(round(extra * (1.0 + xp_pct / 100.0)))
             add_xp(row, aid, extra)
         payout = 0
         balance = ai_coins.get_balance(user_id)
@@ -294,20 +371,15 @@ def team_lines(team, xp, zoo, pack=None):
             continue
         total_xp = int(xp.get(aid) or 0)
         lvl, into, need = xp_progress(total_xp)
-        base_hp, base_atk = stats_for(aid, lvl)
-        held = gear.equipped_weapon(pack, aid) if pack else None
-        bonus = int((held or {}).get("atk") or 0) if held else 0
-        style = (held or {}).get("style") or "strike"
-        # Mirror `_fighter` ATK/MAG split (phys = P, weapon skills = M)
-        if style == "mend" and held:
-            atk = base_atk
-            mag = base_atk + bonus
-        else:
-            atk = base_atk + bonus
-            mag = max(4, base_atk // 3) + bonus
-        wp = 40 + max(0, int(lvl)) * 8
-        pr = min(60, 16 + max(0, int(lvl)))
-        mr = min(60, 16 + max(0, int(lvl)) // 2)
+        # Mirror `_fighter` including rarity pool mult + flat passive % (display).
+        snap = _fighter(aid, lvl, gear.equipped_weapon(pack, aid) if pack else None)
+        base_hp = int(snap["max_hp"])
+        atk = int(snap["atk"])
+        mag = int(snap["mag"])
+        wp = int(snap["max_wp"])
+        pr = int(snap["pr"])
+        mr = int(snap["mr"])
+        held = snap.get("weapon") if isinstance(snap.get("weapon"), dict) else None
         xp_bit = f"{into}/{need}" if need else f"{into}/—"
         lines.append(f"**[{i + 1}]** {animal_label(aid)}")
         lines.append(f"Lvl {lvl} [{xp_bit}]")
@@ -469,7 +541,8 @@ def weapon_board(display_name, pack, row=None):
         rar = raw.get("rarity") or COMMON
         q = int(raw.get("quality") or 0)
         style = raw.get("style") or meta[3]
-        passive = gear._STYLE_PASSIVE.get(style, "")
+        kind = raw.get("kind") or meta[0]
+        passive = gear._wpass.passive_icon(kind) or gear._STYLE_PASSIVE.get(style, "")
         line = f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} | Quality: {q}%"
         holder = by_wid.get(str(wid))
         if holder:
@@ -733,13 +806,15 @@ def build_raid_boss(player, rng):
     boss["atk"] = int(boss["atk"] * 1.45) + 8
     boss["wp"] = int(boss.get("wp") or 40) + 30
     boss["max_wp"] = boss["wp"]
+    boss["raid_boss"] = True
     kind, name, emoji, style = rng.choice(gear.WEAPONS)
     rarity = MYTHIC
     lo, hi = gear.WEAPON_ATK[rarity]
     boss["weapon"] = {
         "kind": kind, "name": name, "emoji": emoji, "style": style,
-        "rarity": rarity, "atk": rng.randint(lo, hi) + 6,
+        "rarity": rarity, "quality": 90, "atk": rng.randint(lo, hi) + 6,
     }
+    _apply_weapon_passives(boss, boss["weapon"])
     out = [boss]
     used = {boss_id}
     pool = [aid for aid in (epics + mythics) if aid not in used]
@@ -754,8 +829,9 @@ def build_raid_boss(player, rng):
             lo, hi = gear.WEAPON_ATK[rarity]
             escort["weapon"] = {
                 "kind": kind, "name": name, "emoji": emoji, "style": style,
-                "rarity": rarity, "atk": rng.randint(lo, hi),
+                "rarity": rarity, "quality": rng.randint(40, 100), "atk": rng.randint(lo, hi),
             }
+            _apply_weapon_passives(escort, escort["weapon"])
         out.append(escort)
     return out
 
