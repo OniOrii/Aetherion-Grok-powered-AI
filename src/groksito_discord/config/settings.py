@@ -185,6 +185,14 @@ class AetherionSettings(BaseSettings):
         default="",
         description="Discord custom emoji for mythic hunt rank, e.g. <:aether_m:123>",
     )
+    hunt_rank_emoji_astral: str = Field(
+        default="",
+        description="Discord custom emoji for astral hunt rank, e.g. <:aether_a:123>",
+    )
+    hunt_rank_emoji_primordial: str = Field(
+        default="",
+        description="Discord custom emoji for primordial hunt rank, e.g. <:aether_p:123>",
+    )
 
     # Hunt HUD / team custom emoji markup (<:name:id>). Empty = unicode fallback.
     # Upload assets from discord/assets/hunt_icons/ (and hunt_portraits/ for animals).

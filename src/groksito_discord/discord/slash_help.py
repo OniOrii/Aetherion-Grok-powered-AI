@@ -80,7 +80,7 @@ def _embed(page: str) -> discord.Embed:
         embed.title = "\u2726 Aetherion \u00b7 Hunt"
         embed.description = (
             "**Ori only WIP.** Everyone else is rejected. Expedition and autohunt are still on hold.\n\n"
-            "50 original animals (10 each C/U/R/E/M). 42 weapons. Level cap 50.\n"
+            "62 original animals (10 each C/U/R/E/M + 6 Astral + 6 Primordial). 42 weapons. Level cap 50.\n"
             "Manual hunt costs **10** Aether Coins with a **15s** cooldown.\n\n"
             "`/hunt` — catch. `/zoo` — grid and Zoo Points.\n"
             "`/team` `/sell` `/sacrifice` `/rename` `/checklist`\n"

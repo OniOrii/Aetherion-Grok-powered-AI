@@ -10,12 +10,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-COMMON, UNCOMMON, RARE, EPIC, MYTHIC = (
+COMMON, UNCOMMON, RARE, EPIC, MYTHIC, ASTRAL, PRIMORDIAL = (
     "common",
     "uncommon",
     "rare",
     "epic",
     "mythic",
+    "astral",
+    "primordial",
 )
 
 # Suggested Discord emoji names when uploading the PNGs as app/guild emojis.
@@ -25,6 +27,8 @@ SUGGESTED_EMOJI_NAMES = {
     RARE: "aether_r",
     EPIC: "aether_e",
     MYTHIC: "aether_m",
+    ASTRAL: "aether_a",
+    PRIMORDIAL: "aether_p",
 }
 
 # Fill hex for the generated PNG tiles (and embed tint alignment).
@@ -34,16 +38,20 @@ RANK_FILL_HEX = {
     RARE: "#D4A746",
     EPIC: "#4057E1",
     MYTHIC: "#9558EF",
+    ASTRAL: "#7EC8FF",
+    PRIMORDIAL: "#C45C26",
 }
 
 # Readable mid-message fallback (Discord cannot show the PNGs inline without IDs).
-# Squares approximate the badge fills: brick / teal / gold / blue / purple.
+# Squares approximate the badge fills: brick / teal / gold / blue / purple / cyan / ember.
 UNICODE_FALLBACK = {
     COMMON: "\U0001f7e5C",       # 🟥C
     UNCOMMON: "\U0001fa75U",     # 🩵U (closest teal-ish)
     RARE: "\U0001f7e8R",         # 🟨R
     EPIC: "\U0001f7e6E",         # 🟦E
     MYTHIC: "\U0001f7eaM",       # 🟪M
+    ASTRAL: "\U0001f535A",       # 🔵A (starlight cyan stand-in)
+    PRIMORDIAL: "\U0001f7e7P",   # 🟧P
 }
 
 _SETTINGS_ATTR = {
@@ -52,6 +60,8 @@ _SETTINGS_ATTR = {
     RARE: "hunt_rank_emoji_rare",
     EPIC: "hunt_rank_emoji_epic",
     MYTHIC: "hunt_rank_emoji_mythic",
+    ASTRAL: "hunt_rank_emoji_astral",
+    PRIMORDIAL: "hunt_rank_emoji_primordial",
 }
 
 _PNG_FILES = {
@@ -60,6 +70,8 @@ _PNG_FILES = {
     RARE: "rank_r.png",
     EPIC: "rank_e.png",
     MYTHIC: "rank_m.png",
+    ASTRAL: "rank_a.png",
+    PRIMORDIAL: "rank_p.png",
 }
 
 ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "hunt_ranks"
