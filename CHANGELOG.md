@@ -20,6 +20,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- `/hunt` is now the OwO-style one-liner (`spent 10 ✦ and caught a common 🟥C …`). `/zoo` is the C/U/R/E/M grid with ❓ for unseen animals, current owned counts, and lifetime **Zoo Points**. Selling does not wipe a discovered slot. `/team` and `/sell` only list animals you currently own.
 - Command embeds use the gold cosmos look: `\u2726` titles, sentence case, and punctuation on `/help`, `/ping`, `/play`, `/blackjack`, `/balance`, `/daily`, `/leaderboard`, `/slots`, `/cointoss`, `/connect4`, `/poker`, and reaction-role panels.
 - `/balance` and `/daily` now reply with gold wallet embeds instead of plain text.
 - Poker caption bar sits below the bottom hands. Winner text wraps onto two lines instead of running off the bar.
