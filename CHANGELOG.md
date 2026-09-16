@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Changed
+
+- **Hunt `/battle` animal portraits:** board tiles load original Aetherion species PNGs from `assets/hunt_portraits/` (clearer Discord-size species read, rarity-rimmed). Procedural silhouettes remain as fallback. KO rows stay dimmed. Board HP/WP spacing from PR #6 kept.
+
 ### Fixed
 
 - **`/battle` board layout:** enemy-side HP/WP bars and numeric readouts no longer overlap animal silhouette portraits. Flipped cards reserve space for the right-column icon so left/right columns stay balanced with cleaner spacing; KO labels unchanged.
