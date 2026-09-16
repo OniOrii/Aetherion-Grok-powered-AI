@@ -26,6 +26,7 @@ owned_count = base.owned_count
 xp_of = base.xp_of
 add_xp = base.add_xp
 level_of = base.level_of
+xp_progress = base.xp_progress
 stats_for = base.stats_for
 rarity_of = base.rarity_of
 rarity_mark = base.rarity_mark
@@ -240,21 +241,39 @@ def battle(user_id, rng=None):
 
 
 def team_lines(team, xp, zoo, pack=None):
+    """OwO-feel party card: slot header, Lvl [cur/need], H/P/p · W/M/m, weapon row.
+
+    Maps honestly to existing fighter stats (no new combat math).
+    H=HP, P=ATK, p=PR, W=WP, M=MAG, m=MR — same formulas as `_fighter`.
+    """
     lines = []
     for i in range(TEAM_SIZE):
         aid = team[i] if i < len(team) else None
         if not aid:
-            lines.append(f"**{i + 1}.** empty")
+            lines.append(f"**[{i + 1}]** empty")
             continue
-        lvl = level_of(int(xp.get(aid) or 0))
-        hp, atk = stats_for(aid, lvl)
-        have = int(zoo.get(aid) or 0)
-        wep = ""
-        if pack:
-            held = gear.equipped_weapon(pack, aid)
-            if held:
-                wep = f" \u00b7 {gear.weapon_line(held)}"
-        lines.append(f"**{i + 1}.** {animal_label(aid)} \u00b7 Lv {lvl} \u00b7 {hp} HP / {atk} ATK \u00b7 owned {have}{wep}")
+        total_xp = int(xp.get(aid) or 0)
+        lvl, into, need = xp_progress(total_xp)
+        base_hp, base_atk = stats_for(aid, lvl)
+        held = gear.equipped_weapon(pack, aid) if pack else None
+        bonus = int((held or {}).get("atk") or 0)
+        style = (held or {}).get("style") or "strike"
+        # Mirror `_fighter` ATK/MAG split without changing battle code
+        atk = base_atk + (bonus if held and style != "mend" else 0)
+        mag = base_atk + bonus if held and style == "mend" else max(4, base_atk // 3)
+        wp = 40 + max(0, int(lvl)) * 8
+        pr = min(60, 16 + max(0, int(lvl)))
+        mr = min(60, 16 + max(0, int(lvl)) // 2)
+        xp_bit = f"{into}/{need}" if need else f"{into}/—"
+        lines.append(f"**[{i + 1}]** {animal_label(aid)}")
+        lines.append(f"Lvl {lvl} [{xp_bit}]")
+        lines.append(f"🟥H {base_hp}  🟦W {wp}")
+        lines.append(f"🟥P {atk}  🟦M {mag}")
+        lines.append(f"🟥p {pr}  🟦m {mr}")
+        if held:
+            lines.append(gear.weapon_line(held))
+        else:
+            lines.append("*no weapon*")
     return lines
 
 
@@ -386,7 +405,11 @@ def nick_label(animal_id, row=None):
 
 
 def weapon_board(display_name, pack):
-    lines = [f"**{display_name}'s armory**", "Crate weapons and the animal each one rides with."]
+    """ID-first armory list — OwO density with Aetherion copy."""
+    lines = [
+        f"**{display_name}'s weapons**",
+        "`/weapon` list · `/equip` by id · `/crate` for more",
+    ]
     weapons = (pack or {}).get("weapons") or {}
     equip = (pack or {}).get("equip") or {}
     by_wid = {str(held): aid for aid, held in equip.items() if held}
@@ -400,12 +423,17 @@ def weapon_board(display_name, pack):
         if not meta:
             continue
         rar = raw.get("rarity") or COMMON
-        line = f"`{wid}` {meta[2]} {meta[1]} {rarity_mark(rar) if rar else rar} Q{int(raw.get('quality') or 0)} +{int(raw.get('atk') or 0)} ATK"
+        q = int(raw.get("quality") or 0)
+        style = raw.get("style") or meta[3]
+        passive = gear._STYLE_PASSIVE.get(style, "")
+        line = f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} | Quality: {q}%"
         holder = by_wid.get(str(wid))
         if holder:
-            lines.append(f"{line} · on {animal_label(holder)}")
+            row = ANIMAL_BY_ID.get(holder)
+            mark = row[2] if row else ""
+            lines.append(f"{line} · {mark}")
         else:
-            lines.append(f"{line} · unequipped")
+            lines.append(line)
     return "\n".join(lines)
 
 
@@ -748,6 +776,7 @@ def install(mod=None):
     mod.BATTLE_XP = BATTLE_XP
     mod.xp_for_level = base.xp_for_level
     mod.level_of = base.level_of
+    mod.xp_progress = base.xp_progress
     for name in (
         "_fighter", "build_enemy_team", "simulate_battle", "hunt", "snapshot",
         "battle", "team_lines", "battle_card",

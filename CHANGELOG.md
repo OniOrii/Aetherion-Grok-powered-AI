@@ -16,6 +16,7 @@ _Nothing waiting. New work is dated the day it ships._
 ### Changed
 
 - **Hunt `/battle` animal portraits:** board tiles load original Aetherion species PNGs from `assets/hunt_portraits/` (clearer Discord-size species read, rarity-rimmed). Procedural silhouettes remain as fallback. KO rows stay dimmed. Board HP/WP spacing from PR #6 kept.
+- **Hunt weapon art + team feel:** weapon icons are distinct per kind with rarity-tint wash (readable small). `/weapon` and `/inv` lists are ID-first denser rows (`id` · rank · emoji · name · style passive · Quality: n%). `/team` shows a compact OwO-feel card: `Lvl N [cur/need]`, red H/P/p · blue W/M/m mapped to existing fighter stats (HP/ATK/PR/WP/MAG/MR — display only, no combat rewrite), plus an ID+quality% weapon row.
 
 ### Fixed
 
