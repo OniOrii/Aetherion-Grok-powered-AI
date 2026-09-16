@@ -48,22 +48,22 @@ def _embed_for(hand: Hand, *, balance: int, reveal: bool) -> discord.Embed:
     if hand.finished:
         if hand.outcome in ("player_bj", "win"):
             color = EMBED_WIN
-            title = "Blackjack \u2014 you take it"
+            title = "\u2726 Blackjack \u00b7 You take it"
         elif hand.outcome in ("push", "both_bj"):
             color = EMBED_PUSH
-            title = "Blackjack \u2014 push"
+            title = "\u2726 Blackjack \u00b7 Push"
         else:
             color = EMBED_LOSE
-            title = "Blackjack \u2014 dealer table"
+            title = "\u2726 Blackjack \u00b7 Dealer table"
         footer = hand.result_line()
     else:
         color = EMBED_PLAY
-        title = "Blackjack"
+        title = "\u2726 Blackjack"
         footer = "Hit, stand, or double. Only you can press the buttons."
 
     embed = discord.Embed(title=title, color=color)
-    embed.add_field(name="You", value=str(player_total), inline=True)
-    embed.add_field(name="Aetherion", value=dealer_total_text, inline=True)
+    embed.add_field(name="\u2665 You", value=str(player_total), inline=True)
+    embed.add_field(name="\u2726 Aetherion", value=dealer_total_text, inline=True)
     embed.add_field(name="Bet", value=ai_coins.coins(f"**{hand.bet:,}**"), inline=True)
     embed.add_field(name="Wallet", value=ai_coins.coins(f"**{balance:,}**"), inline=True)
     embed.set_footer(text=footer)
@@ -330,7 +330,7 @@ async def _start_hand(
 
 
 def register_blackjack(tree, is_guild_allowed) -> None:
-    @tree.command(name="blackjack", description="Play blackjack against Aetherion for Aether Coins")
+    @tree.command(name="blackjack", description="Play blackjack against Aetherion for Aether Coins.")
     @discord.app_commands.describe(bet=f"Wager in Aether Coins ({ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}, default {ai_coins.DEFAULT_BET})")
     async def blackjack_slash(
         interaction: discord.Interaction,
@@ -347,7 +347,7 @@ def register_blackjack(tree, is_guild_allowed) -> None:
             bet = int(_last_bet[user_id])
         await _start_hand(interaction, user_id=user_id, bet=int(bet), edit=False)
 
-    @tree.command(name="balance", description="See your Aether Coin wallet")
+    @tree.command(name="balance", description="See your Aether Coin wallet.")
     async def balance_slash(interaction: discord.Interaction):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message(
@@ -360,12 +360,15 @@ def register_blackjack(tree, is_guild_allowed) -> None:
             refunded = ai_coins.refund_stale_pending(interaction.user.id)
         bal = ai_coins.get_balance(interaction.user.id)
         extra = f" Returned {refunded} from a dead hand." if refunded else ""
-        await interaction.response.send_message(
-            f"You have {ai_coins.coins(f'**{bal:,}**')}.{extra} New players start at {ai_coins.coins(ai_coins.STARTING_BALANCE)}.",
-            ephemeral=True,
+        embed = discord.Embed(
+            title="\u2726 Wallet",
+            description=f"You have {ai_coins.coins(f'**{bal:,}**')}.{extra}",
+            color=EMBED_PLAY,
         )
+        embed.set_footer(text=f"New players start at {ai_coins.STARTING_BALANCE:,} Aether Coins.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @tree.command(name="daily", description="Claim today's free Aether Coins")
+    @tree.command(name="daily", description="Claim today's free Aether Coins.")
     async def daily_slash(interaction: discord.Interaction):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message(
@@ -377,17 +380,23 @@ def register_blackjack(tree, is_guild_allowed) -> None:
             ai_coins.refund_stale_pending(interaction.user.id)
         bal, granted, already = ai_coins.claim_daily(interaction.user.id)
         if already:
-            await interaction.response.send_message(
-                f"Already claimed today. Wallet: {ai_coins.coins(f'**{bal:,}**')}. Next drip after midnight Eastern.",
-                ephemeral=True,
+            embed = discord.Embed(
+                title="\u2726 Daily",
+                description=f"Already claimed today.\nWallet: {ai_coins.coins(f'**{bal:,}**')}.",
+                color=EMBED_PLAY,
             )
+            embed.set_footer(text="Next drip after midnight Eastern.")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
-        await interaction.response.send_message(
-            f"Claimed {ai_coins.coins(f'**{granted:,}**')}. Wallet: {ai_coins.coins(f'**{bal:,}**')}.",
-            ephemeral=True,
+        embed = discord.Embed(
+            title="\u2726 Daily claimed",
+            description=f"Claimed {ai_coins.coins(f'**{granted:,}**')}.\nWallet: {ai_coins.coins(f'**{bal:,}**')}.",
+            color=EMBED_WIN,
         )
+        embed.set_footer(text="One drip per Eastern day.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @tree.command(name="leaderboard", description="Aether Coin standings on this server")
+    @tree.command(name="leaderboard", description="Aether Coin standings on this server.")
     async def leaderboard_slash(interaction: discord.Interaction):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message(
@@ -422,7 +431,7 @@ def register_blackjack(tree, is_guild_allowed) -> None:
         ranked.sort(key=lambda item: (-item[0], item[1]))
         top = ranked[:10]
         embed = discord.Embed(
-            title=f"Aether Coin leaderboard \u00b7 {guild.name}",
+            title=f"\u2726 Aether Coin leaderboard \u00b7 {guild.name}",
             color=EMBED_PLAY,
         )
         if not top:
@@ -443,7 +452,7 @@ def register_blackjack(tree, is_guild_allowed) -> None:
                 embed.set_footer(text=f"{len(ranked)} wallets on this server. Mid-hand bets count.")
         await interaction.followup.send(embed=embed)
 
-    @tree.command(name="givecoins", description="Ori only: grant Aether Coins to a member")
+    @tree.command(name="givecoins", description="Ori only: grant Aether Coins to a member.")
     @discord.app_commands.describe(
         member="Who receives the coins",
         amount=f"How many coins ({ai_coins.MIN_GRANT}\u2013{ai_coins.MAX_GRANT})",
