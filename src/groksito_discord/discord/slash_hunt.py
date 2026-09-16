@@ -194,6 +194,10 @@ def register_hunt(tree, is_guild_allowed) -> None:
             )
         except TypeError:
             line = hunt.hunt_catch_line(_display_name(interaction), result["animal_id"])
+        for aw in result.get("ticket_awards") or []:
+            amt = int(aw.get("amount") or 1)
+            reason = aw.get("reason") or "raid ticket"
+            line += f"\n+{amt} raid ticket ({reason}) · {int(aw.get('tickets') or 0)} left"
         await interaction.response.send_message(line)
 
     @tree.command(name="zoo", description="WIP Ori only. Show hunted animals.")
@@ -739,13 +743,41 @@ def register_hunt(tree, is_guild_allowed) -> None:
     async def salvage_weapon_ac(interaction: discord.Interaction, current: str):
         return await equip_weapon_ac(interaction, current)
 
-    @tree.command(name="raid", description="WIP Ori only. Spend a raid ticket for a tough PvE boss fight.")
+    @tree.command(name="raid", description="WIP Ori only. Spend tickets for Ember/Void/Crown Rift PvE.")
+    @discord.app_commands.describe(
+        tier="Easy Ember / Hard Void / Nightmare Crown",
+        craft="Spend 30 shards for 1 raid ticket instead of fighting",
+    )
+    @discord.app_commands.choices(
+        tier=[
+            discord.app_commands.Choice(name="Easy · Ember Rift (1 ticket)", value="easy"),
+            discord.app_commands.Choice(name="Hard · Void Rift (2 tickets)", value="hard"),
+            discord.app_commands.Choice(name="Nightmare · Crown Rift (3 tickets)", value="nightmare"),
+        ]
+    )
     @discord.app_commands.default_permissions(administrator=True)
-    async def raid_slash(interaction: discord.Interaction):
+    async def raid_slash(
+        interaction: discord.Interaction,
+        tier: str = "easy",
+        craft: bool = False,
+    ):
         if not await _gate(interaction, is_guild_allowed):
             return
+        if craft:
+            result = hunt.craft_raid_ticket(interaction.user.id)
+            if not result.get("ok"):
+                await interaction.response.send_message(
+                    result.get("error") or "Could not craft ticket.", ephemeral=True
+                )
+                return
+            body = (
+                f"Crafted **1** raid ticket for **{result['spent']}** shards.\n"
+                f"Tickets **{result['tickets']}** · shards **{result['shards']}**"
+            )
+            await interaction.response.send_message(embed=_embed("✦ Raid ticket", body))
+            return
         await interaction.response.defer()
-        result = hunt.raid(interaction.user.id)
+        result = hunt.raid(interaction.user.id, tier=tier)
         if not result.get("ok"):
             await interaction.followup.send(result.get("error") or "Raid failed.", ephemeral=True)
             return
@@ -760,20 +792,50 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 "enemy": result.get("enemy") or [],
                 "lines": result.get("log") or [],
             }]
-        ticket_note = f"Raid ticket spent \u00b7 {int(result.get('tickets_left') or 0)} left"
+        spent = int(result.get("tickets_spent") or 1)
+        left = int(result.get("tickets_left") or 0)
+        label = result.get("tier_label") or "Easy"
+        rift = result.get("rift") or "Ember Rift"
+        if spent > 1:
+            ticket_note = f"{label} · {spent} tickets spent · {left} left"
+        else:
+            ticket_note = f"{label} · ticket spent · {left} left"
+        author = {"name": f"{name} raids the {rift}!"}
+        if icon_url:
+            author["icon_url"] = icon_url
+
+        def _raid_footer(res: dict) -> str:
+            outcome = res.get("result") or "draw"
+            rounds = max(1, int(res.get("rounds") or 1))
+            turns = f"{rounds} turn" if rounds == 1 else f"{rounds} turns"
+            rift_name = res.get("rift") or "rift"
+            if outcome == "win":
+                base = int(res.get("xp_base") or res.get("xp_gain") or 0)
+                line = f"{rift_name} cleared in {turns}! Team gained {base}xp"
+                if int(res.get("xp_bonus") or 0) > 0:
+                    line += f" + {int(res['xp_bonus'])} bonus xp"
+                if int(res.get("shard_bonus") or 0) > 0:
+                    line += f" · +{int(res['shard_bonus'])} shards"
+                for note in res.get("reward_notes") or []:
+                    if note.startswith("+") and "shard" in note:
+                        continue
+                    line += f" | {note}"
+                return line + f"\n{hunt.WIP_FOOTER}"
+            if outcome == "lose":
+                line = f"The rift held · {turns}"
+            else:
+                line = f"The rift stilled · {turns}"
+            if int(res.get("shard_bonus") or 0) > 0:
+                line += f" · +{int(res['shard_bonus'])} shards"
+            return line + f"\n{hunt.WIP_FOOTER}"
+
         try:
             first = dict(frames[0])
             first["lines"] = [ticket_note] + list(first.get("lines") or [])
             embed0 = _battle_embed(name, result, first, final=len(frames) == 1, icon_url=icon_url)
-            author = {"name": f"{name} raids the rift!"}
-            if icon_url:
-                author["icon_url"] = icon_url
             embed0.set_author(**author)
-            if len(frames) == 1 and result.get("shard_bonus"):
-                embed0.set_footer(
-                    text=board.result_caption(result)
-                    + f"\n+{result['shard_bonus']} shards \u00b7 {hunt.WIP_FOOTER}"
-                )
+            if len(frames) == 1:
+                embed0.set_footer(text=_raid_footer(result))
             msg = await interaction.followup.send(
                 embed=embed0,
                 file=_battle_file(first, total),
@@ -784,11 +846,8 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 final = index == len(frames) - 1
                 embed = _battle_embed(name, result, frame, final=final, icon_url=icon_url)
                 embed.set_author(**author)
-                if final and result.get("shard_bonus"):
-                    embed.set_footer(
-                        text=board.result_caption(result)
-                        + f"\n+{result['shard_bonus']} shards \u00b7 {hunt.WIP_FOOTER}"
-                    )
+                if final:
+                    embed.set_footer(text=_raid_footer(result))
                 await msg.edit(embed=embed, attachments=[_battle_file(frame, total)])
         except Exception:
             logger.exception("raid animation failed")
@@ -796,9 +855,7 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 body = hunt.battle_card(name, result)
             else:
                 body = "\n".join(result.get("log") or ["Raid finished."])
-            body += f"\n{board.result_caption(result)}"
-            if result.get("shard_bonus"):
-                body += f"\n+{result['shard_bonus']} shards"
+            body += f"\n{_raid_footer(result)}"
             try:
                 await interaction.edit_original_response(
                     content=None, embed=_embed("Raid", body), attachments=[]

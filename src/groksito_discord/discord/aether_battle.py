@@ -305,6 +305,10 @@ def result_caption(result: dict[str, Any]) -> str:
         n = max(1, int(result.get("crate_today") or 1))
         from .aether_hunt import daily_resets_in
         line += f" You found a **weapon crate**! `[{n}/3] RESETS IN: {daily_resets_in()}`"
+    for aw in result.get("ticket_awards") or []:
+        amt = int(aw.get("amount") or 1)
+        reason = aw.get("reason") or "raid ticket"
+        line += f" +{amt} raid ticket ({reason})!"
     return line
 
 
