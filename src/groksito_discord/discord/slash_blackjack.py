@@ -52,7 +52,10 @@ def _embed_for(hand: Hand, *, balance: int, reveal: bool) -> discord.Embed:
             color = EMBED_PUSH
         else:
             color = EMBED_LOSE
-        title = f"\u2726 Blackjack \u00b7 {hand.result_line().rstrip('.')}"
+        title = (
+            f"\u2726 Blackjack \u00b7 {hand.result_line().rstrip('.')}"
+            f" \u00b7 {ai_coins.won_line(hand.credit() - hand.bet)}"
+        )
         footer = ""
     else:
         color = EMBED_PLAY
