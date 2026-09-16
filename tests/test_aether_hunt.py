@@ -137,3 +137,21 @@ def test_grant_supplies_adds_boxes(tmp_path: Path):
     snap = hunt.snapshot(9)
     assert snap["gear"]["lootbox"] == 3
     assert snap["gear"]["crate"] == 2
+
+
+def test_lootbox_is_not_guaranteed():
+    import random
+    from groksito_discord.discord import aether_gear as gear
+
+    pack = gear.blank_gear()
+    miss = random.Random(1)
+    assert gear.maybe_lootbox(pack, miss) is False
+    found = False
+    pack2 = gear.blank_gear()
+    rng = random.Random(99)
+    for _ in range(80):
+        if gear.maybe_lootbox(pack2, rng):
+            found = True
+            break
+    assert found
+    assert pack2["lb_today"] >= 1
