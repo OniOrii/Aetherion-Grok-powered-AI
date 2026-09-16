@@ -518,20 +518,39 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 break
         return out
 
-    @tree.command(name="weapon", description="WIP Ori only. List crate weapons, or inspect one by id.")
+    def _armory_pack(user_id: int, snap: dict):
+        pack = snap.get("gear")
+        if isinstance(pack, dict):
+            return pack
+        with hunt._lock:
+            store = hunt._load_store()
+            row = hunt._ensure_user(store, user_id)
+            pack = gear.ensure_gear(row)
+            hunt._save_store(store)
+        return pack
+
+    @tree.command(name="weapons", description="WIP Ori only. Zoo-style board of owned crate weapons.")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def weapons_slash(interaction: discord.Interaction):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        snap = hunt.snapshot(interaction.user.id)
+        pack = _armory_pack(interaction.user.id, snap)
+        name = _display_name(interaction)
+        rowish = {"nicks": snap.get("nicks") or {}}
+        body = hunt.weapon_board(name, pack, rowish)
+        if len(body) > 3900:
+            body = body[:3890] + '\n…'
+        await interaction.response.send_message(embed=_embed('✦ Weapons', body))
+
+    @tree.command(name="weapon", description="WIP Ori only. Inspect a crate weapon by id (board: /weapons).")
     @discord.app_commands.describe(id="Weapon inventory id — omit for the armory list")
     @discord.app_commands.default_permissions(administrator=True)
     async def weapon_slash(interaction: discord.Interaction, id: str | None = None):
         if not await _gate(interaction, is_guild_allowed):
             return
         snap = hunt.snapshot(interaction.user.id)
-        pack = snap.get("gear")
-        if not isinstance(pack, dict):
-            with hunt._lock:
-                store = hunt._load_store()
-                row = hunt._ensure_user(store, interaction.user.id)
-                pack = gear.ensure_gear(row)
-                hunt._save_store(store)
+        pack = _armory_pack(interaction.user.id, snap)
         name = _display_name(interaction)
         if id:
             result = hunt.weapon_detail(interaction.user.id, id, name)

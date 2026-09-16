@@ -583,17 +583,21 @@ def nick_label(animal_id, row=None):
 
 
 def weapon_board(display_name, pack, row=None):
-    """ID-first armory list — OwO density with Aetherion copy."""
+    """Zoo-style armory: rarity headers, dense id · mark · emoji · name · quality% · holder."""
     lines = [
-        f"**{display_name}'s weapons**",
-        "Detail `/weapon id:` · Equip `/equip` · Salvage `/salvage`",
+        f"\u2694\ufe0f **{display_name}'s weapons** \u2694\ufe0f",
+        "Board `/weapons` · Detail `/weapon id:` · Equip `/equip` · Salvage `/salvage`",
+        "",
     ]
     weapons = (pack or {}).get("weapons") or {}
     equip = (pack or {}).get("equip") or {}
     by_wid = {str(held): aid for aid, held in equip.items() if held}
     if not weapons:
-        lines.append("No weapons yet. Win a battle for a crate, then /crate.")
+        lines.append("No weapons yet. Win a battle for a crate, then `/crate`.")
         return "\n".join(lines)
+
+    grouped: dict[str, list[tuple[str, dict, tuple]]] = {r: [] for r in base.RARITY_ORDER}
+    orphan: list[tuple[str, dict, tuple]] = []
     for wid, raw in weapons.items():
         if not isinstance(raw, dict):
             continue
@@ -601,22 +605,55 @@ def weapon_board(display_name, pack, row=None):
         if not meta:
             continue
         rar = raw.get("rarity") or COMMON
-        q = int(raw.get("quality") or 0)
-        style = raw.get("style") or meta[3]
-        kind = raw.get("kind") or meta[0]
-        passive = gear._wpass.passive_icon(kind) or gear._STYLE_PASSIVE.get(style, "")
-        line = f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} | Quality: {q}%"
-        holder = by_wid.get(str(wid))
-        if holder:
-            animal = ANIMAL_BY_ID.get(holder)
-            if row is not None:
-                label = nick_label(holder, row)
-            elif animal:
-                label = f"{animal[2]} {animal[1]}".strip()
-            else:
-                label = holder
-            lines.append(f"{line} · {label}")
+        if rar in grouped:
+            grouped[rar].append((str(wid), raw, meta))
         else:
+            orphan.append((str(wid), raw, meta))
+
+    def _wid_key(item: tuple[str, dict, tuple]):
+        wid = item[0]
+        return (0, int(wid)) if wid.isdigit() else (1, wid)
+
+    def _holder_label(wid: str) -> str | None:
+        holder = by_wid.get(str(wid))
+        if not holder:
+            return None
+        animal = ANIMAL_BY_ID.get(holder)
+        if row is not None:
+            return nick_label(holder, row)
+        if animal:
+            return f"{animal[2]} {animal[1]}".strip()
+        return holder
+
+    shown = False
+    for rarity in base.RARITY_ORDER:
+        items = grouped.get(rarity) or []
+        if not items:
+            continue
+        if shown:
+            lines.append("")
+        shown = True
+        mark = rarity_mark(rarity)
+        lines.append(f"**{mark} {RARITY_LABEL.get(rarity, rarity)}**")
+        for wid, raw, meta in sorted(items, key=_wid_key):
+            q = int(raw.get("quality") or 0)
+            line = f"`{wid}` {mark} {meta[2]} **{meta[1]}** `{q}%`"
+            held = _holder_label(wid)
+            if held:
+                line = f"{line} · {held}"
+            lines.append(line)
+    if orphan:
+        if shown:
+            lines.append("")
+        lines.append("**Other**")
+        for wid, raw, meta in sorted(orphan, key=_wid_key):
+            rar = raw.get("rarity") or COMMON
+            mark = rarity_mark(rar)
+            q = int(raw.get("quality") or 0)
+            line = f"`{wid}` {mark} {meta[2]} **{meta[1]}** `{q}%`"
+            held = _holder_label(wid)
+            if held:
+                line = f"{line} · {held}"
             lines.append(line)
     return "\n".join(lines)
 
@@ -629,7 +666,7 @@ def weapon_detail(user_id, query, display_name="Hunter"):
         pack = gear.ensure_gear(row)
         wid = gear.resolve_weapon(pack, query)
         if not wid:
-            return {"ok": False, "error": "No matching weapon. Use the id from `/weapon`."}
+            return {"ok": False, "error": "No matching weapon. Use the id from `/weapons`."}
         raw = (pack.get("weapons") or {}).get(str(wid))
         if not isinstance(raw, dict):
             return {"ok": False, "error": "That weapon entry is broken."}

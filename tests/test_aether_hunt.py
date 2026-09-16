@@ -214,10 +214,11 @@ def test_hunt_and_zoo_match_owo_layout():
     # Locked ranks (no lifetime catch) stay hidden; common stays unlocked with ?
     assert hunt.rarity_mark(hunt.EPIC) not in board
     assert hunt.rarity_mark(hunt.MYTHIC) not in board
-    # Cost / CD pacing matches OwO feel (5 / 15s)
-    assert hunt.HUNT_COST == 5
+    # Cost / CD pacing: cheap hunt aligned to wallet tens (10 / 15s)
+    assert hunt.HUNT_COST == 10
+    assert hunt.HUNT_COST % 10 == 0
     assert hunt.HUNT_COOLDOWN == 15
-    assert "spent 5" in line
+    assert "spent 10" in line
     # Gem empower HUD + lootbox [n/3] RESETS IN
     gemmed = hunt.hunt_catch_line(
         "Ori",
@@ -504,8 +505,76 @@ def test_weapon_detail_embed_fields(tmp_path: Path):
 
     board = hunt.weapon_board("Ori", pack, row)
     assert "`7`" in board
-    assert "Quality: 62%" in board
+    assert "`62%`" in board
     assert "Dust Mite" in board
+    assert hunt.rarity_mark(hunt.RARE) in board
+    assert f"**{hunt.rarity_mark(hunt.RARE)} Rare**" in board
+
+
+def test_weapons_board_groups_by_rarity_and_empty_state():
+    from groksito_discord.discord import aether_gear as gear
+
+    empty = hunt.weapon_board("Ori", gear.blank_gear())
+    assert "Ori's weapons" in empty
+    assert "No weapons yet" in empty
+    assert "`/crate`" in empty
+
+    pack = gear.blank_gear()
+    pack["weapons"] = {
+        "3": {"kind": "rift_blade", "rarity": gear.RARE, "quality": 62, "atk": 12, "style": "cleave"},
+        "1": {"kind": "ember_bow", "rarity": gear.COMMON, "quality": 40, "atk": 5, "style": "strike"},
+        "2": {"kind": "quartz_wand", "rarity": gear.EPIC, "quality": 88, "atk": 20, "style": "mend"},
+    }
+    pack["equip"] = {"dust_mite": "3"}
+    board = hunt.weapon_board("Ori", pack, {"nicks": {}})
+    # Rarity headers + blank line between groups
+    assert f"**{hunt.rarity_mark(hunt.COMMON)} Common**" in board
+    assert f"**{hunt.rarity_mark(hunt.RARE)} Rare**" in board
+    assert f"**{hunt.rarity_mark(hunt.EPIC)} Epic**" in board
+    common_i = board.index(f"**{hunt.rarity_mark(hunt.COMMON)} Common**")
+    rare_i = board.index(f"**{hunt.rarity_mark(hunt.RARE)} Rare**")
+    epic_i = board.index(f"**{hunt.rarity_mark(hunt.EPIC)} Epic**")
+    assert common_i < rare_i < epic_i
+    between = board[common_i:rare_i]
+    assert "\n\n" in between  # blank line between rarity groups
+    # Dense row: id · mark · emoji · name · quality% · equipped animal
+    assert "`1`" in board and "`40%`" in board
+    assert "`3`" in board and "`62%`" in board and "Dust Mite" in board
+    assert "Quality: " not in board
+
+
+def test_hunt_cost_ten_passes_wallet_step(tmp_path: Path, monkeypatch):
+    """HUNT_COST must be a multiple of ai_coins.STEP so resolve_wager succeeds."""
+    from groksito_discord.discord import ai_coins
+    from groksito_discord.discord import aether_hunt_ext as ext
+    import random
+
+    assert hunt.HUNT_COST == 10
+    assert hunt.HUNT_COST % ai_coins.STEP == 0
+    assert ai_coins.amount_error(hunt.HUNT_COST, hunt.HUNT_COST, hunt.HUNT_COST) == ""
+
+    hunt.set_store_path(tmp_path / "hunt.json")
+    stakes: list[int] = []
+
+    def capture_wager(uid, stake, payout=0, min_bet=None, max_bet=None):
+        stakes.append(int(stake))
+        err = ai_coins.amount_error(int(stake), int(min_bet or stake), int(max_bet or stake))
+        if err:
+            return False, 0, err
+        return True, 500 - int(stake), ""
+
+    monkeypatch.setattr(ai_coins, "get_balance", lambda _uid: 500)
+    monkeypatch.setattr(ai_coins, "resolve_wager", capture_wager)
+    monkeypatch.setattr(ext, "roll_animal", lambda rng=None: "dust_mite")
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 77)
+        row["last_hunt"] = 0.0
+        hunt._save_store(store)
+    result = hunt.hunt(77, random.Random(1))
+    assert result["ok"], result
+    assert stakes == [10]
+    assert "Bets go by" not in (result.get("error") or "")
 
 
 def test_weapon_detail_text_styles():

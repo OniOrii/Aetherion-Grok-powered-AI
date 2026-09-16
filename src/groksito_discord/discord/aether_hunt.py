@@ -18,7 +18,7 @@ from . import ai_coins
 
 logger = logging.getLogger("aetherion.hunt")
 
-HUNT_COST = 5
+HUNT_COST = 10
 HUNT_COOLDOWN = 15
 TEAM_SIZE = 3
 LEVEL_CAP = 50
