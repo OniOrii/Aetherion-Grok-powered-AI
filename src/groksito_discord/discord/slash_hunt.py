@@ -1,4 +1,4 @@
-"""Ori-only WIP slash commands for Aetherion Hunt Test 1."""
+"""Ori-only WIP slash commands for Aetherion Hunt Test 2."""
 from __future__ import annotations
 
 import logging
@@ -57,7 +57,7 @@ async def _suggest_owned(
         have = int(snap["zoo"].get(aid) or 0)
         out.append(
             discord.app_commands.Choice(
-                name=f"{emoji} {name} ×{have}",
+                name=f"{emoji} {name} \u00d7{have}",
                 value=name,
             )
         )
@@ -78,7 +78,13 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 result.get("error") or "Hunt failed.", ephemeral=True
             )
             return
-        line = hunt.hunt_catch_line(_display_name(interaction), result["animal_id"])
+        extras = [aid for aid in result.get("animals") or [] if aid != result["animal_id"]]
+        line = hunt.hunt_catch_line(
+            _display_name(interaction),
+            result["animal_id"],
+            extras,
+            bool(result.get("lootbox")),
+        )
         await interaction.response.send_message(line)
 
     @tree.command(name="zoo", description="WIP Ori only. Show hunted animals.")
@@ -93,7 +99,7 @@ def register_hunt(tree, is_guild_allowed) -> None:
             snap.get("caught") or snap["zoo"],
         )
         if len(board) > 1900:
-            board = board[:1890] + "\n…"
+            board = board[:1890] + "\n\u2026"
         await interaction.response.send_message(board)
 
     @tree.command(name="sell", description="WIP Ori only. Sell extra animals for Aether Coins.")
@@ -110,12 +116,12 @@ def register_hunt(tree, is_guild_allowed) -> None:
             return
         pocket = ai_coins.coins(f"**{int(result['balance']):,}**")
         body = (
-            f"Sold **{result['sold']}× {hunt.animal_label(result['animal_id'])}** "
+            f"Sold **{result['sold']}\u00d7 {hunt.animal_label(result['animal_id'])}** "
             f"for {ai_coins.coins(result['payout'])}.\n"
             f"Left: **{result['left']}**\n"
-            f"Pocket · {pocket}"
+            f"Pocket \u00b7 {pocket}"
         )
-        await interaction.response.send_message(embed=_embed("✦ Sold", body))
+        await interaction.response.send_message(embed=_embed("\u2726 Sold", body))
 
     @sell_slash.autocomplete("animal")
     async def sell_animal_ac(interaction: discord.Interaction, current: str):
@@ -125,7 +131,7 @@ def register_hunt(tree, is_guild_allowed) -> None:
     @discord.app_commands.describe(
         action="show, set, or clear",
         animal="Animal to put in the slot",
-        slot="Team slot 1–3",
+        slot="Team slot 1-3",
     )
     @discord.app_commands.choices(
         action=[
@@ -164,14 +170,16 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 )
                 return
         snap = hunt.snapshot(interaction.user.id)
-        body = "\n".join(hunt.team_lines(snap["team"], snap["xp"], snap["zoo"]))
+        body = "\n".join(
+            hunt.team_lines(snap["team"], snap["xp"], snap["zoo"], snap.get("gear"))
+        )
         owned = hunt.owned_catalog(snap["zoo"])
         if owned:
             picks = ", ".join(f"{emoji} {name}" for _aid, name, emoji, _rar in owned)
             body += f"\n\n**Owned** {picks}"
         else:
             body += "\n\nHunt something before you set a team."
-        await interaction.response.send_message(embed=_embed("✦ Team", body))
+        await interaction.response.send_message(embed=_embed("\u2726 Team", body))
 
     @team_slash.autocomplete("animal")
     async def team_animal_ac(interaction: discord.Interaction, current: str):
@@ -198,9 +206,6 @@ def register_hunt(tree, is_guild_allowed) -> None:
         else:
             color = hunt.EMBED_GOLD
             headline = "Draw"
-        you = " · ".join(hunt.fighter_line(pet) for pet in result["player"])
-        foe = " · ".join(hunt.fighter_line(pet) for pet in result["enemy"])
-        log = "\n".join(result["log"]) or "No blows landed."
         if result["payout"]:
             pay = ai_coins.won_line(int(result["payout"]))
         elif outcome == "draw":
@@ -208,13 +213,123 @@ def register_hunt(tree, is_guild_allowed) -> None:
         else:
             pay = "No coin payout"
         pocket = ai_coins.coins(f"**{int(result['balance']):,}**")
-        body = (
-            f"**You** {you}\n"
-            f"**Wild** {foe}\n\n"
-            f"{log}\n\n"
-            f"Team XP +{result['xp_gain']} · {pay}\n"
-            f"Pocket · {pocket}"
-        )
+        body = hunt.battle_card(_display_name(interaction), result)
+        body += f"\n{pay}\nPocket \u00b7 {pocket}"
         await interaction.response.send_message(
-            embed=_embed(f"✦ Battle · {headline}", body, color)
+            embed=_embed(f"\u2726 Battle \u00b7 {headline}", body, color)
         )
+
+    @tree.command(name="inv", description="WIP Ori only. Lootboxes, crates, gems, weapons.")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def inv_slash(interaction: discord.Interaction):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        snap = hunt.snapshot(interaction.user.id)
+        text = hunt.gear.inventory_text(_display_name(interaction), snap.get("gear") or {})
+        await interaction.response.send_message(text)
+
+    @tree.command(name="lootbox", description="WIP Ori only. Open a lootbox for a hunt gem.")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def lootbox_slash(interaction: discord.Interaction):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        result = hunt.open_lootbox(interaction.user.id)
+        if not result.get("ok"):
+            await interaction.response.send_message(
+                result.get("error") or "No lootbox.", ephemeral=True
+            )
+            return
+        rar = hunt.RARITY_LABEL[result["rarity"]]
+        kind = hunt.gear.GEM_BY_KIND[result["kind"]][1]
+        line = (
+            f"\U0001f48e | **{_display_name(interaction)}** opens a lootbox\n"
+            f"\U0001f4e6 | and finds a **{rar} {kind}**!"
+        )
+        await interaction.response.send_message(line)
+
+    @tree.command(name="crate", description="WIP Ori only. Open a weapon crate.")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def crate_slash(interaction: discord.Interaction):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        result = hunt.open_crate(interaction.user.id)
+        if not result.get("ok"):
+            await interaction.response.send_message(
+                result.get("error") or "No crate.", ephemeral=True
+            )
+            return
+        rar = hunt.RARITY_LABEL[result["rarity"]]
+        line = (
+            f"\U0001fab5 | **{_display_name(interaction)}** opens a weapon crate\n"
+            f"{result['emoji']} | **{rar} {result['name']}** Q{result['quality']} +{result['atk']} ATK "
+            f"(id `{result['wid']}`)"
+        )
+        await interaction.response.send_message(line)
+
+    @tree.command(name="use", description="WIP Ori only. Activate a hunting, lucky, or empower gem.")
+    @discord.app_commands.describe(gem="hunting, lucky, or empower", rarity="optional gem tier")
+    @discord.app_commands.choices(
+        gem=[
+            discord.app_commands.Choice(name="Hunting", value="hunting"),
+            discord.app_commands.Choice(name="Lucky", value="lucky"),
+            discord.app_commands.Choice(name="Empowering", value="empower"),
+        ]
+    )
+    @discord.app_commands.default_permissions(administrator=True)
+    async def use_slash(
+        interaction: discord.Interaction,
+        gem: discord.app_commands.Choice[str],
+        rarity: str | None = None,
+    ):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        rar = None
+        if rarity:
+            key = rarity.strip().lower()
+            rar = key if key in hunt.RARITY_LABEL else None
+        result = hunt.use_gem(interaction.user.id, gem.value, rar)
+        if not result.get("ok"):
+            await interaction.response.send_message(
+                result.get("error") or "Could not use that gem.", ephemeral=True
+            )
+            return
+        await interaction.response.send_message(
+            f"{hunt.gear.GEM_BY_KIND[result['kind']][2]} | Activated "
+            f"**{hunt.RARITY_LABEL[result['rarity']]} {result['label']}** "
+            f"for **{result['left']}** hunts."
+        )
+
+    @tree.command(name="equip", description="WIP Ori only. Put a crate weapon on a team animal.")
+    @discord.app_commands.describe(weapon="Weapon id or name from /inv", animal="Owned animal")
+    @discord.app_commands.default_permissions(administrator=True)
+    async def equip_slash(interaction: discord.Interaction, weapon: str, animal: str):
+        if not await _gate(interaction, is_guild_allowed):
+            return
+        result = hunt.equip_weapon(interaction.user.id, weapon, animal)
+        if not result.get("ok"):
+            await interaction.response.send_message(
+                result.get("error") or "Could not equip.", ephemeral=True
+            )
+            return
+        await interaction.response.send_message(
+            f"Equipped {result['label']} on {hunt.animal_label(result['animal_id'])}."
+        )
+
+    @equip_slash.autocomplete("animal")
+    async def equip_animal_ac(interaction: discord.Interaction, current: str):
+        return await _suggest_owned(interaction, current)
+
+    @equip_slash.autocomplete("weapon")
+    async def equip_weapon_ac(interaction: discord.Interaction, current: str):
+        if not _is_ori(interaction):
+            return []
+        snap = hunt.snapshot(interaction.user.id)
+        needle = (current or "").strip().lower()
+        out: list[discord.app_commands.Choice[str]] = []
+        for wid, label, name in hunt.gear.owned_weapons(snap.get("gear") or {}):
+            if needle and needle not in label.lower() and needle not in wid:
+                continue
+            out.append(discord.app_commands.Choice(name=f"#{wid} {label}", value=wid))
+            if len(out) >= 25:
+                break
+        return out
