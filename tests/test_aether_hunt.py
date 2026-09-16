@@ -40,7 +40,7 @@ def test_battle_ends_with_a_result():
     rng = random.Random(7)
     player = [hunt._fighter("thorn_wolf", 3), hunt._fighter("ember_elk", 2)]
     enemy = hunt.build_enemy_team(player, rng)
-    assert 1 <= len(enemy) <= 3
+    assert len(enemy) == 3
     out = hunt.simulate_battle(player, enemy, rng)
     assert out["result"] in {"win", "lose", "draw"}
     assert out["rounds"] >= 1
@@ -113,3 +113,26 @@ def test_battle_image_renders():
     raw = png.getvalue()
     assert raw[:8] == b"\x89PNG\r\n\x1a\n"
     assert len(raw) > 800
+
+
+def test_grant_daily_supplies_once(tmp_path: Path):
+    hunt.set_store_path(tmp_path / "hunt.json")
+    first = hunt.grant_daily_supplies(7)
+    second = hunt.grant_daily_supplies(7)
+    assert first["lootbox"] == 5
+    assert first["crate"] == 5
+    assert second["lootbox"] == 0
+    assert second["crate"] == 0
+    snap = hunt.snapshot(7)
+    assert snap["gear"]["lootbox"] == 5
+
+
+def test_grant_supplies_adds_boxes(tmp_path: Path):
+    hunt.set_store_path(tmp_path / "hunt.json")
+    box = hunt.grant_supplies(9, "lootbox", 3)
+    crate = hunt.grant_supplies(9, "crate", 2)
+    assert box["ok"] and box["left"] == 3
+    assert crate["ok"] and crate["left"] == 2
+    snap = hunt.snapshot(9)
+    assert snap["gear"]["lootbox"] == 3
+    assert snap["gear"]["crate"] == 2
