@@ -40,7 +40,20 @@ RARITY_LABEL = {COMMON: "Common", UNCOMMON: "Uncommon", RARE: "Rare", EPIC: "Epi
 RARITY_WEIGHT = {COMMON: 550, UNCOMMON: 270, RARE: 120, EPIC: 45, MYTHIC: 15}
 RARITY_SELL = {COMMON: 10, UNCOMMON: 20, RARE: 40, EPIC: 80, MYTHIC: 150}
 RARITY_BASE = {COMMON: (40, 8), UNCOMMON: (52, 11), RARE: (68, 15), EPIC: (88, 20), MYTHIC: (110, 26)}
-RARITY_LETTER = {COMMON: ("C", "\U0001f7e5"), UNCOMMON: ("U", "\U0001f7e9"), RARE: ("R", "\U0001f7e8"), EPIC: ("E", "\U0001f7e6"), MYTHIC: ("M", "\U0001f7ea")}
+RARITY_LETTER = {
+    COMMON: ("c", "\u2b1c"),       # white square — OwO Common
+    UNCOMMON: ("u", "\U0001f7e9"),  # green square
+    RARE: ("r", "\U0001f7e6"),      # blue square
+    EPIC: ("e", "\U0001f7ea"),      # purple square
+    MYTHIC: ("m", "\U0001fa77"),    # pink heart (no pink square in Unicode)
+}
+RARITY_EMBED = {
+    COMMON: 0xFFFFFF,
+    UNCOMMON: 0x57F287,
+    RARE: 0x3498DB,
+    EPIC: 0x9B59B6,
+    MYTHIC: 0xFF69B4,
+}
 RARITY_POINTS = {COMMON: 1, UNCOMMON: 5, RARE: 20, EPIC: 250, MYTHIC: 3000}
 ZOO_COLS = 5
 
@@ -454,8 +467,9 @@ def battle(user_id: int, rng: random.Random | None = None) -> dict[str, Any]:
         return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "xp_gain": xp_gain, "payout": payout, "balance": balance}
 
 def rarity_mark(rarity: str) -> str:
+    """OwO-like zoo/checklist prefix: color square + lowercase backtick letter."""
     letter, square = RARITY_LETTER.get(rarity, RARITY_LETTER[COMMON])
-    return f"{square}{letter}"
+    return f"{square}`{letter}`"
 
 def _small_count(n: int) -> str:
     digits = "\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089"
@@ -468,7 +482,7 @@ def hunt_catch_line(display_name: str, animal_id: str) -> str:
     _aid, _name, emoji, rarity = row
     label = RARITY_LABEL[rarity].lower()
     article = "an" if rarity in (UNCOMMON, EPIC) else "a"
-    return f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {rarity_mark(rarity)} {emoji}!"
+    return f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {emoji}!"
 
 def zoo_points_for(caught: dict[str, int]) -> int:
     total = 0

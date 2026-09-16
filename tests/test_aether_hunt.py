@@ -90,8 +90,12 @@ def test_hunt_and_zoo_match_owo_layout():
     assert line.startswith("**\U0001f331 | Ori** spent")
     assert "caught a **common**" in line
     assert "\U0001fab2" in line
+    # OwO catch: rarity word only — no color-square / letter mark in the catch line
+    assert hunt.rarity_mark(hunt.COMMON) not in line
+    assert "`c`" not in line
     epic = hunt.hunt_catch_line("Ori", "aether_drake")
     assert "caught an **epic**" in epic
+    assert hunt.rarity_mark(hunt.EPIC) not in epic
     board = hunt.zoo_board(
         "Ori",
         {"dust_mite": 2, "ember_moth": 0},
@@ -101,8 +105,25 @@ def test_hunt_and_zoo_match_owo_layout():
     assert "\u2753\u2080" in board
     assert "\U0001fab2\u2082" in board
     assert "**Zoo Points: __2__**" in board
+    # OwO-like row prefixes: white/green/blue/purple/pink + lowercase backtick letter
+    assert hunt.rarity_mark(hunt.COMMON) == "\u2b1c`c`"
+    assert hunt.rarity_mark(hunt.UNCOMMON) == "\U0001f7e9`u`"
+    assert hunt.rarity_mark(hunt.RARE) == "\U0001f7e6`r`"
+    assert hunt.rarity_mark(hunt.EPIC) == "\U0001f7ea`e`"
+    assert hunt.rarity_mark(hunt.MYTHIC) == "\U0001fa77`m`"
+    assert hunt.rarity_mark(hunt.COMMON) in board
     owned = hunt.owned_catalog({"dust_mite": 2, "sol_wyrm": 0})
     assert [row[0] for row in owned] == ["dust_mite"]
+
+
+def test_rarity_marks_match_gear_and_checklist():
+    from groksito_discord.discord import aether_gear as gear
+
+    assert gear.RARITY_MARK[gear.COMMON] == hunt.rarity_mark(hunt.COMMON)
+    assert gear.RARITY_MARK[gear.MYTHIC] == hunt.rarity_mark(hunt.MYTHIC)
+    board = hunt.checklist_board("Ori", {"dust_mite": 1})
+    assert hunt.rarity_mark(hunt.COMMON) in board
+    assert hunt.rarity_mark(hunt.MYTHIC) in board
 
 
 def test_battle_image_renders():
@@ -220,3 +241,8 @@ def test_checklist_marks_discovered_and_missing():
     assert "Found" in board
     assert "Discovered __2__ / 30" in board
     assert "cowoncy" not in board.lower()
+    assert "\u2b1c`c`" in board
+    assert "\U0001f7ea`e`" in board
+    # Old wrong mapping (red C / yellow R / etc.) must stay gone
+    assert "\U0001f7e5C" not in board
+    assert "\U0001f7e8R" not in board
