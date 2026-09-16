@@ -35,6 +35,8 @@ WEAPON_ATK = {COMMON: (4, 8), UNCOMMON: (7, 12), RARE: (11, 18), EPIC: (16, 24),
 HUNT_XP = {COMMON: 8, UNCOMMON: 12, RARE: 20, EPIC: 40, MYTHIC: 80}
 LB_DAILY = 3
 CRATE_DAILY = 3
+DAILY_LOOTBOX = 5
+DAILY_CRATE = 5
 DROP_CHANCE = 0.05
 
 WEAPONS: tuple[tuple[str, str, str, str], ...] = (
@@ -78,7 +80,7 @@ GEM_KINDS = (
 GEM_BY_KIND = {row[0]: row for row in GEM_KINDS}
 
 def blank_gear() -> dict[str, Any]:
-    return {"lootbox": 0, "crate": 0, "gems": {}, "weapons": {}, "next_wid": 1, "active": {}, "equip": {}, "day": "", "lb_today": 0, "crate_today": 0, "streak": 0}
+    return {"lootbox": 0, "crate": 0, "gems": {}, "weapons": {}, "next_wid": 1, "active": {}, "equip": {}, "day": "", "lb_today": 0, "crate_today": 0, "streak": 0, "best_streak": 0, "daily_grant": ""}
 
 def ensure_gear(row: dict[str, Any]) -> dict[str, Any]:
     blob = row.get("gear")
@@ -92,7 +94,7 @@ def ensure_gear(row: dict[str, Any]) -> dict[str, Any]:
     for key in ("gems", "weapons", "active", "equip"):
         if not isinstance(blob.get(key), dict):
             blob[key] = {}
-    for key in ("lootbox", "crate", "next_wid", "lb_today", "crate_today", "streak"):
+    for key in ("lootbox", "crate", "next_wid", "lb_today", "crate_today", "streak", "best_streak"):
         try:
             blob[key] = max(0 if key != "next_wid" else 1, int(blob.get(key) or 0))
         except (TypeError, ValueError):
@@ -318,3 +320,23 @@ def owned_weapons(blob: dict[str, Any]) -> list[tuple[str, str, str]]:
         rar = raw.get("rarity") or COMMON
         out.append((wid, f"{meta[2]} {meta[1]} {RARITY_MARK.get(rar, rar)}", meta[1]))
     return out
+
+
+def grant_daily_supplies(blob: dict[str, Any]) -> dict[str, int]:
+    today = _today()
+    if blob.get("daily_grant") == today:
+        return {"lootbox": 0, "crate": 0}
+    blob["daily_grant"] = today
+    blob["lootbox"] = int(blob.get("lootbox") or 0) + DAILY_LOOTBOX
+    blob["crate"] = int(blob.get("crate") or 0) + DAILY_CRATE
+    return {"lootbox": DAILY_LOOTBOX, "crate": DAILY_CRATE}
+
+
+def weapon_icon_png(kind: str, rarity: str | None = None, size: int = 96):
+    from .weapon_art import weapon_icon_png as _draw
+    return _draw(kind, rarity, size)
+
+
+def inventory_sheet_png(blob: dict[str, Any], limit: int = 8):
+    from .weapon_art import inventory_sheet_png as _draw
+    return _draw(blob, limit)
