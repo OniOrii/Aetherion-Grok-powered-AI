@@ -83,7 +83,8 @@ def _embed(page: str) -> discord.Embed:
             "`/welcome` \u2014 channel for new-member banners.\n"
             "`/datechannel` \u2014 voice channel that shows today's date at midnight Eastern.\n"
             "`/purge` \u2014 delete up to 100 recent messages in this channel.\n\n"
-            "Ori only: `/givecoins`, `/edit`, `/status`."
+            "Ori only: `/givecoins`, `/edit`, `/status`.\n"
+            "Ori only WIP: `/hunt` `/zoo` `/sell` `/team` `/battle`."
         )
         return embed
 
