@@ -163,6 +163,29 @@ class AetherionSettings(BaseSettings):
         description="On tool continuation rounds, send the smallest possible custom tool list (major repeated token saver).",
     )
 
+    # Hunt rarity Discord custom emoji markup (<:name:id>). Empty = unicode fallback.
+    # Upload assets from discord/assets/hunt_ranks/ as app/guild emojis, then paste IDs here.
+    hunt_rank_emoji_common: str = Field(
+        default="",
+        description="Discord custom emoji for common hunt rank, e.g. <:aether_c:123>",
+    )
+    hunt_rank_emoji_uncommon: str = Field(
+        default="",
+        description="Discord custom emoji for uncommon hunt rank, e.g. <:aether_u:123>",
+    )
+    hunt_rank_emoji_rare: str = Field(
+        default="",
+        description="Discord custom emoji for rare hunt rank, e.g. <:aether_r:123>",
+    )
+    hunt_rank_emoji_epic: str = Field(
+        default="",
+        description="Discord custom emoji for epic hunt rank, e.g. <:aether_e:123>",
+    )
+    hunt_rank_emoji_mythic: str = Field(
+        default="",
+        description="Discord custom emoji for mythic hunt rank, e.g. <:aether_m:123>",
+    )
+
     data_dir: Path = Field(
         default=Path("./data"),
         description="Base directory for short-term conversation context persistence.",

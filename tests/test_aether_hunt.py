@@ -93,12 +93,22 @@ def test_hunt_and_zoo_match_owo_layout():
     assert line.startswith("**\U0001f331 | Ori** spent")
     assert "caught a **common**" in line
     assert "\U0001fab2" in line
-    # OwO catch: rarity word only — no color-square / letter mark in the catch line
-    assert hunt.rarity_mark(hunt.COMMON) not in line
-    assert "`c`" not in line
+    # OwO catch keeps the rank mark on the line: **rank** {mark} {emoji}!
+    assert hunt.rarity_mark(hunt.COMMON) in line
+    assert line.rstrip().endswith("!")
     epic = hunt.hunt_catch_line("Ori", "aether_drake")
     assert "caught an **epic**" in epic
-    assert hunt.rarity_mark(hunt.EPIC) not in epic
+    assert hunt.rarity_mark(hunt.EPIC) in epic
+    # Multi-catch extras use OwO "You found:" strip (no + append)
+    multi = hunt.hunt_catch_line(
+        "Ori",
+        "dust_mite",
+        extras=["ember_moth"],
+        team_xp=[("\U0001f42e", 1)],
+    )
+    assert "+" not in multi.splitlines()[0]
+    assert "| You found:" in multi
+    assert "| \U0001f42e gained **1xp**!" in multi
     board = hunt.zoo_board(
         "Ori",
         {"dust_mite": 2, "ember_moth": 0},
@@ -111,12 +121,13 @@ def test_hunt_and_zoo_match_owo_layout():
     assert "\U0001fab2\u2070\u00b2" in board
     assert "**Zoo Points: __2__**" in board
     assert "**M-0, E-0, R-0, U-0, C-2**" in board
-    # OwO-like row prefixes: white/green/blue/purple/pink + lowercase backtick letter
-    assert hunt.rarity_mark(hunt.COMMON) == "\u2b1c`c`"
-    assert hunt.rarity_mark(hunt.UNCOMMON) == "\U0001f7e9`u`"
-    assert hunt.rarity_mark(hunt.RARE) == "\U0001f7e6`r`"
-    assert hunt.rarity_mark(hunt.EPIC) == "\U0001f7ea`e`"
-    assert hunt.rarity_mark(hunt.MYTHIC) == "\U0001fa77`m`"
+    # Brick/teal/gold/blue/purple unicode fallbacks (no backtick letters)
+    assert hunt.rarity_mark(hunt.COMMON) == "\U0001f7e5C"
+    assert hunt.rarity_mark(hunt.UNCOMMON) == "\U0001fa75U"
+    assert hunt.rarity_mark(hunt.RARE) == "\U0001f7e8R"
+    assert hunt.rarity_mark(hunt.EPIC) == "\U0001f7e6E"
+    assert hunt.rarity_mark(hunt.MYTHIC) == "\U0001f7eaM"
+    assert "`c`" not in hunt.rarity_mark(hunt.COMMON)
     assert hunt.rarity_mark(hunt.COMMON) in board
     # Rank mark packs with three spaces before the emoji strip
     assert hunt.rarity_mark(hunt.COMMON) + "   " in board
@@ -133,6 +144,16 @@ def test_rarity_marks_match_gear_and_checklist():
     assert hunt.rarity_mark(hunt.COMMON) in board
     assert hunt.rarity_mark(hunt.MYTHIC) in board
 
+
+
+def test_hunt_rank_png_assets_exist():
+    from groksito_discord.discord import hunt_ranks
+
+    for rar in (hunt.COMMON, hunt.UNCOMMON, hunt.RARE, hunt.EPIC, hunt.MYTHIC):
+        png_path = hunt_ranks.rank_png_path(rar)
+        assert png_path is not None and png_path.is_file()
+        raw = hunt_ranks.rank_png_bytes(rar)
+        assert raw and raw[:8] == bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
 
 def test_battle_image_renders():
     from groksito_discord.discord import aether_battle as board
@@ -268,8 +289,8 @@ def test_checklist_marks_discovered_and_missing():
     assert "Found" in board
     assert "Discovered __2__ / 30" in board
     assert "cowoncy" not in board.lower()
-    assert "\u2b1c`c`" in board
-    assert "\U0001f7ea`e`" in board
-    # Old wrong mapping (red C / yellow R / etc.) must stay gone
-    assert "\U0001f7e5C" not in board
-    assert "\U0001f7e8R" not in board
+    assert hunt.rarity_mark(hunt.COMMON) in board
+    assert hunt.rarity_mark(hunt.EPIC) in board
+    # No legacy backtick letter marks
+    assert "`c`" not in board
+    assert "`e`" not in board

@@ -5,6 +5,8 @@ import random
 from datetime import date
 from typing import Any
 
+from . import hunt_ranks as _hunt_ranks
+
 COMMON, UNCOMMON, RARE, EPIC, MYTHIC = (
     "common",
     "uncommon",
@@ -20,13 +22,9 @@ RARITY_LABEL = {
     EPIC: "Epic",
     MYTHIC: "Mythic",
 }
-RARITY_MARK = {
-    COMMON: "\u2b1c`c`",
-    UNCOMMON: "\U0001f7e9`u`",
-    RARE: "\U0001f7e6`r`",
-    EPIC: "\U0001f7ea`e`",
-    MYTHIC: "\U0001fa77`m`",
-}
+RARITY_MARK = _hunt_ranks.RARITY_MARK
+rarity_mark = _hunt_ranks.rarity_mark
+
 CRATE_WEIGHT = {COMMON: 420, UNCOMMON: 280, RARE: 180, EPIC: 90, MYTHIC: 30}
 GEM_WEIGHT = {COMMON: 22, UNCOMMON: 22, RARE: 20, EPIC: 20, MYTHIC: 16}
 GEM_EXTRA = {COMMON: 1, UNCOMMON: 2, RARE: 3, EPIC: 4, MYTHIC: 5}
@@ -248,7 +246,7 @@ def unequip_slot(blob: dict[str, Any], animal_id: str) -> None:
 def weapon_line(wep: dict[str, Any] | None) -> str:
     if not wep:
         return "no weapon"
-    return f"{wep['emoji']} {wep['name']} {RARITY_MARK[wep['rarity']]}"
+    return f"{wep['emoji']} {wep['name']} {rarity_mark(wep['rarity'])}"
 
 def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
     lines = [f"===== {display_name}'s Inventory ====="]
@@ -288,7 +286,7 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
             if not meta:
                 continue
             rar = raw.get("rarity") or COMMON
-            lines.append(f"`{wid}` {meta[2]} {meta[1]} {RARITY_MARK.get(rar, rar)} Q{int(raw.get('quality') or 0)} +{int(raw.get('atk') or 0)} ATK")
+            lines.append(f"`{wid}` {meta[2]} {meta[1]} {rarity_mark(rar) if rar else rar} Q{int(raw.get('quality') or 0)} +{int(raw.get('atk') or 0)} ATK")
     else:
         lines.append("No weapons yet. Win a battle for a crate.")
     return "\n".join(lines)
@@ -318,7 +316,7 @@ def owned_weapons(blob: dict[str, Any]) -> list[tuple[str, str, str]]:
         if not meta:
             continue
         rar = raw.get("rarity") or COMMON
-        out.append((wid, f"{meta[2]} {meta[1]} {RARITY_MARK.get(rar, rar)}", meta[1]))
+        out.append((wid, f"{meta[2]} {meta[1]} {rarity_mark(rar) if rar else rar}", meta[1]))
     return out
 
 

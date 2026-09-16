@@ -40,19 +40,20 @@ RARITY_LABEL = {COMMON: "Common", UNCOMMON: "Uncommon", RARE: "Rare", EPIC: "Epi
 RARITY_WEIGHT = {COMMON: 550, UNCOMMON: 270, RARE: 120, EPIC: 45, MYTHIC: 15}
 RARITY_SELL = {COMMON: 10, UNCOMMON: 20, RARE: 40, EPIC: 80, MYTHIC: 150}
 RARITY_BASE = {COMMON: (40, 8), UNCOMMON: (52, 11), RARE: (68, 15), EPIC: (88, 20), MYTHIC: (110, 26)}
+# Letter aliases stay c/u/r/e/m; marks resolve via hunt_ranks (emoji ID or unicode).
 RARITY_LETTER = {
-    COMMON: ("c", "\u2b1c"),       # white square — OwO Common
-    UNCOMMON: ("u", "\U0001f7e9"),  # green square
-    RARE: ("r", "\U0001f7e6"),      # blue square
-    EPIC: ("e", "\U0001f7ea"),      # purple square
-    MYTHIC: ("m", "\U0001fa77"),    # pink heart (no pink square in Unicode)
+    COMMON: "c",
+    UNCOMMON: "u",
+    RARE: "r",
+    EPIC: "e",
+    MYTHIC: "m",
 }
 RARITY_EMBED = {
-    COMMON: 0xFFFFFF,
-    UNCOMMON: 0x57F287,
-    RARE: 0x3498DB,
-    EPIC: 0x9B59B6,
-    MYTHIC: 0xFF69B4,
+    COMMON: 0x9A4442,
+    UNCOMMON: 0x388B9A,
+    RARE: 0xD4A746,
+    EPIC: 0x4057E1,
+    MYTHIC: 0x9558EF,
 }
 RARITY_POINTS = {COMMON: 1, UNCOMMON: 5, RARE: 20, EPIC: 250, MYTHIC: 3000}
 ZOO_COLS = 5
@@ -467,9 +468,16 @@ def battle(user_id: int, rng: random.Random | None = None) -> dict[str, Any]:
         return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "xp_gain": xp_gain, "payout": payout, "balance": balance}
 
 def rarity_mark(rarity: str) -> str:
-    """OwO-like zoo/checklist prefix: color square + lowercase backtick letter."""
-    letter, square = RARITY_LETTER.get(rarity, RARITY_LETTER[COMMON])
-    return f"{square}`{letter}`"
+    """OwO-like rank badge for catch/zoo/checklist/gear.
+
+    Prefers configured Discord custom emoji strings (HUNT_RANK_EMOJI_*), else
+    a unicode color-square + capital letter fallback. PNG tiles for upload live
+    under discord/assets/hunt_ranks/.
+    """
+    from .hunt_ranks import rarity_mark as _rank_mark
+
+    return _rank_mark(rarity)
+
 
 def _small_count(n: int, width: int = 2) -> str:
     """OwO-style unicode superscript counts (min 2 digits like OwO 00/04; grow with densest)."""
@@ -500,14 +508,45 @@ def zoo_rank_tally(caught: dict[str, int]) -> str:
     letters = {MYTHIC: "M", EPIC: "E", RARE: "R", UNCOMMON: "U", COMMON: "C"}
     return ", ".join(f"{letters[r]}-{counts[r]}" for r in (MYTHIC, EPIC, RARE, UNCOMMON, COMMON))
 
-def hunt_catch_line(display_name: str, animal_id: str) -> str:
+def hunt_catch_line(
+    display_name: str,
+    animal_id: str,
+    extras: list[str] | None = None,
+    lootbox: bool = False,
+    team_xp: list[tuple[str, int]] | None = None,
+) -> str:
+    """OwO-shaped catch: seedling | Name spent N coin and caught a/an **rank** mark emoji!"""
     row = ANIMAL_BY_ID.get(animal_id)
     if not row:
-        return f"**\U0001f331 | {display_name}** hunted, but nothing turned up."
+        return f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and nothing turned up."
     _aid, _name, emoji, rarity = row
     label = RARITY_LABEL[rarity].lower()
     article = "an" if rarity in (UNCOMMON, EPIC) else "a"
-    return f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {emoji}!"
+    mark = rarity_mark(rarity)
+    lines = [
+        f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {mark} {emoji}!"
+    ]
+    extra_bits: list[str] = []
+    for aid in extras or []:
+        extra = ANIMAL_BY_ID.get(aid)
+        if extra:
+            extra_bits.append(extra[2])
+    if extra_bits:
+        lines.append(f"| You found: {''.join(extra_bits)}")
+    for pet_emoji, xp_n in team_xp or []:
+        if not pet_emoji:
+            continue
+        try:
+            n = int(xp_n)
+        except (TypeError, ValueError):
+            continue
+        if n <= 0:
+            continue
+        lines.append(f"| {pet_emoji} gained **{n}xp**!")
+    if lootbox:
+        lines.append("| You found a **lootbox**!")
+    return "\n".join(lines)
+
 
 def zoo_points_for(caught: dict[str, int]) -> int:
     total = 0
