@@ -10,7 +10,7 @@ from . import ai_coins
 logger = logging.getLogger("aetherion.slash_help")
 
 HELP_COLOR = 0xC9A227
-PAGES = ("overview", "chat", "voice", "games", "coins", "server")
+PAGES = ("overview", "chat", "voice", "games", "coins", "hunt", "server")
 
 
 def _embed(page: str) -> discord.Embed:
@@ -54,8 +54,10 @@ def _embed(page: str) -> discord.Embed:
             "**Spin Again** and **Change Bet** stay on the machine.\n\n"
             "`/cointoss` \u2014 call Heads or Tails. Bet 10\u201310,000.\n"
             "Odds are 48% / 48% / 2% side. Side pays 2.5x.\n\n"
-            f"`/connect4` \u2014 challenge a member. Same bet each ({ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}). Winner takes the pot.\n\n"
-            f"`/poker` \u2014 Texas Hold'em, 2\u20134 seats. Friends Join, or Seat Aetherion. Buy-in {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}."
+            f"`/connect4` \u2014 challenge a member, or leave opponent empty to play Aetherion. "
+            f"Same bet each ({ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}). Winner takes the pot.\n\n"
+            f"`/poker` \u2014 Texas Hold'em, 2\u20134 seats. Friends Join, or Seat Aetherion. "
+            f"Buy-in {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET} (default 200). **My cards** is private. **Hands** is a rank chart only."
         )
         return embed
 
@@ -66,10 +68,27 @@ def _embed(page: str) -> discord.Embed:
             f"New players start with **{ai_coins.STARTING_BALANCE}** Aether Coins.\n"
             f"`/daily` \u2014 claim **{ai_coins.DAILY_DRIP}** once per Eastern day.\n"
             "`/balance` \u2014 your wallet.\n"
-            "`/leaderboard` \u2014 top wallets on this server.\n\n"
+            "`/leaderboard` \u2014 top wallets on this server, including Aetherion's house wallet.\n\n"
             f"Blackjack, Connect Four, and Poker bets: {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}.\n"
             "Slots bets: 100\u201310,000.\n"
-            "Coin toss bets: 10\u201310,000."
+            "Coin toss bets: 10\u201310,000.\n"
+            "Ori only: `/givecoins`."
+        )
+        return embed
+
+    if key == "hunt":
+        embed.title = "\u2726 Aetherion \u00b7 Hunt"
+        embed.description = (
+            "**Ori only WIP.** Everyone else is rejected. Expedition and autohunt are still on hold.\n\n"
+            "50 original animals (10 each C/U/R/E/M). 42 weapons. Level cap 50.\n"
+            "Manual hunt costs **5** Aether Coins with a **15s** cooldown.\n\n"
+            "`/hunt` — catch. `/zoo` — grid and Zoo Points.\n"
+            "`/team` `/sell` `/sacrifice` `/rename` `/checklist`\n"
+            "`/battle` — 3v3 board. Phys ATK/PR, weapon MAG/MR, WP spend.\n"
+            "`/raid` — ticket 3v3 PvE. `/bestiary` (`/dex`) — animal card.\n\n"
+            "`/inv` `/lootbox` `/crate` `/use` `/equip` `/weapon` `/salvage`\n"
+            "`/use hunting|lucky|empower|prism` activates gems onto hunts, not pets. "
+            "Tiers go through Fabled. `/weapon` with an id opens the detail card."
         )
         return embed
 
@@ -77,27 +96,27 @@ def _embed(page: str) -> discord.Embed:
         embed.title = "\u2726 Aetherion \u00b7 Server tools"
         embed.description = (
             "Administrators:\n"
-            "`/reactionrole colors` \u2014 post the color-role panel.\n"
-            "`/reactionrole post` `add` `remove` `list` \u2014 custom panels.\n"
+            "`/reactionrole colors` — post the color-role panel.\n"
+            "`/reactionrole post` `add` `remove` `list` — custom panels.\n"
             "People can keep **one** color from a panel at a time.\n"
-            "`/welcome` \u2014 channel for new-member banners.\n"
-            "`/datechannel` \u2014 voice channel that shows today's date at midnight Eastern.\n"
-            "`/purge` \u2014 delete up to 100 recent messages in this channel.\n\n"
+            "`/welcome` — channel for new-member banners.\n"
+            "`/datechannel` — voice channel that shows today's date at midnight Eastern.\n"
+            "`/purge` — delete up to 100 recent messages in this channel.\n\n"
             "Ori only: `/givecoins`, `/edit`, `/status`.\n"
-            "Ori only WIP: `/hunt` `/zoo` `/sell` `/team` `/battle` `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapon` (id optional) `/sacrifice` `/rename` `/checklist` `/bestiary` `/dex` `/salvage` `/raid`.\nGems from `/lootbox` activate with `/use hunting|lucky|empower|prism` (tiers through Fabled). They are not equipped on animals."
+            "Hunt commands live on the **Hunt** help page."
         )
         return embed
 
     embed.title = "\u2726 Aetherion \u00b7 Help"
     embed.description = (
-        "Grok in Discord \u2014 chat, vision, live voice, SoundCloud, and Aether Coin games.\n"
+        "Grok in Discord — chat, vision, live voice, SoundCloud, Aether Coin games, and Hunt.\n"
         "Mention **@Aetherion** or reply to it. Use the menu for a topic."
     )
     embed.add_field(
         name="\U0001F399\ufe0f  Talk & voice",
         value=(
-            "`/join` `/leave` \u2014 voice chat\n"
-            "`/play` `/pause` `/stop` \u2014 SoundCloud\n"
+            "`/join` `/leave` — voice chat\n"
+            "`/play` `/pause` `/stop` — SoundCloud\n"
             "`/audio` `/ping` `/help`"
         ),
         inline=True,
@@ -107,6 +126,14 @@ def _embed(page: str) -> discord.Embed:
         value=(
             "`/blackjack` `/slots` `/cointoss` `/connect4` `/poker`\n"
             "`/balance` `/daily` `/leaderboard`"
+        ),
+        inline=True,
+    )
+    embed.add_field(
+        name="\U0001F3AF  Hunt",
+        value=(
+            "Ori only WIP\n"
+            "`/hunt` `/zoo` `/team` `/battle` `/inv`"
         ),
         inline=True,
     )
@@ -153,6 +180,7 @@ class HelpView(discord.ui.View):
             discord.SelectOption(label="Voice & music", value="voice", description="/join and SoundCloud"),
             discord.SelectOption(label="Games", value="games", description="Blackjack, slots, coin toss, Connect Four, poker"),
             discord.SelectOption(label="Aether Coins", value="coins", description="Wallet, daily, bets"),
+            discord.SelectOption(label="Hunt", value="hunt", description="Ori-only animals, battle, gems"),
             discord.SelectOption(label="Server tools", value="server", description="Roles, welcome, date dock"),
         ],
     )
@@ -172,6 +200,7 @@ def register_help(tree, is_guild_allowed) -> None:
             discord.app_commands.Choice(name="Voice & music", value="voice"),
             discord.app_commands.Choice(name="Games", value="games"),
             discord.app_commands.Choice(name="Aether Coins", value="coins"),
+            discord.app_commands.Choice(name="Hunt", value="hunt"),
             discord.app_commands.Choice(name="Server tools", value="server"),
         ]
     )

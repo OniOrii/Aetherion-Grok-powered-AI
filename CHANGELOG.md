@@ -15,6 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- **`/help` Hunt topic:** new Hunt page (Ori-only WIP command list, 5 coin / 15s hunt, gems, battle/raid). Overview lists Hunt. Games page notes Connect Four vs Aetherion and poker Hands/My cards. Coins page notes the house wallet. Server page no longer dumps the Hunt command string.
 - **README matches live main:** poker, house wallet, starting balance **5,000**, daily **2,000**, Connect Four vs Aetherion, and the Ori-only Hunt command set (`/hunt` `/zoo` `/sell` `/team` `/battle` `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapon` `/sacrifice` `/rename` `/checklist` `/bestiary` `/dex` `/salvage` `/raid`). Coin and Hunt numbers in the README now match `ai_coins.py` and `/help`.
 
 ### Changed
