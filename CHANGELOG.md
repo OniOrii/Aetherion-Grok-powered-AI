@@ -15,6 +15,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- **Hunt battle combat depth (Ori only):** physical hits use ATK/STR vs PR; equipped weapon skills (strike/cleave/mend) use MAG vs MR and spend existing WP costs. Low WP falls back to physical. PR/MR mitigation matches OwO `res/(100+res)*0.8` (80% asymptote). Default target is a random living foe; cleave hits all foes, mend heals the lowest-HP ally. Turn lines under the board tag `(phys)` / `(weapon)` lightly — battle board PNG unchanged. Team H/P/p · W/M/m still mirrors `_fighter`.
+
+### Changed
+
 - **Hunt `/inv` mobile layout polish (Ori only):** clearer section breaks (**Supplies** / **Gems** / **Active** / **Weapons** with blank lines), short resource labels (`LB` / `crate` / `shards` / `raid`), and compact weapon quality `` `{n}%` `` instead of `| Quality: n%` so mobile Discord no longer orphans the percent. Active gems keep `` `[left/max]` `` under **Active**. Dropped the inventory thumbnail so description width is not squeezed on phones. Daily `` `[n/3]` `` cadence copy unchanged. Display-only — gem durability math from PR #12 untouched.
 
 ### Added

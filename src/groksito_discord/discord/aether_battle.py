@@ -308,45 +308,74 @@ def result_caption(result: dict[str, Any]) -> str:
     return line
 
 
+def resist_mitigation(res: int | float | None) -> float:
+    """OwO ``res/(100+res)*0.8`` — soft resist, asymptote 80% mitigation."""
+    r = max(0.0, float(res or 0))
+    return (r / (100.0 + r)) * 0.8
+
+
+def apply_resist(raw: int | float, res: int | float | None) -> int:
+    """Apply PR/MR mitigation; always at least 1 damage when raw > 0."""
+    base = max(0, int(round(float(raw or 0))))
+    if base <= 0:
+        return 0
+    dealt = int(round(base * (1.0 - resist_mitigation(res))))
+    return max(1, dealt)
+
+
 def apply_action(attacker: dict[str, Any], allies: list[dict[str, Any]], foes: list[dict[str, Any]], rng) -> str:
+    """One auto action: physical (ATK/STR vs PR) or weapon (MAG vs MR, spends WP).
+
+    WP scarcity: if the pet cannot afford the style cost, fall back to physical.
+    Targeting: random living foe unless style overrides (cleave=all foes, mend=ally).
+    """
     from .aether_hunt import animal_label
+    from .aether_gear import style_wp_cost
 
     living = [p for p in foes if p["hp"] > 0]
     if not living:
         return ""
     wep = attacker.get("weapon") if isinstance(attacker.get("weapon"), dict) else None
     style = (wep or {}).get("style") or "strike"
-    from .aether_gear import style_wp_cost
     cost = style_wp_cost(style)
-    used_weapon = bool(wep) and attacker["wp"] >= cost
+    # Weapon path only when equipped *and* WP covers the style cost; else physical.
+    used_weapon = bool(wep) and int(attacker.get("wp") or 0) >= cost
     if used_weapon:
-        attacker["wp"] -= cost
+        attacker["wp"] = int(attacker["wp"]) - cost
     name = animal_label(attacker["id"])
     if used_weapon and style == "mend":
         wounded = [p for p in allies if p["hp"] > 0]
         if not wounded:
-            return f"{name} has no ally to mend."
+            return f"{name} has no ally to mend (weapon)."
         target = min(wounded, key=lambda p: p["hp"] / max(1, p["max_hp"]))
-        heal = max(6, int(attacker["mag"] * 0.55) + rng.randint(-2, 3))
+        heal = max(6, int(attacker.get("mag") or 0) * 55 // 100 + rng.randint(-2, 3))
         target["hp"] = min(target["max_hp"], target["hp"] + heal)
-        return f"{name} mends {animal_label(target['id'])} for {heal} HP."
+        return f"{name} mends {animal_label(target['id'])} for {heal} HP (weapon)."
     if used_weapon and style == "cleave":
         bits = []
-        dmg = max(1, int(attacker["atk"] * 0.7) + rng.randint(-2, 2))
+        raw = max(1, int(attacker.get("mag") or 0) * 70 // 100)
         for target in list(living):
-            taken = max(1, int(dmg * (100 - int(target.get("pr") or 0)) / 100))
+            taken = max(1, apply_resist(raw, target.get("mr")) + rng.randint(-2, 2))
             target["hp"] = max(0, target["hp"] - taken)
             mark = "KO" if target["hp"] <= 0 else f"{target['hp']} HP"
             bits.append(f"{animal_label(target['id'])} {taken} ({mark})")
-        return f"{name} cleaves " + ", ".join(bits) + "."
+        return f"{name} cleaves " + ", ".join(bits) + " (weapon)."
+    # Single-target: random living foe — phys ATK vs PR, or weapon strike MAG vs MR.
     target = rng.choice(living)
-    raw = attacker["atk"] if not used_weapon else attacker["atk"] + int((wep or {}).get("atk") or 0) // 2
-    resist = int(target.get("pr") or 0) if not used_weapon else int(target.get("mr") or 0)
-    dmg = max(1, int(raw * (100 - resist) / 100) + rng.randint(-2, 2))
+    if used_weapon:
+        raw = max(1, int(attacker.get("mag") or 0))
+        resist = target.get("mr")
+        path = "weapon"
+        verb = "strikes"
+    else:
+        raw = max(1, int(attacker.get("atk") or 0))
+        resist = target.get("pr")
+        path = "phys"
+        verb = "hits"
+    dmg = max(1, apply_resist(raw, resist) + rng.randint(-2, 2))
     target["hp"] = max(0, target["hp"] - dmg)
     mark = "KO" if target["hp"] <= 0 else f"{target['hp']} HP"
-    verb = "uses a weapon on" if used_weapon else "hits"
-    return f"{name} {verb} {animal_label(target['id'])} for {dmg}. {mark}."
+    return f"{name} {verb} {animal_label(target['id'])} for {dmg} ({path}). {mark}."
 
 
 def play_turns(player: list[dict[str, Any]], enemy: list[dict[str, Any]], rng) -> dict[str, Any]:

@@ -750,3 +750,137 @@ def test_inventory_lists_prism_and_fabled_tiers():
     assert "`[80/100]`" in text
     assert "**Gems**" in text
     assert "**Active**" in text
+
+
+def test_resist_mitigation_owo_curve():
+    """OwO res/(100+res)*0.8 — never fully nullifies; asymptote 80%."""
+    from groksito_discord.discord import aether_battle as board
+
+    assert board.resist_mitigation(0) == 0.0
+    # res=100 → 100/200*0.8 = 0.4
+    assert abs(board.resist_mitigation(100) - 0.4) < 1e-9
+    # high resist still < 0.8
+    assert board.resist_mitigation(10_000) < 0.8
+    assert board.resist_mitigation(10_000) > 0.79
+    # 100 raw vs 100 PR → 60 dealt
+    assert board.apply_resist(100, 100) == 60
+    assert board.apply_resist(50, 0) == 50
+    assert board.apply_resist(10, 500) >= 1
+
+
+def test_combat_phys_vs_weapon_paths():
+    """Physical = ATK vs PR; weapon strike = MAG vs MR + WP spend; random target."""
+    import random
+    from groksito_discord.discord import aether_battle as board
+
+    rng = random.Random(0)
+    attacker = {
+        "id": "thorn_wolf",
+        "atk": 40,
+        "mag": 25,
+        "wp": 20,
+        "max_wp": 20,
+        "hp": 50,
+        "max_hp": 50,
+        "pr": 10,
+        "mr": 10,
+        "weapon": {"kind": "rift_blade", "style": "strike", "atk": 8, "name": "Rift Blade", "emoji": "x"},
+    }
+    foe_a = {"id": "ember_moth", "hp": 80, "max_hp": 80, "pr": 0, "mr": 100, "atk": 1, "mag": 1, "wp": 0}
+    foe_b = {"id": "dust_mite", "hp": 80, "max_hp": 80, "pr": 100, "mr": 0, "atk": 1, "mag": 1, "wp": 0}
+    # Weapon path: spends strike WP (8), MAG vs MR — prefer low-MR foe if chosen
+    line = board.apply_action(attacker, [attacker], [foe_a, foe_b], rng)
+    assert attacker["wp"] == 12  # 20 - 8
+    assert "(weapon)" in line
+    assert "strikes" in line or "cleaves" in line or "mends" in line
+    # Damage should have landed on exactly one foe for strike
+    damaged = [p for p in (foe_a, foe_b) if p["hp"] < 80]
+    assert len(damaged) == 1
+
+
+def test_combat_wp_fallback_to_physical():
+    """WP too low for weapon style → physical ATK vs PR, no WP spend."""
+    import random
+    from groksito_discord.discord import aether_battle as board
+    from groksito_discord.discord import aether_gear as gear
+
+    rng = random.Random(1)
+    cost = gear.style_wp_cost("cleave")
+    attacker = {
+        "id": "thorn_wolf",
+        "atk": 50,
+        "mag": 80,
+        "wp": cost - 1,
+        "max_wp": 40,
+        "hp": 50,
+        "max_hp": 50,
+        "pr": 10,
+        "mr": 10,
+        "weapon": {"kind": "copper_axe", "style": "cleave", "atk": 10, "name": "Copper Axe", "emoji": "x"},
+    }
+    foe = {"id": "ember_moth", "hp": 100, "max_hp": 100, "pr": 0, "mr": 0, "atk": 1, "mag": 1, "wp": 0}
+    before = attacker["wp"]
+    line = board.apply_action(attacker, [attacker], [foe], rng)
+    assert attacker["wp"] == before  # no spend
+    assert "(phys)" in line
+    assert "hits" in line
+    assert "cleaves" not in line
+    assert foe["hp"] < 100
+
+
+def test_combat_cleave_and_mend_overrides():
+    """Cleave = multi foe MAG vs MR; mend = ally heal; both spend WP."""
+    import random
+    from groksito_discord.discord import aether_battle as board
+    from groksito_discord.discord import aether_gear as gear
+
+    rng = random.Random(2)
+    cleaver = {
+        "id": "thorn_wolf",
+        "atk": 10,
+        "mag": 40,
+        "wp": 30,
+        "max_wp": 30,
+        "hp": 50,
+        "max_hp": 50,
+        "weapon": {"kind": "copper_axe", "style": "cleave", "atk": 5, "name": "Axe", "emoji": "x"},
+    }
+    foes = [
+        {"id": "ember_moth", "hp": 60, "max_hp": 60, "pr": 0, "mr": 0},
+        {"id": "dust_mite", "hp": 60, "max_hp": 60, "pr": 0, "mr": 0},
+    ]
+    line = board.apply_action(cleaver, [cleaver], foes, rng)
+    assert cleaver["wp"] == 30 - gear.style_wp_cost("cleave")
+    assert "cleaves" in line and "(weapon)" in line
+    assert all(p["hp"] < 60 for p in foes)
+
+    healer = {
+        "id": "ember_elk",
+        "atk": 10,
+        "mag": 40,
+        "wp": 20,
+        "max_wp": 20,
+        "hp": 50,
+        "max_hp": 50,
+        "weapon": {"kind": "quartz_wand", "style": "mend", "atk": 5, "name": "Wand", "emoji": "y"},
+    }
+    ally = {"id": "thorn_wolf", "hp": 10, "max_hp": 50}
+    healthy = {"id": "dust_mite", "hp": 50, "max_hp": 50}
+    line2 = board.apply_action(healer, [healer, ally, healthy], [{"id": "ember_moth", "hp": 40, "max_hp": 40}], rng)
+    assert healer["wp"] == 20 - gear.style_wp_cost("mend")
+    assert "mends" in line2 and "(weapon)" in line2
+    assert ally["hp"] > 10
+    assert healthy["hp"] == 50
+
+
+def test_fighter_mag_mirrors_team_card():
+    """Weapon bonus raises MAG for skills; H/P/p · W/M/m stays consistent."""
+    wep = {"kind": "rift_blade", "style": "strike", "atk": 12, "name": "Rift Blade", "emoji": "x", "rarity": "rare", "quality": 70, "wid": "1"}
+    bare = hunt._fighter("thorn_wolf", 5)
+    armed = hunt._fighter("thorn_wolf", 5, wep)
+    assert armed["atk"] == bare["atk"] + 12
+    assert armed["mag"] == bare["mag"] + 12
+    mend = hunt._fighter("thorn_wolf", 5, {**wep, "style": "mend", "kind": "quartz_wand"})
+    assert mend["atk"] == bare["atk"]  # mend does not boost physical
+    assert mend["mag"] > bare["mag"]
+
