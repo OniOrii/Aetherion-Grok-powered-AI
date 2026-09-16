@@ -143,7 +143,7 @@ def render_hole_png(cards) -> bytes:
 
 
 def _guide_card(rank: int, suit: str, w: int = 58, h: int = 82) -> Image.Image:
-    """Readable mini face for the Hands chart. No heavy shadow, no clipped J."""
+    """Readable mini face for the Hands chart. Suit sits in the true center."""
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     _rounded(d, (0, 0, w - 1, h - 1), 8, CREAM, outline=(214, 206, 188), width=2)
@@ -151,23 +151,22 @@ def _guide_card(rank: int, suit: str, w: int = 58, h: int = 82) -> Image.Image:
     face = RANK_SYM.get(rank, str(rank))
     rs = 15 if face == "10" else 20
     d.text((7, 5), face, font=_font(rs), fill=color, anchor="lt")
-    pip = _font(22)
-    d.text((w // 2, h // 2 + 8), SUIT_SYM[suit], font=pip, fill=color, anchor="mm")
+    d.text((w // 2, h // 2), SUIT_SYM[suit], font=_font(24), fill=color, anchor="mm")
     d.text((w - 8, h - 7), face, font=_font(rs), fill=color, anchor="rb")
     return img
 
 
 HAND_EXAMPLES = (
-    ("Royal flush", ((10, "H"), (11, "H"), (12, "H"), (13, "H"), (14, "H"))),
-    ("Straight flush", ((5, "D"), (6, "D"), (7, "D"), (8, "D"), (9, "D"))),
-    ("Four of a kind", ((14, "S"), (14, "H"), (14, "D"), (14, "C"), (13, "S"))),
-    ("Full house", ((13, "S"), (13, "H"), (13, "D"), (9, "C"), (9, "H"))),
-    ("Flush", ((14, "H"), (10, "H"), (8, "H"), (6, "H"), (3, "H"))),
-    ("Straight", ((14, "S"), (2, "H"), (3, "D"), (4, "C"), (5, "H"))),
-    ("Three of a kind", ((12, "S"), (12, "H"), (12, "D"), (7, "C"), (2, "S"))),
-    ("Two pair", ((13, "S"), (13, "H"), (7, "D"), (7, "C"), (4, "S"))),
-    ("Pair", ((11, "S"), (11, "H"), (14, "D"), (8, "C"), (3, "S"))),
-    ("High card", ((14, "S"), (12, "H"), (9, "D"), (6, "C"), (3, "S"))),
+    ("Royal flush", "Ten through Ace, same suit.", ((10, "H"), (11, "H"), (12, "H"), (13, "H"), (14, "H"))),
+    ("Straight flush", "Five in a row, same suit.", ((5, "D"), (6, "D"), (7, "D"), (8, "D"), (9, "D"))),
+    ("Four of a kind", "Four cards of one rank.", ((14, "S"), (14, "H"), (14, "D"), (14, "C"), (13, "S"))),
+    ("Full house", "Three of a kind plus a pair.", ((13, "S"), (13, "H"), (13, "D"), (9, "C"), (9, "H"))),
+    ("Flush", "Five cards, same suit.", ((14, "H"), (10, "H"), (8, "H"), (6, "H"), (3, "H"))),
+    ("Straight", "Five cards in a row.", ((14, "S"), (2, "H"), (3, "D"), (4, "C"), (5, "H"))),
+    ("Three of a kind", "Three cards of one rank.", ((12, "S"), (12, "H"), (12, "D"), (7, "C"), (2, "S"))),
+    ("Two pair", "Two different pairs.", ((13, "S"), (13, "H"), (7, "D"), (7, "C"), (4, "S"))),
+    ("Pair", "Two cards of one rank.", ((11, "S"), (11, "H"), (14, "D"), (8, "C"), (3, "S"))),
+    ("High card", "Nothing made. Highest card wins.", ((14, "S"), (12, "H"), (9, "D"), (6, "C"), (3, "S"))),
 )
 
 
@@ -177,7 +176,8 @@ def render_hands_guide_png() -> bytes:
     gap = 10
     label_w = 178
     pad_x, pad_y = 24, 22
-    row_h = mini_h + 16
+    note_h = 22
+    row_h = mini_h + note_h + 14
     width = pad_x * 2 + label_w + 5 * mini_w + 4 * gap
     height = pad_y * 2 + 36 + len(HAND_EXAMPLES) * row_h
     img = _space_field(width, height)
@@ -185,13 +185,15 @@ def render_hands_guide_png() -> bytes:
     d.rounded_rectangle((8, 8, width - 9, height - 9), radius=22, outline=GOLD_DIM, width=2)
     d.text((width // 2, 26), "POKER HANDS", font=_font(18), fill=GOLD, anchor="mm")
     y = 48
-    for name, cards in HAND_EXAMPLES:
+    cards_x = pad_x + label_w
+    for name, hint, cards in HAND_EXAMPLES:
         d.text((pad_x, y + mini_h // 2), name, font=_font(16), fill=CREAM, anchor="lm")
-        x = pad_x + label_w
+        x = cards_x
         for rank, suit in cards:
             face = _guide_card(rank, suit, mini_w, mini_h)
             img.paste(face, (x, y), face)
             x += mini_w + gap
+        d.text((cards_x, y + mini_h + 8), hint, font=_font(13), fill=MUTED, anchor="lt")
         y += row_h
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
