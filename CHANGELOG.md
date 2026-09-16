@@ -15,7 +15,8 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
-- Command embeds use the gold cosmos look: `\u2726` titles, sentence case, and punctuation on `/help`, `/connect4`, `/poker`, and `/play`.
+- Command embeds use the gold cosmos look: `\u2726` titles, sentence case, and punctuation on `/help`, `/ping`, `/play`, `/blackjack`, `/balance`, `/daily`, `/leaderboard`, `/slots`, `/cointoss`, `/connect4`, `/poker`, and reaction-role panels.
+- `/balance` and `/daily` now reply with gold wallet embeds instead of plain text.
 - Poker caption bar sits below the bottom hands. Winner text wraps onto two lines instead of running off the bar.
 - The Aether Coin mark used on `/slots` (`\u2726`) now sits next to coin amounts on blackjack, connect four, poker, `/balance`, `/daily`, `/leaderboard`, and `/givecoins`.
 - `/poker` default buy-in is 200. Blinds scale with the buy-in (20/40 at 200, larger on bigger stacks). 10-coin tables stay blindless so they do not all-in on the post.
