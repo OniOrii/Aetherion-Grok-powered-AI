@@ -884,3 +884,47 @@ def test_fighter_mag_mirrors_team_card():
     assert mend["atk"] == bare["atk"]  # mend does not boost physical
     assert mend["mag"] > bare["mag"]
 
+
+
+def test_settings_slot_display_and_team_settings_body():
+    """Pure helpers for Team Settings embed rows (OwO-feel labels)."""
+    assert hunt.settings_slot_display(None) == "empty"
+    assert hunt.settings_slot_display("nope") == "empty"
+    text = hunt.settings_slot_display("dust_mite", {"dust_mite": 0})
+    assert text.startswith("🪲")
+    assert "[Lvl 1]" in text
+    assert "Dust Mite" in text
+    nick = hunt.settings_slot_display("dust_mite", {"dust_mite": 1001}, display_name="Sparky")
+    assert "[Lvl 2]" in nick and "Sparky" in nick
+
+    body = hunt.team_settings_description(
+        ["dust_mite", None, "thorn_wolf"],
+        {"dust_mite": 0, "thorn_wolf": 0},
+    )
+    assert "`Current Active Battle Team`" in body
+    assert "Team 1" in body
+    assert "`Animal in Team Slot 1`" in body
+    assert "`Animal in Team Slot 2`" in body
+    assert "`Animal in Team Slot 3`" in body
+    assert "empty" in body
+    assert "Dust Mite" in body
+    assert "Thorn Wolf" in body
+
+
+def test_set_team_slot_clear_and_swap(tmp_path: Path, monkeypatch):
+    """Slot helper used by settings Select still clears and rejects dupes."""
+    store = tmp_path / "hunt.json"
+    monkeypatch.setattr(hunt, "_store_path", lambda: store)
+    with hunt._lock:
+        data = hunt._empty_store()
+        row = hunt._ensure_user(data, 42)
+        row["zoo"] = {"dust_mite": 1, "thorn_wolf": 1, "ember_elk": 1}
+        hunt._save_store(data)
+    assert hunt.set_team_slot(42, 1, "dust_mite")["ok"]
+    assert hunt.set_team_slot(42, 2, "thorn_wolf")["ok"]
+    dup = hunt.set_team_slot(42, 3, "dust_mite")
+    assert not dup["ok"]
+    cleared = hunt.set_team_slot(42, 1, None)
+    assert cleared["ok"]
+    assert cleared["team"][0] is None
+    assert hunt.set_team_slot(42, 3, "dust_mite")["ok"]
