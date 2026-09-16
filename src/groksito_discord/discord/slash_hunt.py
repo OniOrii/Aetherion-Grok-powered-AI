@@ -419,13 +419,17 @@ def register_hunt(tree, is_guild_allowed) -> None:
             return
         await interaction.response.send_message(embed=embed)
 
-    @tree.command(name="use", description="WIP Ori only. Activate a hunting, lucky, or empower gem.")
-    @discord.app_commands.describe(gem="hunting, lucky, or empower", rarity="optional gem tier")
+    @tree.command(name="use", description="WIP Ori only. Activate a hunting, lucky, empower, or prism gem.")
+    @discord.app_commands.describe(
+        gem="hunting, lucky, empower, or prism",
+        rarity="optional gem tier (common…fabled)",
+    )
     @discord.app_commands.choices(
         gem=[
             discord.app_commands.Choice(name="Hunting", value="hunting"),
             discord.app_commands.Choice(name="Lucky", value="lucky"),
             discord.app_commands.Choice(name="Empowering", value="empower"),
+            discord.app_commands.Choice(name="Prism", value="prism"),
         ]
     )
     @discord.app_commands.default_permissions(administrator=True)
@@ -439,17 +443,20 @@ def register_hunt(tree, is_guild_allowed) -> None:
         rar = None
         if rarity:
             key = rarity.strip().lower()
-            rar = key if key in hunt.RARITY_LABEL else None
+            # Gem tiers include Legendary/Fabled; animal ranks stay C–M.
+            rar = key if key in gear.RARITY_LABEL else None
         result = _gear_call("use_gem", interaction.user.id, gem.value, rar)
         if not result.get("ok"):
             await interaction.response.send_message(
                 result.get("error") or "Could not use that gem.", ephemeral=True
             )
             return
+        tier = gear.RARITY_LABEL.get(result["rarity"], result["rarity"])
+        left = int(result["left"])
         await interaction.response.send_message(
             f"{gear.GEM_BY_KIND[result['kind']][2]} | Activated "
-            f"**{hunt.RARITY_LABEL[result['rarity']]} {result['label']}** "
-            f"for **{result['left']}** hunts."
+            f"**{tier} {result['label']}** "
+            f"`[{left}/{left}]` charges (role-based spend per hunt)."
         )
 
     @tree.command(name="equip", description="WIP Ori only. Put a crate weapon on a team animal.")

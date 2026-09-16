@@ -7,28 +7,60 @@ from typing import Any
 
 from . import hunt_ranks as _hunt_ranks
 
-COMMON, UNCOMMON, RARE, EPIC, MYTHIC = (
+COMMON, UNCOMMON, RARE, EPIC, MYTHIC, LEGENDARY, FABLED = (
     "common",
     "uncommon",
     "rare",
     "epic",
     "mythic",
+    "legendary",
+    "fabled",
 )
-RARITY_ORDER = (COMMON, UNCOMMON, RARE, EPIC, MYTHIC)
+RARITY_ORDER = (COMMON, UNCOMMON, RARE, EPIC, MYTHIC, LEGENDARY, FABLED)
 RARITY_LABEL = {
     COMMON: "Common",
     UNCOMMON: "Uncommon",
     RARE: "Rare",
     EPIC: "Epic",
     MYTHIC: "Mythic",
+    LEGENDARY: "Legendary",
+    FABLED: "Fabled",
 }
 RARITY_MARK = _hunt_ranks.RARITY_MARK
 rarity_mark = _hunt_ranks.rarity_mark
 
 CRATE_WEIGHT = {COMMON: 420, UNCOMMON: 280, RARE: 180, EPIC: 90, MYTHIC: 30}
-GEM_WEIGHT = {COMMON: 22, UNCOMMON: 22, RARE: 20, EPIC: 20, MYTHIC: 16}
-GEM_EXTRA = {COMMON: 1, UNCOMMON: 2, RARE: 3, EPIC: 4, MYTHIC: 5}
-GEM_HUNTS = {COMMON: 25, UNCOMMON: 25, RARE: 40, EPIC: 50, MYTHIC: 60}
+# Gem drop % ≈ OwO gems.json (C→F). Weapon crates keep their own CRATE_WEIGHT (C–M only).
+GEM_WEIGHT = {
+    COMMON: 22,
+    UNCOMMON: 22,
+    RARE: 20,
+    EPIC: 20,
+    MYTHIC: 10,
+    LEGENDARY: 5,
+    FABLED: 1,
+}
+# Hunting extras: keep C–M 1..5; L/F from OwO Hunting amount (7 / 9).
+GEM_EXTRA = {
+    COMMON: 1,
+    UNCOMMON: 2,
+    RARE: 3,
+    EPIC: 4,
+    MYTHIC: 5,
+    LEGENDARY: 7,
+    FABLED: 9,
+}
+# Shared charge pool (OwO uses per-type hunt vs animal lengths — documented approx).
+# C–M keep prior Aetherion values; L/F use OwO Hunting length 100.
+GEM_HUNTS = {
+    COMMON: 25,
+    UNCOMMON: 25,
+    RARE: 40,
+    EPIC: 50,
+    MYTHIC: 60,
+    LEGENDARY: 100,
+    FABLED: 100,
+}
 WEAPON_ATK = {COMMON: (4, 8), UNCOMMON: (7, 12), RARE: (11, 18), EPIC: (16, 24), MYTHIC: (22, 32)}
 HUNT_XP = {COMMON: 1, UNCOMMON: 10, RARE: 20, EPIC: 400, MYTHIC: 1000}
 LB_DAILY = 3
@@ -86,6 +118,8 @@ GEM_KINDS = (
     ("hunting", "Hunting Gem", "\U0001f48e", "more animals each hunt"),
     ("lucky", "Lucky Gem", "\U0001f340", "rarer animals"),
     ("empower", "Empowering Gem", "\u2728", "double the catch"),
+    # Aetherion name for OwO-feel Special: event-style rare-tier weight bump (no event pipeline yet).
+    ("prism", "Prism Gem", "\u2b50", "boosts epic/mythic hunt weight"),
 )
 GEM_BY_KIND = {row[0]: row for row in GEM_KINDS}
 
@@ -127,14 +161,35 @@ def roll_rarity(weights: dict[str, int], rng: random.Random) -> str:
     keys = [k for k in RARITY_ORDER if k in weights]
     return rng.choices(keys, weights=[weights[k] for k in keys], k=1)[0]
 
+_LUCKY_BUMP = {
+    COMMON: 0,
+    UNCOMMON: 8,
+    RARE: 16,
+    EPIC: 28,
+    MYTHIC: 45,
+    LEGENDARY: 60,
+    FABLED: 80,
+}
+
+
 def lucky_weights(base: dict[str, int], rarity: str) -> dict[str, int]:
-    bump = {"common": 0, "uncommon": 8, "rare": 16, "epic": 28, "mythic": 45}[rarity]
+    bump = _LUCKY_BUMP.get(rarity, 0)
     out = dict(base)
-    out[COMMON] = max(40, out[COMMON] - bump * 4)
-    out[UNCOMMON] = max(40, out[UNCOMMON] - bump)
-    out[RARE] = out[RARE] + bump
-    out[EPIC] = out[EPIC] + bump
-    out[MYTHIC] = out[MYTHIC] + max(4, bump // 2)
+    out[COMMON] = max(40, out.get(COMMON, 0) - bump * 4)
+    out[UNCOMMON] = max(40, out.get(UNCOMMON, 0) - bump)
+    out[RARE] = out.get(RARE, 0) + bump
+    out[EPIC] = out.get(EPIC, 0) + bump
+    out[MYTHIC] = out.get(MYTHIC, 0) + max(4, bump // 2)
+    return out
+
+
+def prism_weights(base: dict[str, int]) -> dict[str, int]:
+    """OwO Special ≈ ×2 special-rank chance. No special animals yet → ×2 epic/mythic weight."""
+    out = dict(base)
+    if EPIC in out:
+        out[EPIC] = max(1, int(out[EPIC]) * 2)
+    if MYTHIC in out:
+        out[MYTHIC] = max(1, int(out[MYTHIC]) * 2)
     return out
 
 def maybe_lootbox(blob: dict[str, Any], rng: random.Random) -> bool:
@@ -186,7 +241,7 @@ def open_crate(blob: dict[str, Any], rng: random.Random | None = None) -> dict[s
 
 def use_gem(blob: dict[str, Any], kind: str, rarity: str | None = None) -> dict[str, Any]:
     if kind not in GEM_BY_KIND:
-        return {"ok": False, "error": "Gems are hunting, lucky, or empower."}
+        return {"ok": False, "error": "Gems are hunting, lucky, empower, or prism."}
     pick = None
     if rarity:
         gid = f"{kind}_{rarity}"
@@ -207,22 +262,64 @@ def use_gem(blob: dict[str, Any], kind: str, rarity: str | None = None) -> dict[
     blob["active"][kind] = {"rarity": rar, "left": GEM_HUNTS[rar]}
     return {"ok": True, "kind": kind, "rarity": rar, "left": GEM_HUNTS[rar], "label": GEM_BY_KIND[kind][1]}
 
-def consume_gems(blob: dict[str, Any]) -> dict[str, Any]:
-    used = {}
-    active = blob.get("active") or {}
-    dead = []
-    for kind, item in list(active.items()):
+def active_gems(blob: dict[str, Any]) -> dict[str, str]:
+    """Peek active gems with charges left (kind → rarity). Does not spend."""
+    used: dict[str, str] = {}
+    for kind, item in list((blob.get("active") or {}).items()):
+        if not isinstance(item, dict):
+            continue
+        if int(item.get("left") or 0) <= 0:
+            continue
+        if kind not in GEM_BY_KIND:
+            continue
+        used[kind] = item.get("rarity") or COMMON
+    return used
+
+
+def gem_durability_spend(kind: str, animal_count: int, active_kinds: set[str] | frozenset[str]) -> int:
+    """OwO-like durability burn per hunt (catch.js getGemSql).
+
+    Hunting: −1 (hunt unit). Empower: −⌊n/2⌋. Lucky/Prism: −n, or −⌊n/2⌋ when
+    Hunting and Empowering are both active (same rule OwO uses for Lucky/Special).
+    """
+    n = max(0, int(animal_count))
+    if kind == "hunting":
+        return 1
+    if kind == "empower":
+        return n // 2
+    if kind in ("lucky", "prism"):
+        if "hunting" in active_kinds and "empower" in active_kinds:
+            return n // 2
+        return n
+    return 1
+
+
+def spend_gems(blob: dict[str, Any], used: dict[str, str], animal_count: int) -> None:
+    """Apply role-based durability spend after the catch count is known."""
+    active = blob.setdefault("active", {})
+    kinds = set(used)
+    dead: list[str] = []
+    for kind in used:
+        item = active.get(kind)
         if not isinstance(item, dict):
             dead.append(kind)
             continue
-        left = int(item.get("left") or 0) - 1
+        spend = gem_durability_spend(kind, animal_count, kinds)
+        left = int(item.get("left") or 0) - spend
         item["left"] = left
-        used[kind] = item.get("rarity") or COMMON
         if left <= 0:
             dead.append(kind)
     for kind in dead:
         active.pop(kind, None)
+
+
+def consume_gems(blob: dict[str, Any], animal_count: int = 1) -> dict[str, str]:
+    """Backward-compatible: peek actives, then spend using animal_count (default 1)."""
+    used = active_gems(blob)
+    if used:
+        spend_gems(blob, used, animal_count)
     return used
+
 
 def extra_catches(used: dict[str, Any]) -> int:
     extra = 0

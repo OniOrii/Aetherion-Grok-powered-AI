@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Added
+
+- **Hunt gem durability + Prism + Legendary/Fabled (Ori only):** role-based gem charge spend matches OwO feel — Hunting −1 per hunt, Empowering −⌊n/2⌋, Lucky/Prism −n (or −⌊n/2⌋ when Hunting+Empowering are both active). New **Prism Gem** (Aetherion name for event-style Special) ×2 epic/mythic hunt weights. Gem tiers extend to **Legendary** (+7 extras, 100 charges) and **Fabled** (+9, 100). Shared `GEM_HUNTS` table kept (OwO per-type animal lengths approximated). Catch HUD `[left/max]` is post-spend. `/use` and `/inv` show prism + new tiers. Expedition/autohunt still on hold; battle board PNG unchanged.
+
 ### Changed
 
 - **Hunt details OwO feel-polish (Ori only):** manual hunt pacing is **5** Aether Coins / **15s** cooldown (was 10/10s). Catch copy matches OwO pipe layout — gem empower line with `` `[left/max]` ``, multi-find strip, team XP, optional lootbox `` `[n/3] RESETS IN` ``. `/zoo` shows locked `?` only inside unlocked ranks plus lifetime Zoo Points footer. Weapon crates can drop on any *finished* battle (win/lose/tie), not win-only; battle text under the board is denser (`L.lvl · name · weapon badge`) while the PNG board stays as-is. `/inv` active gems and daily lootbox/crate caps use `` `[n/max]` `` cadence copy. Expedition/autohunt still on hold.
