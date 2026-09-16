@@ -264,10 +264,13 @@ def test_grant_daily_supplies_once(tmp_path: Path):
     second = hunt.grant_daily_supplies(7)
     assert first["lootbox"] == 5
     assert first["crate"] == 5
+    assert first.get("raid_ticket") == 1
     assert second["lootbox"] == 0
     assert second["crate"] == 0
+    assert second.get("raid_ticket") == 0
     snap = hunt.snapshot(7)
     assert snap["gear"]["lootbox"] == 5
+    assert snap["gear"]["raid_ticket"] == 1
 
 
 def test_grant_supplies_adds_boxes(tmp_path: Path):
@@ -374,3 +377,91 @@ def test_checklist_marks_discovered_and_missing():
     # No legacy backtick letter marks
     assert "`c`" not in board
     assert "`e`" not in board
+
+
+def test_bestiary_requires_discovery(tmp_path: Path):
+    hunt.set_store_path(tmp_path / "hunt.json")
+    blocked = hunt.bestiary(21, "sol_wyrm", "Ori")
+    assert not blocked["ok"]
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 21)
+        row["zoo"] = {"dust_mite": 1}
+        row["caught"] = {"dust_mite": 2}
+        hunt._save_store(store)
+    out = hunt.bestiary(21, "dust_mite", "Ori")
+    assert out["ok"]
+    assert "Ori's bestiary" in out["body"]
+    assert "Dust Mite" in out["body"]
+    assert "HP" in out["body"]
+    assert "cowoncy" not in out["body"].lower()
+    assert "owodex" not in out["body"].lower()
+
+
+def test_salvage_weapon_to_shards(tmp_path: Path):
+    from groksito_discord.discord import aether_gear as gear
+
+    hunt.set_store_path(tmp_path / "hunt.json")
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 22)
+        pack = gear.ensure_gear(row)
+        pack["weapons"]["1"] = {
+            "kind": "rift_blade",
+            "rarity": gear.RARE,
+            "quality": 80,
+            "atk": 15,
+            "style": "strike",
+        }
+        pack["equip"]["dust_mite"] = "1"
+        hunt._save_store(store)
+    fav = hunt.salvage(22, "1")
+    # not favorited — should work
+    assert fav["ok"]
+    assert fav["gained"] == gear.SHARD_BY_RARITY[gear.RARE]
+    snap = hunt.snapshot(22)
+    assert "1" not in (snap["gear"].get("weapons") or {})
+    assert snap["gear"]["shards"] == fav["gained"]
+    assert "dust_mite" not in (snap["gear"].get("equip") or {})
+
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 22)
+        pack = gear.ensure_gear(row)
+        pack["weapons"]["2"] = {
+            "kind": "ember_bow",
+            "rarity": gear.COMMON,
+            "quality": 50,
+            "atk": 5,
+            "style": "strike",
+            "favorite": True,
+        }
+        hunt._save_store(store)
+    blocked = hunt.salvage(22, "2")
+    assert not blocked["ok"]
+    assert "favorite" in blocked["error"].lower()
+
+
+def test_raid_spends_ticket_and_fights(tmp_path: Path):
+    import random
+    from groksito_discord.discord import aether_gear as gear
+
+    hunt.set_store_path(tmp_path / "hunt.json")
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, 23)
+        row["zoo"] = {"dust_mite": 1, "thorn_wolf": 1, "ember_elk": 1}
+        row["caught"] = dict(row["zoo"])
+        row["team"] = ["dust_mite", "thorn_wolf", "ember_elk"]
+        row["xp"] = {"dust_mite": 5000, "thorn_wolf": 5000, "ember_elk": 5000}
+        pack = gear.ensure_gear(row)
+        pack["raid_ticket"] = 1
+        hunt._save_store(store)
+    out = hunt.raid(23, random.Random(3))
+    assert out["ok"]
+    assert out["result"] in {"win", "lose", "draw"}
+    assert out["tickets_left"] == 0
+    assert len(out["enemy"]) == 3
+    # second raid without ticket fails
+    blocked = hunt.raid(23, random.Random(3))
+    assert not blocked["ok"]

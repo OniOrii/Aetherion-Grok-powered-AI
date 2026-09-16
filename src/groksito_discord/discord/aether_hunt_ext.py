@@ -511,6 +511,203 @@ def checklist_board(display_name, caught):
     return "\n".join(lines)
 
 
+
+LORE_BY_RARITY = {
+    COMMON: "A familiar presence in the peat and fog — easy to overlook, hard to forget once named.",
+    UNCOMMON: "Sharper senses and stubborn will. Hunters trade stories about this one around campfires.",
+    RARE: "Rift-touched and wary. Meeting one is luck; keeping one is skill.",
+    EPIC: "A legend half-written. The aether bends around its stride.",
+    MYTHIC: "Older than the maps. Catching sight of it rewrites what you thought the wilds could hold.",
+}
+
+
+def bestiary_card(display_name, animal_id, row=None, pack=None):
+    meta = ANIMAL_BY_ID.get(animal_id)
+    if not meta:
+        return None
+    _aid, name, emoji, rarity = meta
+    row = row or {}
+    owned = owned_count(row, animal_id)
+    try:
+        discovered = int((row.get("caught") or {}).get(animal_id) or 0)
+    except (TypeError, ValueError):
+        discovered = 0
+    lvl = level_of(xp_of(row, animal_id)) if owned or discovered else 1
+    hp, atk = stats_for(animal_id, lvl)
+    mark = rarity_mark(rarity)
+    label = RARITY_LABEL.get(rarity, rarity)
+    nick = nick_of(row, animal_id) if row else None
+    title = f'{emoji} {name}' + (f' "{nick}"' if nick else "")
+    lines = [
+        f"**{display_name}'s bestiary**",
+        f"**{title}** · {mark} {label}",
+        f"Lv {lvl} · {hp} HP / {atk} ATK",
+        f"Owned **{owned}** · discovered **{discovered}**",
+    ]
+    if pack:
+        held = gear.equipped_weapon(pack, animal_id)
+        if held:
+            lines.append(f"Armed with {gear.weapon_line(held)}")
+    lines.append("")
+    lines.append(LORE_BY_RARITY.get(rarity, LORE_BY_RARITY[COMMON]))
+    sell = int(base.RARITY_SELL.get(rarity, 10))
+    essence = int(ESSENCE_BY_RARITY.get(rarity, sell))
+    lines.append(f"Sell **{sell}** \u2726 · sacrifice **{essence}** Essence each")
+    return "\n".join(lines)
+
+
+def bestiary(user_id, query, display_name="Hunter"):
+    animal_id = resolve_animal(query)
+    if animal_id is None:
+        return {"ok": False, "error": "I do not know that animal. Check /zoo or /checklist."}
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        try:
+            discovered = int((row.get("caught") or {}).get(animal_id) or 0)
+        except (TypeError, ValueError):
+            discovered = 0
+        if discovered < 1 and owned_count(row, animal_id) < 1:
+            return {
+                "ok": False,
+                "error": f"You have not discovered {animal_label(animal_id)} yet. Hunt first.",
+            }
+        body = bestiary_card(display_name, animal_id, row, pack)
+        return {
+            "ok": True,
+            "animal_id": animal_id,
+            "body": body,
+            "rarity": rarity_of(animal_id),
+        }
+
+
+def salvage(user_id, query):
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        wid = gear.resolve_weapon(pack, query)
+        if not wid:
+            return {"ok": False, "error": "No matching weapon. Use the id from /inv or /weapon."}
+        out = gear.salvage_weapon(pack, wid)
+        if out.get("ok"):
+            _save_store(store)
+        return out
+
+
+def build_raid_boss(player, rng):
+    """One inflated mythic boss plus two tough escorts — no guild system."""
+    avg = sum(int(pet.get("level") or 1) for pet in player) / max(1, len(player))
+    mythics = [aid for aid, _n, _e, rar in ANIMALS if rar == MYTHIC] or [aid for aid, *_ in ANIMALS]
+    epics = [aid for aid, _n, _e, rar in ANIMALS if rar == EPIC] or mythics
+    boss_id = rng.choice(mythics)
+    boss_lvl = min(LEVEL_CAP, max(5, int(round(avg)) + rng.randint(4, 8)))
+    boss = _fighter(boss_id, boss_lvl)
+    # Boss pressure: more HP/ATK/WP
+    boss["max_hp"] = int(boss["max_hp"] * 1.85) + 40
+    boss["hp"] = boss["max_hp"]
+    boss["atk"] = int(boss["atk"] * 1.45) + 8
+    boss["wp"] = int(boss.get("wp") or 40) + 30
+    boss["max_wp"] = boss["wp"]
+    kind, name, emoji, style = rng.choice(gear.WEAPONS)
+    rarity = MYTHIC
+    lo, hi = gear.WEAPON_ATK[rarity]
+    boss["weapon"] = {
+        "kind": kind, "name": name, "emoji": emoji, "style": style,
+        "rarity": rarity, "atk": rng.randint(lo, hi) + 6,
+    }
+    out = [boss]
+    used = {boss_id}
+    pool = [aid for aid in (epics + mythics) if aid not in used]
+    rng.shuffle(pool)
+    for aid in pool[:2]:
+        used.add(aid)
+        lvl = min(LEVEL_CAP, max(3, int(round(avg)) + rng.randint(2, 5)))
+        escort = _fighter(aid, lvl)
+        if rng.random() < 0.7:
+            kind, name, emoji, style = rng.choice(gear.WEAPONS)
+            rarity = gear.roll_rarity(gear.CRATE_WEIGHT, rng)
+            lo, hi = gear.WEAPON_ATK[rarity]
+            escort["weapon"] = {
+                "kind": kind, "name": name, "emoji": emoji, "style": style,
+                "rarity": rarity, "atk": rng.randint(lo, hi),
+            }
+        out.append(escort)
+    return out
+
+
+def raid(user_id, rng=None):
+    rng = rng or random.Random()
+    with _lock:
+        store = _load_store()
+        row = _ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        tickets = int(pack.get("raid_ticket") or 0)
+        if tickets < 1:
+            return {"ok": False, "error": "No raid tickets. Claim /daily for one, then try again."}
+        team_ids = active_team(row)
+        if len(team_ids) < TEAM_SIZE:
+            return {"ok": False, "error": f"Raid is 3v3. Fill all {TEAM_SIZE} team slots with /team first."}
+        pack["raid_ticket"] = tickets - 1
+        player = [
+            _fighter(aid, level_of(xp_of(row, aid)), gear.equipped_weapon(pack, aid))
+            for aid in team_ids
+        ]
+        enemy = build_raid_boss(player, rng)
+        outcome = simulate_battle(player, enemy, rng)
+        result = outcome["result"]
+        prev_streak = int(pack.get("streak") or 0)
+        if result == "win":
+            pack["streak"] = prev_streak + 1
+        else:
+            pack["streak"] = 0
+        pack["best_streak"] = max(int(pack.get("best_streak") or 0), int(pack.get("streak") or 0))
+        xp_base = BATTLE_XP[result]
+        # Raid pays a little more base XP than a wild battle
+        if result == "win":
+            xp_base = xp_base + 100
+        xp_bonus = 0
+        if result == "win":
+            xp_bonus = _streak_bonus(pack["streak"]) + _level_diff_xp(player, enemy)
+        xp_gain = xp_base + xp_bonus
+        highest = max(level_of(xp_of(row, aid)) for aid in team_ids)
+        for aid in team_ids:
+            extra = xp_gain
+            gap = highest - level_of(xp_of(row, aid))
+            if gap > 0:
+                extra = int(extra * min(10.0, 2 + 0.1 * gap))
+            add_xp(row, aid, extra)
+        crate = False
+        shard_bonus = 0
+        if result == "win":
+            crate = gear.maybe_crate(pack, True, rng)
+            shard_bonus = 5
+            pack["shards"] = int(pack.get("shards") or 0) + shard_bonus
+        _save_store(store)
+        return {
+            "ok": True,
+            "result": result,
+            "log": outcome["log"],
+            "rounds": outcome["rounds"],
+            "player": outcome["player"],
+            "enemy": outcome["enemy"],
+            "frames": outcome.get("frames") or [],
+            "xp_gain": xp_gain,
+            "xp_base": xp_base,
+            "xp_bonus": xp_bonus,
+            "payout": 0,
+            "balance": ai_coins.get_balance(user_id),
+            "streak": int(pack.get("streak") or 0),
+            "prev_streak": prev_streak,
+            "best_streak": int(pack.get("best_streak") or 0),
+            "crate": crate,
+            "tickets_left": int(pack.get("raid_ticket") or 0),
+            "shard_bonus": shard_bonus,
+            "boss": True,
+        }
+
+
 def grant_daily_supplies(user_id):
     with _lock:
         store = _load_store()
@@ -558,7 +755,8 @@ def install(mod=None):
         "grant_daily_supplies", "grant_supplies",
         "essence_of", "nick_of", "nick_label", "weapon_board",
         "sacrifice", "rename_animal", "checklist_board",
-        "RENAME_FEE", "ESSENCE_BY_RARITY",
+        "bestiary_card", "bestiary", "salvage", "build_raid_boss", "raid",
+        "RENAME_FEE", "ESSENCE_BY_RARITY", "LORE_BY_RARITY",
     ):
         setattr(mod, name, globals()[name])
 
