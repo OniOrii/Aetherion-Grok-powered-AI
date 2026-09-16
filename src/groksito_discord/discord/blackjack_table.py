@@ -178,8 +178,8 @@ def render_table_png(
 
 def render_hand_png(hand, *, reveal: bool) -> bytes:
     hide = not reveal and not getattr(hand, "finished", False)
-    if getattr(hand, "finished", False) and hasattr(hand, "result_line"):
-        subtitle = hand.result_line()
+    if getattr(hand, "finished", False):
+        subtitle = ""
     elif hide:
         subtitle = "Hit, stand, or double."
     else:
