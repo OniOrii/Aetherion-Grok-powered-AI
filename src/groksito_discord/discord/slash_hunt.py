@@ -7,6 +7,7 @@ import discord
 
 from ..llm.persona import creator_is_author
 from . import ai_coins
+from . import aether_gear as gear
 from . import aether_hunt as hunt
 
 logger = logging.getLogger("aetherion.slash_hunt")
@@ -39,6 +40,26 @@ def _embed(title: str, body: str, color: int = hunt.EMBED_GOLD) -> discord.Embed
 def _display_name(interaction: discord.Interaction) -> str:
     user = interaction.user
     return getattr(user, "display_name", None) or getattr(user, "name", "Hunter")
+
+
+def _gear_call(name: str, user_id: int, *args):
+    fn = getattr(hunt, name, None)
+    if callable(fn):
+        return fn(user_id, *args)
+    with hunt._lock:
+        store = hunt._load_store()
+        row = hunt._ensure_user(store, user_id)
+        pack = gear.ensure_gear(row)
+        if name == "open_lootbox":
+            out = gear.open_lootbox(pack)
+        elif name == "open_crate":
+            out = gear.open_crate(pack)
+        elif name == "use_gem":
+            out = gear.use_gem(pack, args[0], args[1] if len(args) > 1 else None)
+        else:
+            out = {"ok": False, "error": "Hunt gear is still updating."}
+        hunt._save_store(store)
+        return out
 
 
 async def _suggest_owned(
@@ -79,12 +100,15 @@ def register_hunt(tree, is_guild_allowed) -> None:
             )
             return
         extras = [aid for aid in result.get("animals") or [] if aid != result["animal_id"]]
-        line = hunt.hunt_catch_line(
-            _display_name(interaction),
-            result["animal_id"],
-            extras,
-            bool(result.get("lootbox")),
-        )
+        try:
+            line = hunt.hunt_catch_line(
+                _display_name(interaction),
+                result["animal_id"],
+                extras,
+                bool(result.get("lootbox")),
+            )
+        except TypeError:
+            line = hunt.hunt_catch_line(_display_name(interaction), result["animal_id"])
         await interaction.response.send_message(line)
 
     @tree.command(name="zoo", description="WIP Ori only. Show hunted animals.")
@@ -170,9 +194,12 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 )
                 return
         snap = hunt.snapshot(interaction.user.id)
-        body = "\n".join(
-            hunt.team_lines(snap["team"], snap["xp"], snap["zoo"], snap.get("gear"))
-        )
+        try:
+            body = "\n".join(
+                hunt.team_lines(snap["team"], snap["xp"], snap["zoo"], snap.get("gear"))
+            )
+        except TypeError:
+            body = "\n".join(hunt.team_lines(snap["team"], snap["xp"], snap["zoo"]))
         owned = hunt.owned_catalog(snap["zoo"])
         if owned:
             picks = ", ".join(f"{emoji} {name}" for _aid, name, emoji, _rar in owned)
@@ -213,7 +240,13 @@ def register_hunt(tree, is_guild_allowed) -> None:
         else:
             pay = "No coin payout"
         pocket = ai_coins.coins(f"**{int(result['balance']):,}**")
-        body = hunt.battle_card(_display_name(interaction), result)
+        if hasattr(hunt, "battle_card"):
+            body = hunt.battle_card(_display_name(interaction), result)
+        else:
+            you = " \u00b7 ".join(hunt.fighter_line(pet) for pet in result.get("player") or [])
+            foe = " \u00b7 ".join(hunt.fighter_line(pet) for pet in result.get("enemy") or [])
+            log = "\n".join(result.get("log") or []) or "No blows landed."
+            body = f"**You** {you}\n**Wild** {foe}\n\n{log}\n\nTeam XP +{result.get('xp_gain', 0)}"
         body += f"\n{pay}\nPocket \u00b7 {pocket}"
         await interaction.response.send_message(
             embed=_embed(f"\u2726 Battle \u00b7 {headline}", body, color)
@@ -225,7 +258,23 @@ def register_hunt(tree, is_guild_allowed) -> None:
         if not await _gate(interaction, is_guild_allowed):
             return
         snap = hunt.snapshot(interaction.user.id)
-        text = hunt.gear.inventory_text(_display_name(interaction), snap.get("gear") or {})
+        pack = snap.get("gear")
+        if not isinstance(pack, dict):
+            with hunt._lock:
+                store = hunt._load_store()
+                row = hunt._ensure_user(store, interaction.user.id)
+                pack = gear.ensure_gear(row)
+                hunt._save_store(store)
+        text = gear.inventory_text(_display_name(interaction), pack)
+        sheet = gear.inventory_sheet_png(pack) if hasattr(gear, "inventory_sheet_png") else None
+        if sheet:
+            embed = _embed("\u2726 Inventory", text)
+            embed.set_thumbnail(url="attachment://inventory_weapons.png")
+            await interaction.response.send_message(
+                embed=embed,
+                file=discord.File(sheet, filename="inventory_weapons.png"),
+            )
+            return
         await interaction.response.send_message(text)
 
     @tree.command(name="lootbox", description="WIP Ori only. Open a lootbox for a hunt gem.")
@@ -233,14 +282,14 @@ def register_hunt(tree, is_guild_allowed) -> None:
     async def lootbox_slash(interaction: discord.Interaction):
         if not await _gate(interaction, is_guild_allowed):
             return
-        result = hunt.open_lootbox(interaction.user.id)
+        result = _gear_call("open_lootbox", interaction.user.id)
         if not result.get("ok"):
             await interaction.response.send_message(
                 result.get("error") or "No lootbox.", ephemeral=True
             )
             return
         rar = hunt.RARITY_LABEL[result["rarity"]]
-        kind = hunt.gear.GEM_BY_KIND[result["kind"]][1]
+        kind = gear.GEM_BY_KIND[result["kind"]][1]
         line = (
             f"\U0001f48e | **{_display_name(interaction)}** opens a lootbox\n"
             f"\U0001f4e6 | and finds a **{rar} {kind}**!"
@@ -252,7 +301,7 @@ def register_hunt(tree, is_guild_allowed) -> None:
     async def crate_slash(interaction: discord.Interaction):
         if not await _gate(interaction, is_guild_allowed):
             return
-        result = hunt.open_crate(interaction.user.id)
+        result = _gear_call("open_crate", interaction.user.id)
         if not result.get("ok"):
             await interaction.response.send_message(
                 result.get("error") or "No crate.", ephemeral=True
@@ -260,11 +309,22 @@ def register_hunt(tree, is_guild_allowed) -> None:
             return
         rar = hunt.RARITY_LABEL[result["rarity"]]
         line = (
-            f"\U0001fab5 | **{_display_name(interaction)}** opens a weapon crate\n"
-            f"{result['emoji']} | **{rar} {result['name']}** Q{result['quality']} +{result['atk']} ATK "
-            f"(id `{result['wid']}`)"
+            f"{result['emoji']} | **{rar} {result['name']}** Q{result['quality']} "
+            f"+{result['atk']} ATK (id `{result['wid']}`)"
         )
-        await interaction.response.send_message(line)
+        embed = _embed(
+            f"\U0001fab5 {_display_name(interaction)} opens a weapon crate",
+            line,
+        )
+        if hasattr(gear, "weapon_icon_png"):
+            icon = gear.weapon_icon_png(result["kind"], result["rarity"])
+            fname = f"{result['kind']}.png"
+            embed.set_thumbnail(url=f"attachment://{fname}")
+            await interaction.response.send_message(
+                embed=embed, file=discord.File(icon, filename=fname)
+            )
+            return
+        await interaction.response.send_message(embed=embed)
 
     @tree.command(name="use", description="WIP Ori only. Activate a hunting, lucky, or empower gem.")
     @discord.app_commands.describe(gem="hunting, lucky, or empower", rarity="optional gem tier")
@@ -287,14 +347,14 @@ def register_hunt(tree, is_guild_allowed) -> None:
         if rarity:
             key = rarity.strip().lower()
             rar = key if key in hunt.RARITY_LABEL else None
-        result = hunt.use_gem(interaction.user.id, gem.value, rar)
+        result = _gear_call("use_gem", interaction.user.id, gem.value, rar)
         if not result.get("ok"):
             await interaction.response.send_message(
                 result.get("error") or "Could not use that gem.", ephemeral=True
             )
             return
         await interaction.response.send_message(
-            f"{hunt.gear.GEM_BY_KIND[result['kind']][2]} | Activated "
+            f"{gear.GEM_BY_KIND[result['kind']][2]} | Activated "
             f"**{hunt.RARITY_LABEL[result['rarity']]} {result['label']}** "
             f"for **{result['left']}** hunts."
         )
@@ -305,15 +365,48 @@ def register_hunt(tree, is_guild_allowed) -> None:
     async def equip_slash(interaction: discord.Interaction, weapon: str, animal: str):
         if not await _gate(interaction, is_guild_allowed):
             return
-        result = hunt.equip_weapon(interaction.user.id, weapon, animal)
+        if hasattr(hunt, "equip_weapon"):
+            result = hunt.equip_weapon(interaction.user.id, weapon, animal)
+        else:
+            animal_id = hunt.resolve_animal(animal)
+            if animal_id is None:
+                result = {"ok": False, "error": "I do not know that animal. Check /zoo."}
+            else:
+                with hunt._lock:
+                    store = hunt._load_store()
+                    row = hunt._ensure_user(store, interaction.user.id)
+                    pack = gear.ensure_gear(row)
+                    wid = gear.resolve_weapon(pack, weapon)
+                    if not wid:
+                        result = {"ok": False, "error": "No matching weapon. Use the id from /inv."}
+                    else:
+                        result = gear.equip_weapon(pack, wid, animal_id)
+                        if result.get("ok"):
+                            result["animal_id"] = animal_id
+                            result["label"] = gear.weapon_line(gear.equipped_weapon(pack, animal_id))
+                    hunt._save_store(store)
         if not result.get("ok"):
             await interaction.response.send_message(
                 result.get("error") or "Could not equip.", ephemeral=True
             )
             return
-        await interaction.response.send_message(
-            f"Equipped {result['label']} on {hunt.animal_label(result['animal_id'])}."
-        )
+        pack = hunt.snapshot(interaction.user.id).get("gear") or {}
+        if not pack:
+            with hunt._lock:
+                store = hunt._load_store()
+                pack = gear.ensure_gear(hunt._ensure_user(store, interaction.user.id))
+        wep = gear.equipped_weapon(pack, result["animal_id"])
+        body = f"Equipped {result['label']} on {hunt.animal_label(result['animal_id'])}."
+        if wep and hasattr(gear, "weapon_icon_png"):
+            embed = _embed("\u2726 Equip", body)
+            icon = gear.weapon_icon_png(wep["kind"], wep.get("rarity"))
+            fname = f"{wep['kind']}.png"
+            embed.set_thumbnail(url=f"attachment://{fname}")
+            await interaction.response.send_message(
+                embed=embed, file=discord.File(icon, filename=fname)
+            )
+            return
+        await interaction.response.send_message(body)
 
     @equip_slash.autocomplete("animal")
     async def equip_animal_ac(interaction: discord.Interaction, current: str):
@@ -326,7 +419,7 @@ def register_hunt(tree, is_guild_allowed) -> None:
         snap = hunt.snapshot(interaction.user.id)
         needle = (current or "").strip().lower()
         out: list[discord.app_commands.Choice[str]] = []
-        for wid, label, name in hunt.gear.owned_weapons(snap.get("gear") or {}):
+        for wid, label, name in gear.owned_weapons(snap.get("gear") or {}):
             if needle and needle not in label.lower() and needle not in wid:
                 continue
             out.append(discord.app_commands.Choice(name=f"#{wid} {label}", value=wid))
