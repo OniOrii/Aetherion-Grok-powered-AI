@@ -6,15 +6,25 @@ from groksito_discord.llm.persona import CREATOR_DISCORD_ID, creator_is_author
 
 
 def test_catalog_has_original_animals():
-    assert len(hunt.ANIMALS) == 46
-    assert len(hunt.ANIMAL_BY_ID) == 46
+    assert len(hunt.ANIMALS) == 50
+    assert len(hunt.ANIMAL_BY_ID) == 50
     ids = [row[0] for row in hunt.ANIMALS]
-    assert len(set(ids)) == 46
+    assert len(set(ids)) == 50
     assert "cowoncy" not in " ".join(ids)
     assert hunt.resolve_animal("Sol Wyrm") == "sol_wyrm"
     assert hunt.resolve_animal("aether drake") == "aether_drake"
     assert hunt.resolve_animal("Aether Phoenix") == "aether_phoenix"
-    assert hunt.resolve_animal("mist vole") == "mist_vole"
+    assert hunt.resolve_animal("storm basilisk") == "storm_basilisk"
+    assert hunt.resolve_animal("Cosmos Manticore") == "cosmos_manticore"
+    from collections import Counter
+    rarity_counts = Counter(row[3] for row in hunt.ANIMALS)
+    assert rarity_counts == {
+        hunt.COMMON: 10,
+        hunt.UNCOMMON: 10,
+        hunt.RARE: 10,
+        hunt.EPIC: 10,
+        hunt.MYTHIC: 10,
+    }
     assert hunt.resolve_animal("nope") is None
 
 
@@ -291,7 +301,7 @@ def test_checklist_marks_discovered_and_missing():
     assert "Sol Wyrm" in board
     assert "Missing" in board
     assert "Found" in board
-    assert "Discovered __2__ / 46" in board
+    assert "Discovered __2__ / 50" in board
     assert "cowoncy" not in board.lower()
     assert hunt.rarity_mark(hunt.COMMON) in board
     assert hunt.rarity_mark(hunt.EPIC) in board
