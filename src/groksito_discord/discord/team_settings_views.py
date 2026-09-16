@@ -84,14 +84,42 @@ def build_team_embed(user_id: int) -> discord.Embed:
     return embed
 
 
+def _eligible_owned(
+    zoo: dict[str, int],
+    team: list[str | None],
+    slot_index: int,
+) -> list[tuple[str, str, str, str]]:
+    """Owned animals available for this slot (excludes animals already in other slots)."""
+    taken = {aid for i, aid in enumerate(team) if aid and i != slot_index}
+    return [row for row in hunt.owned_catalog(zoo) if row[0] not in taken]
+
+
+def _page_count(n_items: int, page_size: int = _SELECT_CAP) -> int:
+    if n_items <= 0:
+        return 1
+    return (n_items + page_size - 1) // page_size
+
+
 def _owned_select_options(
     zoo: dict[str, int],
     xp: dict[str, int],
     team: list[str | None],
     slot_index: int,
-) -> list[discord.SelectOption]:
+    *,
+    page: int = 0,
+) -> tuple[list[discord.SelectOption], int, int]:
+    """Paginated Select options: Clear + up to _SELECT_CAP animals.
+
+    Returns (options, clamped_page, page_count). Every eligible owned id appears
+    on exactly one page so collections larger than Discord's 25-option cap remain reachable.
+    """
     current = team[slot_index] if slot_index < len(team) else None
-    taken = {aid for i, aid in enumerate(team) if aid and i != slot_index}
+    eligible = _eligible_owned(zoo, team, slot_index)
+    pages = _page_count(len(eligible))
+    page = max(0, min(int(page), pages - 1))
+    start = page * _SELECT_CAP
+    chunk = eligible[start : start + _SELECT_CAP]
+
     options: list[discord.SelectOption] = [
         discord.SelectOption(
             label="Clear slot",
@@ -101,12 +129,7 @@ def _owned_select_options(
             default=current is None,
         )
     ]
-    owned = hunt.owned_catalog(zoo)
-    for aid, name, emoji, _rar in owned:
-        if aid in taken:
-            continue
-        if len(options) >= _SELECT_CAP + 1:
-            break
+    for aid, name, emoji, _rar in chunk:
         lvl = hunt.level_of(int(xp.get(aid) or 0))
         label = f"[Lvl {lvl}] {name}"[:100]
         opt_kw: dict[str, Any] = {
@@ -118,7 +141,7 @@ def _owned_select_options(
         if emoji:
             opt_kw["emoji"] = emoji
         options.append(discord.SelectOption(**opt_kw))
-    return options
+    return options, page, pages
 
 
 class _TeamActorView(discord.ui.View):
@@ -275,11 +298,15 @@ class TeamSettingsView(_TeamActorView):
                 xp=snap["xp"],
                 team=list(snap["team"]),
             )
+            page_note = ""
+            if view.page_count > 1:
+                page_note = f"\nPage **{view.page + 1}/{view.page_count}** — use Prev/Next for more animals."
             embed = discord.Embed(
                 title=f"Slot {slot}",
                 description=(
                     f"Pick an owned animal for **slot {slot}**, or clear it.\n"
                     f"Current: **{hunt.settings_slot_display(snap['team'][slot - 1] if slot <= len(snap['team']) else None, snap['xp'])}**"
+                    f"{page_note}"
                 ),
                 color=hunt.EMBED_GOLD,
             )
@@ -328,7 +355,7 @@ class TeamSettingsView(_TeamActorView):
 
 
 class SlotPickView(_TeamActorView):
-    """Select menu to set or clear one team slot."""
+    """Select menu to set or clear one team slot (paginated when owned > 24)."""
 
     def __init__(
         self,
@@ -339,12 +366,19 @@ class SlotPickView(_TeamActorView):
         zoo: dict[str, int],
         xp: dict[str, int],
         team: list[str | None],
+        page: int = 0,
     ):
         super().__init__(actor_id=actor_id, display_name=display_name)
         self.slot = max(1, min(hunt.TEAM_SIZE, int(slot)))
-        options = _owned_select_options(zoo, xp, team, self.slot - 1)
+        self.zoo = zoo
+        self.xp = xp
+        self.team = list(team)
+        options, self.page, self.page_count = _owned_select_options(
+            zoo, xp, self.team, self.slot - 1, page=page
+        )
         select = discord.ui.Select(
-            placeholder=f"Animal for slot {self.slot}",
+            placeholder=f"Animal for slot {self.slot}"
+            + (f" (page {self.page + 1}/{self.page_count})" if self.page_count > 1 else ""),
             min_values=1,
             max_values=1,
             options=options,
@@ -353,14 +387,84 @@ class SlotPickView(_TeamActorView):
         )
         select.callback = self._on_pick
         self.add_item(select)
+        nav_row = 1
+        if self.page_count > 1:
+            prev_btn = discord.ui.Button(
+                emoji="\u25c0\ufe0f",
+                style=discord.ButtonStyle.secondary,
+                row=nav_row,
+                custom_id="hunt:team:pick:prev",
+                disabled=self.page <= 0,
+            )
+            prev_btn.callback = self._prev_page
+            self.add_item(prev_btn)
+            page_btn = discord.ui.Button(
+                label=f"{self.page + 1}/{self.page_count}",
+                style=discord.ButtonStyle.secondary,
+                row=nav_row,
+                disabled=True,
+                custom_id="hunt:team:pick:page",
+            )
+            self.add_item(page_btn)
+            next_btn = discord.ui.Button(
+                emoji="\u25b6\ufe0f",
+                style=discord.ButtonStyle.secondary,
+                row=nav_row,
+                custom_id="hunt:team:pick:next",
+                disabled=self.page >= self.page_count - 1,
+            )
+            next_btn.callback = self._next_page
+            self.add_item(next_btn)
+            back_row = 2
+        else:
+            back_row = 1
         back = discord.ui.Button(
             label="Back to settings",
             style=discord.ButtonStyle.secondary,
-            row=1,
+            row=back_row,
             custom_id="hunt:team:pick:back",
         )
         back.callback = self._back_settings
         self.add_item(back)
+
+    def _slot_embed(self) -> discord.Embed:
+        page_note = ""
+        if self.page_count > 1:
+            page_note = f"\nPage **{self.page + 1}/{self.page_count}** — use Prev/Next for more animals."
+        current = self.team[self.slot - 1] if self.slot <= len(self.team) else None
+        embed = discord.Embed(
+            title=f"Slot {self.slot}",
+            description=(
+                f"Pick an owned animal for **slot {self.slot}**, or clear it.\n"
+                f"Current: **{hunt.settings_slot_display(current, self.xp)}**"
+                f"{page_note}"
+            ),
+            color=hunt.EMBED_GOLD,
+        )
+        embed.set_footer(text=hunt.WIP_FOOTER)
+        return embed
+
+    async def _goto_page(self, interaction: discord.Interaction, page: int) -> None:
+        view = SlotPickView(
+            actor_id=self.actor_id,
+            display_name=self.display_name,
+            slot=self.slot,
+            zoo=self.zoo,
+            xp=self.xp,
+            team=self.team,
+            page=page,
+        )
+        await interaction.response.edit_message(embed=view._slot_embed(), view=view)
+        try:
+            view.message = await interaction.original_response()
+        except discord.HTTPException:
+            view.message = interaction.message
+
+    async def _prev_page(self, interaction: discord.Interaction) -> None:
+        await self._goto_page(interaction, self.page - 1)
+
+    async def _next_page(self, interaction: discord.Interaction) -> None:
+        await self._goto_page(interaction, self.page + 1)
 
     async def _on_pick(self, interaction: discord.Interaction) -> None:
         select = next(

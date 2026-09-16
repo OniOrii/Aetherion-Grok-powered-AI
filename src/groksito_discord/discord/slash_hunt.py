@@ -131,6 +131,34 @@ def _playable_frames(frames: list[dict]) -> list[dict]:
     return picked
 
 
+def _team_animal_choice_rows(
+    team: list, zoo: dict, current: str
+) -> list[tuple[str, str]]:
+    """Pure helper: (choice_label, value_name) for animals in the 3 battle slots only."""
+    needle = (current or "").strip().lower()
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for aid in team or []:
+        if not aid or aid in seen:
+            continue
+        seen.add(aid)
+        row = hunt.ANIMAL_BY_ID.get(aid)
+        if not row:
+            continue
+        _aid, name, emoji, rarity = row
+        hay = f"{aid} {name} {rarity}"
+        if needle and needle not in hay.lower() and needle not in name.lower():
+            continue
+        have = int((zoo or {}).get(aid) or 0)
+        label = f"{emoji} {name}"
+        if have:
+            label = f"{emoji} {name} \u00d7{have}"
+        out.append((label, name))
+        if len(out) >= 25:
+            break
+    return out
+
+
 async def _suggest_owned(
     interaction: discord.Interaction, current: str
 ) -> list[discord.app_commands.Choice[str]]:
@@ -154,6 +182,17 @@ async def _suggest_owned(
         if len(out) >= 25:
             break
     return out
+
+
+async def _suggest_team(
+    interaction: discord.Interaction, current: str
+) -> list[discord.app_commands.Choice[str]]:
+    """Autocomplete for /equip animal — battle-team slots only."""
+    if not _is_ori(interaction):
+        return []
+    snap = hunt.snapshot(interaction.user.id)
+    rows = _team_animal_choice_rows(snap.get("team") or [], snap.get("zoo") or {}, current)
+    return [discord.app_commands.Choice(name=label, value=value) for label, value in rows]
 
 
 def register_hunt(tree, is_guild_allowed) -> None:
@@ -455,10 +494,34 @@ def register_hunt(tree, is_guild_allowed) -> None:
         )
 
     @tree.command(name="equip", description="WIP Ori only. Put a crate weapon on a team animal.")
-    @discord.app_commands.describe(weapon="Weapon id or name from /inv", animal="Owned animal")
+    @discord.app_commands.describe(
+        weapon="Weapon id or name from /inv",
+        animal="Team animal (one of your 3 battle slots)",
+    )
     @discord.app_commands.default_permissions(administrator=True)
     async def equip_slash(interaction: discord.Interaction, weapon: str, animal: str):
         if not await _gate(interaction, is_guild_allowed):
+            return
+        snap0 = hunt.snapshot(interaction.user.id)
+        team_ids = [aid for aid in (snap0.get("team") or []) if aid]
+        if not team_ids:
+            await interaction.response.send_message(
+                "Your battle team is empty. Set animals with `/team` first.",
+                ephemeral=True,
+            )
+            return
+        animal_id = hunt.resolve_animal(animal)
+        if animal_id is None:
+            await interaction.response.send_message(
+                "I do not know that animal. Check `/team`.",
+                ephemeral=True,
+            )
+            return
+        if animal_id not in team_ids:
+            await interaction.response.send_message(
+                "Equip only works on your battle team. Use `/team` to set slots.",
+                ephemeral=True,
+            )
             return
         if hasattr(hunt, "equip_weapon"):
             result = hunt.equip_weapon(interaction.user.id, weapon, animal)
@@ -505,7 +568,7 @@ def register_hunt(tree, is_guild_allowed) -> None:
 
     @equip_slash.autocomplete("animal")
     async def equip_animal_ac(interaction: discord.Interaction, current: str):
-        return await _suggest_owned(interaction, current)
+        return await _suggest_team(interaction, current)
 
     @equip_slash.autocomplete("weapon")
     async def equip_weapon_ac(interaction: discord.Interaction, current: str):
