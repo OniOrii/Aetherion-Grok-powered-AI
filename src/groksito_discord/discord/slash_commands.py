@@ -55,14 +55,15 @@ def register(tree, client) -> None:
     register_connect4(tree, is_guild_allowed)
     register_poker(tree, is_guild_allowed)
 
-    @tree.command(name="ping", description="Check if Aetherion is awake")
+    @tree.command(name="ping", description="Check if Aetherion is awake.")
     async def ping(interaction: discord.Interaction):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message(
                 "Aetherion is not available on this server.", ephemeral=True
             )
             return
-        await interaction.response.send_message("Still here.", ephemeral=True)
+        embed = discord.Embed(title="\u2726 Aetherion", description="Still here.", color=0xC9A227)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @tree.command(
         name="welcome",
