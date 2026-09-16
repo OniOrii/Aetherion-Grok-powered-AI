@@ -168,12 +168,26 @@ def register_hunt(tree, is_guild_allowed) -> None:
             )
             return
         extras = [aid for aid in result.get("animals") or [] if aid != result["animal_id"]]
+        team_xp = None
+        xp_gain = int(result.get("xp_gain") or 0)
+        if xp_gain > 0:
+            snap = hunt.snapshot(interaction.user.id)
+            bits = []
+            for aid in snap.get("team") or []:
+                if not aid:
+                    continue
+                row = hunt.ANIMAL_BY_ID.get(aid)
+                if row:
+                    bits.append((row[2], xp_gain))
+            if bits:
+                team_xp = bits
         try:
             line = hunt.hunt_catch_line(
                 _display_name(interaction),
                 result["animal_id"],
                 extras,
                 bool(result.get("lootbox")),
+                team_xp,
             )
         except TypeError:
             line = hunt.hunt_catch_line(_display_name(interaction), result["animal_id"])

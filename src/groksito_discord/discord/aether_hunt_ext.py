@@ -234,26 +234,6 @@ def battle(user_id, rng=None):
         return {"ok": True, "result": result, "log": outcome["log"], "rounds": outcome["rounds"], "player": outcome["player"], "enemy": outcome["enemy"], "frames": outcome.get("frames") or [], "xp_gain": xp_gain, "xp_base": xp_base, "xp_bonus": xp_bonus, "payout": payout, "balance": balance, "streak": int(pack.get("streak") or 0), "prev_streak": prev_streak, "best_streak": int(pack.get("best_streak") or 0), "crate": crate}
 
 
-def hunt_catch_line(display_name, animal_id, extras=None, lootbox=False):
-    row = ANIMAL_BY_ID.get(animal_id)
-    if not row:
-        return f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and nothing turned up."
-    _aid, _name, emoji, rarity = row
-    label = RARITY_LABEL[rarity].lower()
-    article = "an" if rarity in (UNCOMMON, EPIC) else "a"
-    # OwO catch one-liner: rarity as lowercase word only — no color-square mark in the line.
-    line = f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and caught {article} **{label}** {emoji}!"
-    extra_bits = []
-    for aid in extras or []:
-        extra = ANIMAL_BY_ID.get(aid)
-        if extra:
-            extra_bits.append(extra[2])
-    if extra_bits:
-        line += " +" + " ".join(extra_bits)
-    if lootbox:
-        line += " \U0001f4e6"
-    return line
-
 
 def team_lines(team, xp, zoo, pack=None):
     lines = []
@@ -275,16 +255,28 @@ def team_lines(team, xp, zoo, pack=None):
 
 
 def _roster_line(pet):
+    """Compact OwO-class team line with HP/WP readouts."""
     wep = pet.get("weapon") if isinstance(pet.get("weapon"), dict) else None
-    gear_txt = gear.weapon_line(wep) if wep else "no weapon"
-    return f"L. {pet.get('level', 1)} {animal_label(pet['id'])} {rarity_mark(pet.get('rarity') or rarity_of(pet['id']))} \u00b7 {gear_txt}"
+    gear_txt = gear.weapon_line(wep) if wep else "*no weapon*"
+    emoji = pet.get("emoji") or ""
+    name = pet.get("name") or animal_label(pet["id"])
+    hp = max(0, int(pet.get("hp") or 0))
+    wp = max(0, int(pet.get("wp") or 0))
+    mark = rarity_mark(pet.get("rarity") or rarity_of(pet["id"]))
+    return (
+        f"L. {pet.get('level', 1)} {emoji} {name} {mark}\n"
+        f"`{hp} HP` `{wp} WP` · {gear_txt}"
+    )
 
 
 def _hp_bar(pet):
     hp = max(0, int(pet.get("hp") or 0))
     mx = max(1, int(pet.get("max_hp") or 1))
+    wp = max(0, int(pet.get("wp") or 0))
+    wpx = max(1, int(pet.get("max_wp") or pet.get("wp") or 1))
     filled = round(10 * hp / mx)
-    return "\u2588" * filled + "\u2591" * (10 - filled) + f" {hp}/{mx}"
+    bar = "\u2588" * filled + "\u2591" * (10 - filled)
+    return f"{bar} `{hp}/{mx} HP` `{wp}/{wpx} WP`"
 
 
 def battle_card(display_name, result):
@@ -404,7 +396,7 @@ def weapon_board(display_name, pack):
         if not meta:
             continue
         rar = raw.get("rarity") or COMMON
-        line = f"`{wid}` {meta[2]} {meta[1]} {gear.RARITY_MARK.get(rar, rar)} Q{int(raw.get('quality') or 0)} +{int(raw.get('atk') or 0)} ATK"
+        line = f"`{wid}` {meta[2]} {meta[1]} {rarity_mark(rar) if rar else rar} Q{int(raw.get('quality') or 0)} +{int(raw.get('atk') or 0)} ATK"
         holder = by_wid.get(str(wid))
         if holder:
             lines.append(f"{line} · on {animal_label(holder)}")
@@ -555,7 +547,7 @@ def install(mod=None):
     mod.BATTLE_XP = BATTLE_XP
     for name in (
         "_fighter", "build_enemy_team", "simulate_battle", "hunt", "snapshot",
-        "battle", "hunt_catch_line", "team_lines", "battle_card",
+        "battle", "team_lines", "battle_card",
         "open_lootbox", "open_crate", "use_gem", "equip_weapon",
         "grant_daily_supplies", "grant_supplies",
         "essence_of", "nick_of", "nick_label", "weapon_board",
