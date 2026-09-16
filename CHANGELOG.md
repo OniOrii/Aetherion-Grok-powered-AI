@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-15]
 
+### Added
+
+- `/poker` **Hands** button next to My cards. Private list of the nine ranks, and it marks that seat's best hand right now.
+
 ### Changed
 
 - Command embeds use the gold cosmos look: `\u2726` titles, sentence case, and punctuation on `/help`, `/ping`, `/play`, `/blackjack`, `/balance`, `/daily`, `/leaderboard`, `/slots`, `/cointoss`, `/connect4`, `/poker`, and reaction-role panels.
