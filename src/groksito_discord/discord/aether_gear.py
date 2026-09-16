@@ -68,6 +68,18 @@ WEAPONS: tuple[tuple[str, str, str, str], ...] = (
     ("drift_javelin", "Drift Javelin", "\U0001fab6", "strike"),
     ("prism_orb", "Prism Orb", "\U0001f52e", "mend"),
     ("wyrm_fang", "Wyrm Fang", "\U0001f9b7", "cleave"),
+    ("mist_dagger", "Mist Dagger", "\U0001f5e1\ufe0f", "strike"),
+    ("peat_mace", "Peat Mace", "\U0001f528", "cleave"),
+    ("sol_crossbow", "Sol Crossbow", "\U0001f3f9", "strike"),
+    ("void_orb", "Void Orb", "\U0001f52e", "mend"),
+    ("storm_cleaver", "Storm Cleaver", "\u2694\ufe0f", "cleave"),
+    ("glass_shard", "Glass Shard", "\U0001faa8", "strike"),
+    ("moon_censer", "Moon Censer", "\U0001f6d3", "mend"),
+    ("ember_chain", "Ember Chain", "\u26d3\ufe0f", "cleave"),
+    ("rift_pike", "Rift Pike", "\U0001f531", "strike"),
+    ("aether_tome", "Aether Tome", "\U0001f4d6", "mend"),
+    ("peat_sickle", "Peat Sickle", "\U0001f9f2", "cleave"),
+    ("prism_blade", "Prism Blade", "\U0001f5e1\ufe0f", "strike"),
 )
 WEAPON_BY_ID = {row[0]: row for row in WEAPONS}
 GEM_KINDS = (
