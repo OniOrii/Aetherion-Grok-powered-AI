@@ -80,13 +80,14 @@ def _finish(match, *, winner: int = 0, reason: str = "") -> None:
 
 def _after_drop(match, piece: int) -> None:
     if match.has_win(piece):
+        net = match.bet if piece == c4.P1 else -match.bet
         _finish(
             match,
             winner=piece,
-            reason=f"{match.name_of(piece)} connects four and takes {ai_coins.coins(match.bet * 2)}.",
+            reason=f"{match.name_of(piece)} connects four. {ai_coins.won_line(net)}."
         )
     elif match.is_full():
-        _finish(match, winner=0, reason="Draw. Stakes returned.")
+        _finish(match, winner=0, reason=f"Draw. {ai_coins.won_line(0)}. Stakes returned.")
     else:
         match.turn = c4.P2 if match.turn == c4.P1 else c4.P1
 
