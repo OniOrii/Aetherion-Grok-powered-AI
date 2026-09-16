@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Fixed
+
+- **`/battle` board layout:** enemy-side HP/WP bars and numeric readouts no longer overlap animal silhouette portraits. Flipped cards reserve space for the right-column icon so left/right columns stay balanced with cleaner spacing; KO labels unchanged.
+
 ### Added
 
 - **Hunt catalog rebalance (OwO zoo rows):** animal catalog is now **50** with **10 of each** C/U/R/E/M (multiples of 5 for zoo packing). Trimmed excess commons/uncommons (recent theme-duplicates + trailing fillers: clay_crab, weed_sprite, mist_vole, peat_slug, glass_newt, sol_sparrow, rift_tick, moon_kit, storm_shrimp, mist_panther, peat_bear). Kept iconic early names. Added original Aetherion rare/epic/mythic names to fill each tier to 10. Weapons stay at 42 (style-based, not C/U/R/E/M). Hunt economy, cooldowns, and rarity weights unchanged. Casino, voice, and music untouched.
