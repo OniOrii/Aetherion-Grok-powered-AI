@@ -358,9 +358,9 @@ _STYLE_PASSIVE = {"strike": "⚔️", "cleave": "💥", "mend": "💚"}
 STYLE_WP_COST = {"strike": 8, "cleave": 12, "mend": 10}
 _STYLE_LABEL = {"strike": "Strike", "cleave": "Cleave", "mend": "Mend"}
 _STYLE_DESC = {
-    "strike": "Deals weapon-boosted ATK to one random opponent (vs MR).",
-    "cleave": "Deals ~70% ATK to all opponents (vs PR).",
-    "mend": "Restores ~55% MAG HP to the lowest-health ally.",
+    "strike": "Deals MAG damage to one random opponent (vs MR). Costs WP.",
+    "cleave": "Deals ~70% MAG to all opponents (vs MR). Costs WP.",
+    "mend": "Restores ~55% MAG HP to the lowest-health ally. Costs WP.",
 }
 
 

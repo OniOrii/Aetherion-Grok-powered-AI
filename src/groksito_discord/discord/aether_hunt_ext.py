@@ -54,11 +54,22 @@ def _catch_one(row, animal_id):
 
 
 def _fighter(animal_id, level, weapon=None):
+    """Build a battle pet. P/ATK vs PR for physical; M/MAG vs MR for weapon skills.
+
+    Weapon ATK bonus: strike/cleave raise physical ATK; all equipped weapons raise MAG
+    so WP-gated skills scale with gear. Mend puts the full bonus on MAG only.
+    """
     hp, atk = stats_for(animal_id, level)
     wep = dict(weapon) if isinstance(weapon, dict) else None
-    bonus = int((wep or {}).get("atk") or 0)
+    bonus = int((wep or {}).get("atk") or 0) if wep else 0
     style = (wep or {}).get("style") or "strike"
     row = ANIMAL_BY_ID.get(animal_id)
+    if style == "mend":
+        phys = atk  # mend kits punch with base STR only
+        mag = atk + bonus
+    else:
+        phys = atk + bonus
+        mag = max(4, atk // 3) + bonus
     return {
         "id": animal_id,
         "name": row[1] if row else animal_id,
@@ -67,8 +78,8 @@ def _fighter(animal_id, level, weapon=None):
         "level": level,
         "hp": hp,
         "max_hp": hp,
-        "atk": atk + (bonus if style != "mend" else 0),
-        "mag": atk + (bonus if style == "mend" else max(4, atk // 3)),
+        "atk": phys,
+        "mag": mag,
         "wp": 40 + max(0, int(level)) * 8,
         "max_wp": 40 + max(0, int(level)) * 8,
         "pr": min(60, 16 + max(0, int(level))),
@@ -285,11 +296,15 @@ def team_lines(team, xp, zoo, pack=None):
         lvl, into, need = xp_progress(total_xp)
         base_hp, base_atk = stats_for(aid, lvl)
         held = gear.equipped_weapon(pack, aid) if pack else None
-        bonus = int((held or {}).get("atk") or 0)
+        bonus = int((held or {}).get("atk") or 0) if held else 0
         style = (held or {}).get("style") or "strike"
-        # Mirror `_fighter` ATK/MAG split without changing battle code
-        atk = base_atk + (bonus if held and style != "mend" else 0)
-        mag = base_atk + bonus if held and style == "mend" else max(4, base_atk // 3)
+        # Mirror `_fighter` ATK/MAG split (phys = P, weapon skills = M)
+        if style == "mend" and held:
+            atk = base_atk
+            mag = base_atk + bonus
+        else:
+            atk = base_atk + bonus
+            mag = max(4, base_atk // 3) + bonus
         wp = 40 + max(0, int(lvl)) * 8
         pr = min(60, 16 + max(0, int(lvl)))
         mr = min(60, 16 + max(0, int(lvl)) // 2)
