@@ -6,6 +6,7 @@ from datetime import date
 from typing import Any
 
 from . import hunt_ranks as _hunt_ranks
+from . import weapon_passives as _wpass
 
 COMMON, UNCOMMON, RARE, EPIC, MYTHIC, LEGENDARY, FABLED = (
     "common",
@@ -353,6 +354,7 @@ def equip_weapon(blob: dict[str, Any], wid: str, animal_id: str) -> dict[str, An
 def unequip_slot(blob: dict[str, Any], animal_id: str) -> None:
     (blob.get("equip") or {}).pop(animal_id, None)
 
+# Style icons kept for list fallback; unique passives live in weapon_passives.
 _STYLE_PASSIVE = {"strike": "⚔️", "cleave": "💥", "mend": "💚"}
 # Matches aether_battle.apply_action WP spend — display + combat stay in sync.
 STYLE_WP_COST = {"strike": 8, "cleave": 12, "mend": 10}
@@ -372,13 +374,21 @@ def style_description(style: str | None) -> str:
     return _STYLE_DESC.get(style or "strike", _STYLE_DESC["strike"])
 
 
+def weapon_passive_meta(kind: str | None) -> dict[str, Any] | None:
+    return _wpass.passive_for_kind(kind)
+
+
+def weapon_hooks(kind: str | None, quality: int | float | None = 50) -> dict[str, float]:
+    return _wpass.scaled_hooks(kind, quality)
+
+
 def weapon_detail_text(
     wep: dict[str, Any],
     *,
     display_name: str = "Hunter",
     holder_label: str | None = None,
 ) -> str:
-    """OwO-feel detail card fields with Aetherion copy (no six-stat invention)."""
+    """OwO-feel detail card: Description + unique Passive (Aetherion names)."""
     wid = wep.get("wid") or "?"
     name = wep.get("name") or "Weapon"
     emoji = wep.get("emoji") or ""
@@ -386,8 +396,13 @@ def weapon_detail_text(
     quality = int(wep.get("quality") or 0)
     atk = int(wep.get("atk") or 0)
     style = wep.get("style") or "strike"
-    passive = _STYLE_PASSIVE.get(style, "")
-    label = _STYLE_LABEL.get(style, style.title())
+    kind = wep.get("kind")
+    meta = _wpass.passive_for_kind(kind)
+    desc, passive_blurb = _wpass.passive_card_lines(kind, quality)
+    if not desc:
+        desc = style_description(style)
+    icon = (meta or {}).get("icon") or _STYLE_PASSIVE.get(style, "")
+    pname = (meta or {}).get("name") or _STYLE_LABEL.get(style, style.title())
     shards = int(SHARD_BY_RARITY.get(rar, 1))
     wp = style_wp_cost(style)
     lines = [
@@ -396,8 +411,8 @@ def weapon_detail_text(
         f"**Salvage** {shards} shards",
         f"**Quality** {quality}%",
         f"**WP Cost** {wp}",
-        f"**Description** {style_description(style)}",
-        f"**Passives** {passive} {label} · +{atk} ATK while equipped",
+        f"**Description** {desc}",
+        f"**Passives** {icon} **{pname}** — {passive_blurb} · +{atk} ATK while equipped",
     ]
     if holder_label:
         lines.append(f"**Equipped** {holder_label}")
@@ -407,13 +422,14 @@ def weapon_detail_text(
 
 
 def weapon_line(wep: dict[str, Any] | None) -> str:
-    """Compact team/weapon row: id · rank · emoji · passive · quality%."""
+    """Compact team/weapon row: id · rank · emoji · passive icon · quality%."""
     if not wep:
         return "no weapon"
     wid = wep.get("wid") or "?"
     rar = wep.get("rarity") or COMMON
     style = wep.get("style") or "strike"
-    passive = _STYLE_PASSIVE.get(style, "")
+    kind = wep.get("kind")
+    passive = _wpass.passive_icon(kind) or _STYLE_PASSIVE.get(style, "")
     quality = int(wep.get("quality") or 0)
     return f"`{wid}` {rarity_mark(rar)} {wep.get('emoji', '')} {passive} {quality}%".strip()
 
@@ -477,8 +493,9 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
             rar = raw.get("rarity") or COMMON
             q = int(raw.get("quality") or 0)
             style = raw.get("style") or meta[3]
-            passive = _STYLE_PASSIVE.get(style, "")
-            # Short quality token keeps id · rarity · emoji · name · style on one mobile line.
+            kind = raw.get("kind") or meta[0]
+            passive = _wpass.passive_icon(kind) or _STYLE_PASSIVE.get(style, "")
+            # Short quality token keeps id · rarity · emoji · name · passive on one mobile line.
             lines.append(
                 f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} `{q}%`"
             )

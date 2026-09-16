@@ -496,8 +496,8 @@ def test_weapon_detail_embed_fields(tmp_path: Path):
     assert "**Quality** 62%" in body
     assert "**WP Cost**" in body
     assert str(gear.style_wp_cost("cleave")) in body
-    assert "**Description**" in body and "opponents" in body.lower()
-    assert "**Passives**" in body and "Cleave" in body
+    assert "**Description**" in body and ("foe" in body.lower() or "opponent" in body.lower() or "veil" in body.lower())
+    assert "**Passives**" in body and "Rift Carve" in body
     assert "**Equipped**" in body and "Dust Mite" in body
     assert "cowoncy" not in body.lower()
     assert "owo" not in body.lower()
@@ -875,12 +875,13 @@ def test_combat_cleave_and_mend_overrides():
 
 def test_fighter_mag_mirrors_team_card():
     """Weapon bonus raises MAG for skills; H/P/p · W/M/m stays consistent."""
-    wep = {"kind": "rift_blade", "style": "strike", "atk": 12, "name": "Rift Blade", "emoji": "x", "rarity": "rare", "quality": 70, "wid": "1"}
+    # weed_sling = Field Tutor (meta only) so ATK/MAG math stays clean for this check
+    wep = {"kind": "weed_sling", "style": "strike", "atk": 12, "name": "Weed Sling", "emoji": "x", "rarity": "rare", "quality": 70, "wid": "1"}
     bare = hunt._fighter("thorn_wolf", 5)
     armed = hunt._fighter("thorn_wolf", 5, wep)
     assert armed["atk"] == bare["atk"] + 12
     assert armed["mag"] == bare["mag"] + 12
-    mend = hunt._fighter("thorn_wolf", 5, {**wep, "style": "mend", "kind": "quartz_wand"})
+    mend = hunt._fighter("thorn_wolf", 5, {**wep, "style": "mend", "kind": "aether_tome"})
     assert mend["atk"] == bare["atk"]  # mend does not boost physical
     assert mend["mag"] > bare["mag"]
 
@@ -928,3 +929,70 @@ def test_set_team_slot_clear_and_swap(tmp_path: Path, monkeypatch):
     assert cleared["ok"]
     assert cleared["team"][0] is None
     assert hunt.set_team_slot(42, 3, "dust_mite")["ok"]
+
+
+def test_weapon_kind_passives_unique():
+    """Every WEAPONS kind has a distinct Aetherion passive id (P01–P42) + name."""
+    from groksito_discord.discord import aether_gear as gear
+    from groksito_discord.discord import weapon_passives as wp
+
+    kinds = [row[0] for row in gear.WEAPONS]
+    assert len(kinds) == len(wp.WEAPON_KIND_PASSIVES) == 42
+    assert set(kinds) == set(wp.WEAPON_KIND_PASSIVES)
+    ids = [row["passive_id"] for row in wp.WEAPON_KIND_PASSIVES.values()]
+    names = [row["name"] for row in wp.WEAPON_KIND_PASSIVES.values()]
+    assert len(ids) == len(set(ids))
+    assert len(names) == len(set(names))
+    assert set(ids) == {f"P{i:02d}" for i in range(1, 43)}
+    assert wp.WEAPON_KIND_PASSIVES["rift_blade"]["name"] == "Rift Carve"
+    assert wp.WEAPON_KIND_PASSIVES["wyrm_fang"]["name"] == "Crimson Siphon"
+    blob = " ".join(f"{v['name']} {v['passive']} {v['description']}" for v in wp.WEAPON_KIND_PASSIVES.values())
+    assert "owo" not in blob.lower()
+    assert "cowoncy" not in blob.lower()
+
+
+def test_mythic_stats_outclass_common_at_level_1():
+    """Rarer animals are stronger in HP/ATK and WP/PR/MR pools at the same level."""
+    common = hunt._fighter("dust_mite", 1)  # common
+    mythic = hunt._fighter("sol_wyrm", 1)  # mythic
+    assert mythic["max_hp"] > common["max_hp"]
+    assert mythic["atk"] > common["atk"]
+    assert mythic["wp"] > common["wp"]
+    assert mythic["pr"] > common["pr"]
+    assert mythic["mr"] > common["mr"]
+    # SoT RARITY_BASE: C(40,8) … M(128,30); PR/MR/WP_MAX C 6/6/40 … M 20/20/90
+    hp_m, atk_m = hunt.stats_for("sol_wyrm", 1)
+    hp_c, atk_c = hunt.stats_for("dust_mite", 1)
+    assert (hp_c, atk_c) == (40, 8)
+    assert (hp_m, atk_m) == (128, 30)
+    assert hunt.RARITY_WP_MAX[hunt.MYTHIC] > hunt.RARITY_WP_MAX[hunt.COMMON]
+    assert hunt.RARITY_PR[hunt.MYTHIC] > hunt.RARITY_PR[hunt.COMMON]
+
+
+def test_passive_lifesteal_combat_hook():
+    """Crimson Siphon (wyrm_fang) heals the attacker when dealing damage."""
+    import random
+    from groksito_discord.discord import aether_battle as battle
+
+    rng = random.Random(0)
+    wep = {
+        "kind": "wyrm_fang",
+        "style": "cleave",
+        "atk": 10,
+        "name": "Wyrm Fang",
+        "emoji": "x",
+        "rarity": "rare",
+        "quality": 100,
+        "wid": "9",
+    }
+    attacker = hunt._fighter("thorn_wolf", 5, wep)
+    # Drop HP so lifesteal can restore
+    attacker["hp"] = max(1, attacker["max_hp"] // 2)
+    start_hp = attacker["hp"]
+    foe = hunt._fighter("ember_moth", 3)
+    attacker["wp"] = max(attacker["wp"], 30)
+    line = battle.apply_action(attacker, [attacker], [foe], rng)
+    assert "cleaves" in line or "strikes" in line or "hits" in line
+    assert attacker["hp"] > start_hp
+    assert foe["hp"] < foe["max_hp"] or foe["hp"] == 0
+
