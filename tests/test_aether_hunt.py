@@ -67,7 +67,7 @@ def test_battle_card_looks_like_owo():
     assert "Ori goes into battle!" in card
     assert "Ori's Team" in card
     assert "Enemy Team" in card
-    assert "Turn 2 / 12" in card
+    assert "Turn 2 / 5" in card
 
 
 def test_gear_catalog_has_thirty_weapons():
@@ -102,3 +102,14 @@ def test_hunt_and_zoo_match_owo_layout():
     assert "**Zoo Points: __2__**" in board
     owned = hunt.owned_catalog({"dust_mite": 2, "sol_wyrm": 0})
     assert [row[0] for row in owned] == ["dust_mite"]
+
+
+def test_battle_image_renders():
+    from groksito_discord.discord import aether_battle as board
+
+    player = [hunt._fighter("eclipse_lion", 19)]
+    enemy = [hunt._fighter("ember_moth", 12)]
+    png = board.render_battle_png(player, enemy, turn=2, max_turns=5)
+    raw = png.getvalue()
+    assert raw[:8] == b"\x89PNG\r\n\x1a\n"
+    assert len(raw) > 800
