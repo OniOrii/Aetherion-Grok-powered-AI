@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Changed
+
+- **Hunt `/inv` mobile layout polish (Ori only):** clearer section breaks (**Supplies** / **Gems** / **Active** / **Weapons** with blank lines), short resource labels (`LB` / `crate` / `shards` / `raid`), and compact weapon quality `` `{n}%` `` instead of `| Quality: n%` so mobile Discord no longer orphans the percent. Active gems keep `` `[left/max]` `` under **Active**. Dropped the inventory thumbnail so description width is not squeezed on phones. Daily `` `[n/3]` `` cadence copy unchanged. Display-only — gem durability math from PR #12 untouched.
+
 ### Added
 
 - **Hunt gem durability + Prism + Legendary/Fabled (Ori only):** role-based gem charge spend matches OwO feel — Hunting −1 per hunt, Empowering −⌊n/2⌋, Lucky/Prism −n (or −⌊n/2⌋ when Hunting+Empowering are both active). New **Prism Gem** (Aetherion name for event-style Special) ×2 epic/mythic hunt weights. Gem tiers extend to **Legendary** (+7 extras, 100 charges) and **Fabled** (+9, 100). Shared `GEM_HUNTS` table kept (OwO per-type animal lengths approximated). Catch HUD `[left/max]` is post-spend. `/use` and `/inv` show prism + new tiers. Expedition/autohunt still on hold; battle board PNG unchanged.

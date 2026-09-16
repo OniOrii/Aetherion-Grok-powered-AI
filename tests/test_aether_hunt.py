@@ -580,6 +580,50 @@ def test_inventory_shows_daily_cadence_brackets():
     assert "Hunt lootboxes today" in text
     assert "battle crates today" in text
     assert "`[20/25]`" in text
+    assert "**Supplies**" in text
+    assert "LB `2`" in text
+    assert "crate `1`" in text
+    assert "**Active**" in text
+    # Active gem sits under its own header, not jammed onto one line with the label.
+    assert "\n**Active**\n" in text or text.index("**Active**") < text.index("Hunting Gem")
+
+
+def test_inventory_mobile_layout_short_weapon_rows():
+    """Weapon quality is short (`N%`) and sections are spaced for mobile Discord."""
+    from groksito_discord.discord import aether_gear as gear
+
+    pack = gear.blank_gear()
+    pack["lootbox"] = 0
+    pack["crate"] = 1
+    pack["shards"] = 200
+    pack["raid_ticket"] = 0
+    pack["day"] = __import__("datetime").date.today().isoformat()
+    pack["gems"]["lucky_uncommon"] = 1
+    pack["active"] = {"hunting": {"rarity": "epic", "left": 37}}
+    pack["weapons"] = {
+        "1": {"kind": "ash_spear", "rarity": "common", "quality": 57, "atk": 6, "style": "strike"},
+        "2": {"kind": "eclipse_glaive", "rarity": "rare", "quality": 64, "atk": 14, "style": "cleave"},
+    }
+    text = gear.inventory_text("Ori", pack)
+    assert "**Supplies**" in text
+    assert "shards `200`" in text
+    assert "raid `0`" in text
+    assert "**Gems**" in text
+    assert "Lucky Gem x1" in text
+    assert "**Active**" in text
+    assert "`[37/50]`" in text
+    assert "**Weapons**" in text
+    assert "`57%`" in text
+    assert "`64%`" in text
+    assert "Quality:" not in text
+    assert "| Quality" not in text
+    # Blank line before each major section header.
+    assert "\n\n**Gems**\n" in text
+    assert "\n\n**Active**\n" in text
+    assert "\n\n**Weapons**\n" in text
+    # Long name still uses compact quality — not the wrapping "Quality: N%" form.
+    assert "**Eclipse Glaive**" in text
+    assert "owo" not in text.lower()
 
 
 def test_battle_result_caption_crate_has_cadence():
@@ -704,3 +748,5 @@ def test_inventory_lists_prism_and_fabled_tiers():
     assert "Fabled" in text
     assert "Legendary" in text
     assert "`[80/100]`" in text
+    assert "**Gems**" in text
+    assert "**Active**" in text

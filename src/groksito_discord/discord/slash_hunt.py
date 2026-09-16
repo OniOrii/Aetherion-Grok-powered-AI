@@ -359,16 +359,8 @@ def register_hunt(tree, is_guild_allowed) -> None:
                 pack = gear.ensure_gear(row)
                 hunt._save_store(store)
         text = gear.inventory_text(_display_name(interaction), pack)
-        sheet = gear.inventory_sheet_png(pack) if hasattr(gear, "inventory_sheet_png") else None
-        if sheet:
-            embed = _embed("\u2726 Inventory", text)
-            embed.set_thumbnail(url="attachment://inventory_weapons.png")
-            await interaction.response.send_message(
-                embed=embed,
-                file=discord.File(sheet, filename="inventory_weapons.png"),
-            )
-            return
-        await interaction.response.send_message(text)
+        # No thumbnail: mobile Discord shrinks description width and orphans weapon %.
+        await interaction.response.send_message(embed=_embed("\u2726 Inventory", text))
 
     @tree.command(name="lootbox", description="WIP Ori only. Open a lootbox for a hunt gem.")
     @discord.app_commands.default_permissions(administrator=True)
