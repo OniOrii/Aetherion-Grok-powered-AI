@@ -1815,6 +1815,56 @@ def test_hunt_emoji_fallbacks_and_overrides(monkeypatch):
     assert "⚔️" in body or hunt_emoji.weapon_row_prefix() in body
 
 
+
+def test_zoo_weapons_boards_use_app_emoji_marks(monkeypatch):
+    """ /zoo and /weapons prefer animal_mark / weapon_mark over raw catalog emoji. """
+    from groksito_discord.discord import aether_gear as gear
+
+    monkeypatch.setenv("HUNT_EMOJI_ANIMAL_DUST_MITE", "<:hunt_dust_mite:222>")
+    monkeypatch.setenv("HUNT_EMOJI_WEAPON_RIFT_BLADE", "<:hunt_rift_blade:444>")
+
+    board = hunt.zoo_board(
+        "Ori",
+        {"dust_mite": 2},
+        {"dust_mite": 2},
+    )
+    assert "<:hunt_dust_mite:222>" in board
+    # unicode catalog glyph should not appear for the owned cell once app emoji is set
+    assert "\U0001fab2<:" not in board  # no double-prefix nonsense
+
+    pack = gear.blank_gear()
+    pack["weapons"] = {
+        "7": {
+            "kind": "rift_blade",
+            "rarity": gear.RARE,
+            "quality": 62,
+            "atk": 12,
+            "style": "cleave",
+        },
+    }
+    pack["equip"] = {"dust_mite": "7"}
+    wboard = hunt.weapon_board("Ori", pack, {"nicks": {}})
+    assert "<:hunt_rift_blade:444>" in wboard
+    assert "<:hunt_dust_mite:222>" in wboard  # holder label
+
+    # inventory + detail also wire through weapon_mark
+    inv = gear.inventory_text("Ori", pack)
+    assert "<:hunt_rift_blade:444>" in inv
+    detail = gear.weapon_detail_text(
+        {
+            "wid": "7",
+            "kind": "rift_blade",
+            "name": "Rift Blade",
+            "emoji": "⚔️",
+            "rarity": gear.RARE,
+            "quality": 62,
+            "atk": 12,
+            "style": "cleave",
+        }
+    )
+    assert "<:hunt_rift_blade:444>" in detail
+
+
 def test_hunt_icon_png_assets_exist():
     from groksito_discord.discord import hunt_emoji
 

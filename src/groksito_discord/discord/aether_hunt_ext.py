@@ -649,8 +649,16 @@ def weapon_board(display_name, pack, row=None):
         if row is not None:
             return nick_label(holder, row)
         if animal:
-            return f"{animal[2]} {animal[1]}".strip()
+            from .hunt_emoji import animal_mark
+
+            mark = animal_mark(holder, unicode_fallback=str(animal[2]))
+            return f"{mark} {animal[1]}".strip()
         return holder
+
+    from .hunt_emoji import weapon_mark
+
+    def _wmark(meta: tuple) -> str:
+        return weapon_mark(meta[0], unicode_fallback=str(meta[2]))
 
     shown = False
     for rarity in base.RARITY_ORDER:
@@ -664,7 +672,7 @@ def weapon_board(display_name, pack, row=None):
         lines.append(f"**{mark} {RARITY_LABEL.get(rarity, rarity)}**")
         for wid, raw, meta in sorted(items, key=_wid_key):
             q = int(raw.get("quality") or 0)
-            line = f"`{wid}` {mark} {meta[2]} **{meta[1]}** `{q}%`"
+            line = f"`{wid}` {mark} {_wmark(meta)} **{meta[1]}** `{q}%`"
             held = _holder_label(wid)
             if held:
                 line = f"{line} · {held}"
@@ -677,7 +685,7 @@ def weapon_board(display_name, pack, row=None):
             rar = raw.get("rarity") or COMMON
             mark = rarity_mark(rar)
             q = int(raw.get("quality") or 0)
-            line = f"`{wid}` {mark} {meta[2]} **{meta[1]}** `{q}%`"
+            line = f"`{wid}` {mark} {_wmark(meta)} **{meta[1]}** `{q}%`"
             held = _holder_label(wid)
             if held:
                 line = f"{line} · {held}"
@@ -815,16 +823,19 @@ def checklist_board(display_name, caught):
         pool = [row for row in ANIMALS if row[3] == rarity]
         found = []
         missing = []
-        for aid, name, emoji, _rar in pool:
+        from .hunt_emoji import animal_mark
+
+        for aid, name, uni, _rar in pool:
             try:
                 ever = int((caught or {}).get(aid) or 0)
             except (TypeError, ValueError):
                 ever = 0
+            mark_e = animal_mark(aid, unicode_fallback=uni)
             if ever > 0:
-                found.append(f"{emoji} {name}")
+                found.append(f"{mark_e} {name}")
                 total_found += 1
             else:
-                missing.append(f"{emoji} {name}")
+                missing.append(f"{mark_e} {name}")
         mark = rarity_mark(rarity)
         lines.append(f"\n{mark} **{RARITY_LABEL[rarity]}** · {len(found)}/{len(pool)}")
         lines.append("Found · " + (", ".join(found) if found else "none yet"))
