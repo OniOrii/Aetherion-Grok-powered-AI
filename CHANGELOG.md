@@ -15,6 +15,8 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- **Ori messenger override:** when Ori tells Aetherion to tell / say / pass a message to someone else, Aetherion delivers it (ping + Ori's words), including vulgar or insulting lines. No more "not passing that along" to the creator. Non-Ori users can still be refused as messengers.
+
 - **Hunt slash condensation (Ori only):** 19 Hunt slashes folded to **7** roots so the loop stays one tap. Kept `/hunt` `/zoo` `/team` `/battle` `/raid` `/inv` `/weapon`. `/zoo` actions cover sell / sacrifice / rename / checklist / bestiary. `/inv` actions cover use / equip / salvage; **Lootbox** and **Crate** buttons sit on the inventory embed. `/weapons` and `/dex` dropped (`/weapon` already showed the board; bestiary is a `/zoo` action). Removed leaf commands stay available through those options. `/help` and the README match. Game/voice slashes unchanged.
 
 ### Fixed
