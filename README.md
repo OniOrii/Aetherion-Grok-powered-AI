@@ -57,12 +57,13 @@ Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt 
 - Catalog: **62** animals — **10** each C/U/R/E/M plus **6 Astral** and **6 Primordial**. **42** style-based weapons. Pet level cap **50**.
 - Manual hunt: **10** Aether Coins, **15s** cooldown. `/daily` (Ori) adds **5** lootboxes, **5** crates, and **1** raid ticket.
 - `/hunt` — catch line, optional multi-find strip, team XP.
-- `/zoo` — C/U/R/E/M/A/P grid, Zoo Points, lifetime tally.
-- `/team` `/sell` `/sacrifice` `/rename` `/checklist`.
+- `/zoo` — C/U/R/E/M/A/P grid, Zoo Points, lifetime tally. Actions: sell / sacrifice / rename / checklist / bestiary.
+- `/team` — three battle slots + settings cog.
 - `/battle` — 3v3 board image (species portraits), phys ATK/PR and weapon MAG/MR with WP spend.
-- `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon`.
-- `/bestiary` (alias `/dex`), `/salvage`, `/raid` (Easy/Hard/Nightmare).
-- Gems: hunting / lucky / empower / prism, tiers through Fabled. `/use` activates them onto hunts, not onto pets.
+- `/inv` — bags. Buttons open lootbox / crate. Actions: use / equip / salvage.
+- `/weapon` — armory board, or `id:` for the detail card.
+- `/raid` — Easy / Hard / Nightmare (Ember / Void / Crown).
+- Gems: hunting / lucky / empower / prism, tiers through Fabled. `/inv use` activates them onto hunts, not onto pets.
 
 ### Server tools
 - `/reactionrole post|add|remove|list|colors` — exclusive color roles (Administrators).
@@ -81,7 +82,7 @@ Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt 
 | --- | --- | --- |
 | `/help` | anyone | How the bot works |
 | `/join` `/leave` | anyone | Voice session |
-| `/play` `/pause` `/stop` | anyone | SoundCloud on that session |
+| `/play` `/pause` `/stop` | anyone | SoundCloud on that same session |
 | `/blackjack` | anyone | Cards vs Aetherion |
 | `/slots` | anyone | Three machines |
 | `/cointoss` | anyone | Coin flip |
@@ -89,9 +90,8 @@ Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt 
 | `/poker` | anyone | Texas Hold'em |
 | `/balance` `/daily` `/leaderboard` | anyone | Wallet |
 | `/givecoins` | Ori | Grant coins |
-| `/hunt` `/zoo` `/sell` `/team` `/battle` | Ori | Hunt WIP |
-| `/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon` | Ori | Hunt bags and gems |
-| `/sacrifice` `/rename` `/checklist` `/bestiary` `/dex` `/salvage` `/raid` | Ori | Hunt extras |
+| `/hunt` `/zoo` `/team` `/battle` `/raid` | Ori | Hunt loop |
+| `/inv` `/weapon` | Ori | Hunt bags, gems, armory |
 | `/audio` | anyone | Speak text in-channel |
 | `/ping` | anyone | Awake check |
 | `/welcome` `/datechannel` `/purge` `/reactionrole` | Administrators | Server setup |
