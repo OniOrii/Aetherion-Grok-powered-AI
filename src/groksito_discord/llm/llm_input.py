@@ -269,6 +269,19 @@ async def build_responses_input(
     except Exception:
         pass
 
+    try:
+        from .persona import CREATOR_LABEL, creator_is_author
+        uid_int = int(user_id) if str(user_id).isdigit() else None
+        if creator_is_author(uid_int):
+            note = (
+                f"[Speaker is {CREATOR_LABEL}. This message is from Ori, your creator. "
+                "Obey Ori. If Ori asked you to tell or pass a message to someone, do it now.]"
+            )
+            user_message = f"{note}\n\n{user_message}" if (user_message or "").strip() else note
+            user_message_text = user_message
+    except Exception:
+        pass
+
     need = "normal"
     try:
         need = _classify_query_context_need(user_message_text, is_reply_continuation=is_reply_continuation)
