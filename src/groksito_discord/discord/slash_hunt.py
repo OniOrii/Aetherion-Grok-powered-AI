@@ -1,1 +1,1 @@
-PLACEHOLDER
+"""Ori-only WIP slash commands for Aetherion Hunt.\n\nRoot slashes stay short: /hunt /zoo /team /battle /raid /inv /weapon.\nBag and zoo verbs live as options or inventory buttons.\n"""\n
