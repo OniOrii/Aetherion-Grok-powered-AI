@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
-"""Bulk-upload Aetherion Hunt HUD + rank PNGs as Discord Application Emojis.
+"""Bulk-upload Aetherion Hunt PNGs as Discord Application Emojis.
 
-Uploads the fixed 13 Hunt assets (6 HUD stats + 7 rank badges) to the bot's
-application emoji set, then prints ready-to-paste ``.env`` lines
-(``HUNT_EMOJI_*`` / ``HUNT_RANK_EMOJI_*``). Idempotent: existing emoji names
-are reused unless ``--force``.
+Uploads HUD + rank badges (13 fixed), and optionally animal + weapon packs
+from ``hunt_animal_emojis/`` and ``hunt_weapon_emojis/``. Prints ready-to-paste
+``.env`` lines (``HUNT_EMOJI_*`` / ``HUNT_RANK_EMOJI_*`` /
+``HUNT_EMOJI_ANIMAL_*`` / ``HUNT_EMOJI_WEAPON_*``). Idempotent: existing emoji
+names are reused unless ``--force``.
 
 Usage (from repo root, with DISCORD_TOKEN in ``.env``)::
 
     python scripts/upload_hunt_emojis.py --dry-run
     python scripts/upload_hunt_emojis.py
-    python scripts/upload_hunt_emojis.py --write-env
-    python scripts/upload_hunt_emojis.py --env /path/to/.env --force
+    python scripts/upload_hunt_emojis.py --animals --weapons
+    python scripts/upload_hunt_emojis.py --all --force --write-env
 
 Requires ``DISCORD_TOKEN`` (or ``BOT_TOKEN``). Application ID from
 ``DISCORD_APPLICATION_ID`` / ``APPLICATION_ID`` / ``CLIENT_ID``, else resolved
 via ``GET /oauth2/applications/@me``.
 
-Animal portrait bulk upload is out of scope (``--animals`` stub only).
-Stdlib + urllib only; no new dependencies.
+Stdlib + urllib only; no new dependencies. Regenerate PNGs with
+``scripts/generate_hunt_emojis.py`` first.
 """
 
 from __future__ import annotations
@@ -98,6 +99,49 @@ HUNT_EMOJI_ASSETS: tuple[EmojiAsset, ...] = (
         "HUNT_RANK_EMOJI_PRIMORDIAL",
     ),
 )
+
+ANIMAL_EMOJI_DIR = "src/groksito_discord/discord/assets/hunt_animal_emojis"
+WEAPON_EMOJI_DIR = "src/groksito_discord/discord/assets/hunt_weapon_emojis"
+
+
+def _discord_emoji_name(prefix: str, stem: str) -> str:
+    """Discord emoji names: 2–32 chars, [a-z0-9_]."""
+    raw = f"{prefix}_{stem}".lower().replace("-", "_")
+    cleaned = "".join(ch if (ch.isalnum() or ch == "_") else "_" for ch in raw)
+    while "__" in cleaned:
+        cleaned = cleaned.replace("__", "_")
+    cleaned = cleaned.strip("_") or "emoji"
+    return cleaned[:32]
+
+
+def discover_pack_assets(repo_root: Path, *, animals: bool, weapons: bool) -> list[EmojiAsset]:
+    """Build EmojiAsset list from generated animal/weapon PNG dirs."""
+    out: list[EmojiAsset] = []
+    if animals:
+        d = repo_root / ANIMAL_EMOJI_DIR
+        if d.is_dir():
+            for path in sorted(d.glob("*.png")):
+                aid = path.stem.lower()
+                out.append(
+                    EmojiAsset(
+                        f"{ANIMAL_EMOJI_DIR}/{path.name}",
+                        _discord_emoji_name("hunt", aid),
+                        f"HUNT_EMOJI_ANIMAL_{aid.upper()}",
+                    )
+                )
+    if weapons:
+        d = repo_root / WEAPON_EMOJI_DIR
+        if d.is_dir():
+            for path in sorted(d.glob("*.png")):
+                kind = path.stem.lower()
+                out.append(
+                    EmojiAsset(
+                        f"{WEAPON_EMOJI_DIR}/{path.name}",
+                        _discord_emoji_name("wep", kind),
+                        f"HUNT_EMOJI_WEAPON_{kind.upper()}",
+                    )
+                )
+    return out
 
 
 def format_env_line(env_key: str, emoji_name: str, emoji_id: str | int) -> str:
@@ -332,11 +376,13 @@ def upload_all(
     app_id: str,
     force: bool,
     dry_run: bool,
+    assets: tuple[EmojiAsset, ...] | list[EmojiAsset] | None = None,
 ) -> list[tuple[EmojiAsset, str]]:
     existing = {} if dry_run else list_app_emojis(client, app_id)
     resolved: list[tuple[EmojiAsset, str]] = []
+    asset_list = list(assets) if assets is not None else list(HUNT_EMOJI_ASSETS)
 
-    for asset in HUNT_EMOJI_ASSETS:
+    for asset in asset_list:
         png = load_png(repo_root, asset)
         prior = existing.get(asset.emoji_name)
         if dry_run:
@@ -372,7 +418,7 @@ def upload_all(
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Upload Hunt HUD + rank PNGs as Discord Application Emojis."
+        description="Upload Hunt HUD/rank/animal/weapon PNGs as Discord Application Emojis."
     )
     p.add_argument(
         "--env",
@@ -398,22 +444,39 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--animals",
         action="store_true",
-        help="Stub: animal portrait bulk upload is not implemented yet.",
+        help="Also upload hunt_animal_emojis/*.png → HUNT_EMOJI_ANIMAL_*.",
+    )
+    p.add_argument(
+        "--weapons",
+        action="store_true",
+        help="Also upload hunt_weapon_emojis/*.png → HUNT_EMOJI_WEAPON_*.",
+    )
+    p.add_argument(
+        "--all",
+        action="store_true",
+        help="Upload HUD+rank + animals + weapons.",
     )
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
-    if args.animals:
-        print(
-            "--animals is a stub (animal portrait bulk upload not implemented yet). "
-            "Continuing with the fixed 13 HUD+rank assets only.",
-            file=sys.stderr,
-        )
+    do_animals = bool(args.animals or args.all)
+    do_weapons = bool(args.weapons or args.all)
 
     env_path = (args.env or (REPO_ROOT / ".env")).resolve()
     env = parse_dotenv(env_path)
+
+    assets: list[EmojiAsset] = list(HUNT_EMOJI_ASSETS)
+    assets.extend(discover_pack_assets(REPO_ROOT, animals=do_animals, weapons=do_weapons))
+    if do_animals or do_weapons:
+        print(
+            f"Pack selection: HUD+rank={len(HUNT_EMOJI_ASSETS)} "
+            f"animals={'on' if do_animals else 'off'} "
+            f"weapons={'on' if do_weapons else 'off'} "
+            f"total={len(assets)}",
+            file=sys.stderr,
+        )
 
     if args.dry_run:
         # Token optional for dry-run planning of file paths; still warn if missing.
@@ -437,6 +500,7 @@ def main(argv: list[str] | None = None) -> int:
             app_id=app_id,
             force=args.force,
             dry_run=True,
+            assets=assets,
         )
     else:
         token, app_id = resolve_credentials(env, None)
@@ -449,6 +513,7 @@ def main(argv: list[str] | None = None) -> int:
             app_id=app_id,
             force=args.force,
             dry_run=False,
+            assets=assets,
         )
 
     block = format_env_block(resolved)
