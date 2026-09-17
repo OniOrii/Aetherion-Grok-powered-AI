@@ -15,6 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
+- **Hunt app-emoji upload script (Ori only):** `scripts/upload_hunt_emojis.py` bulk-uploads the fixed 13 HUD + rank PNGs as Discord Application Emojis (stdlib/urllib, idempotent, `--write-env` / `--dry-run` / `--force`); prints `HUNT_EMOJI_*` / `HUNT_RANK_EMOJI_*` `.env` lines. Animal portraits out of scope.
 - **Hunt Astral + Primordial tiers (Ori only):** two Aetherion-original ranks above Mythic (`a` / `p`). Catalog **+12** animals (6 Astral sky-words, 6 Primordial origin-words; 62 total). Curves from `owo-research/AETHERION_TOP_TIERS.md`: `RARITY_BASE` A(160,38) P(200,48); PR/MR/WP A 26/26/110 P 34/34/135; sell/ZP/shards/hunt XP steeper than Mythic. `RARITY_WEIGHT` retuned **C500 U250 R130 E35 M12 A4 P1** (A≈⅓ M, P≈¼ A). Crate weights + weapon ATK bands + salvage shards + lucky/prism gem bumps include A/P. Rank PNG stubs + `HUNT_RANK_EMOJI_ASTRAL`/`PRIMORDIAL` placeholders. Gem Legendary/Fabled labels unchanged (gem-only). Expedition/autohunt and Discord emoji upload out of scope.
 - **Hunt custom icon pipeline (Ori only):** optional Discord custom emojis for `/team` HUD stats (HP/WP/ATK/MAG/PR/MR), animal avatars, and weapon-row glyphs. Small PNGs under `assets/hunt_icons/` (96px); animals **reuse** existing `hunt_portraits/` (no binary duplication). `hunt_emoji.py` resolves `HUNT_EMOJI_*` / `HUNT_EMOJI_ANIMAL_<id>` / `HUNT_EMOJI_WEAPON_<kind>` → `<:name:id>` or unicode fallbacks. Settings + `.env.example` + README upload steps for Ori. Upload not required for tests.
 

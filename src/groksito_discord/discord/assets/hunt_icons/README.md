@@ -47,6 +47,19 @@ HUNT_EMOJI_WEAPON_ROW=<:hunt_sword:123456789012345678>   # optional /team row pr
 
 ## How Ori uploads & wires IDs
 
+**Preferred (application emojis):** from repo root, with `DISCORD_TOKEN` in `.env`:
+
+```bash
+python scripts/upload_hunt_emojis.py --dry-run
+python scripts/upload_hunt_emojis.py --write-env
+```
+
+Uploads the fixed 13 HUD + rank PNGs as Discord **Application Emojis** and
+prints (or writes) `HUNT_EMOJI_*` / `HUNT_RANK_EMOJI_*` lines. Idempotent;
+`--force` deletes+recreates. See the script docstring for flags.
+
+**Manual alternative:**
+
 1. Open Discord → **Server Settings → Emoji** (or the bot application’s emoji
    page) → upload the PNGs above (and portraits you want).
 2. Right-click an emoji in chat (or use a picker that shows IDs) and copy the
