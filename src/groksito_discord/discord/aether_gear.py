@@ -408,9 +408,12 @@ def weapon_detail_text(
     holder_label: str | None = None,
 ) -> str:
     """OwO-feel detail card: Description + unique Passive (Aetherion names)."""
+    from .hunt_emoji import weapon_mark
+
     wid = wep.get("wid") or "?"
     name = wep.get("name") or "Weapon"
-    emoji = wep.get("emoji") or ""
+    kind_for_mark = wep.get("kind")
+    emoji = weapon_mark(kind_for_mark, unicode_fallback=str(wep.get("emoji") or ""))
     rar = wep.get("rarity") or COMMON
     quality = int(wep.get("quality") or 0)
     atk = int(wep.get("atk") or 0)
@@ -517,10 +520,13 @@ def inventory_text(display_name: str, blob: dict[str, Any]) -> str:
             q = int(raw.get("quality") or 0)
             style = raw.get("style") or meta[3]
             kind = raw.get("kind") or meta[0]
+            from .hunt_emoji import weapon_mark
+
             passive = _wpass.passive_icon(kind) or _STYLE_PASSIVE.get(style, "")
+            wemoji = weapon_mark(kind, unicode_fallback=str(meta[2]))
             # Short quality token keeps id · rarity · emoji · name · passive on one mobile line.
             lines.append(
-                f"`{wid}` {rarity_mark(rar)} {meta[2]} **{meta[1]}** {passive} `{q}%`"
+                f"`{wid}` {rarity_mark(rar)} {wemoji} **{meta[1]}** {passive} `{q}%`"
             )
     else:
         lines.append("No weapons yet. Battle for a crate.")
@@ -551,7 +557,9 @@ def owned_weapons(blob: dict[str, Any]) -> list[tuple[str, str, str]]:
         if not meta:
             continue
         rar = raw.get("rarity") or COMMON
-        out.append((wid, f"{meta[2]} {meta[1]} {rarity_mark(rar) if rar else rar}", meta[1]))
+        from .hunt_emoji import weapon_mark
+        wem = weapon_mark(meta[0], unicode_fallback=str(meta[2]))
+        out.append((wid, f"{wem} {meta[1]} {rarity_mark(rar) if rar else rar}", meta[1]))
     return out
 
 

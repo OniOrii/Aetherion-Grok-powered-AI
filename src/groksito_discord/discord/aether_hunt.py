@@ -697,7 +697,15 @@ def hunt_catch_line(
     row = ANIMAL_BY_ID.get(animal_id)
     if not row:
         return f"**\U0001f331 | {display_name}** spent {HUNT_COST} \u2726 and nothing turned up."
-    _aid, _name, emoji, rarity = row
+    _aid, _name, _uni, rarity = row
+    from .hunt_emoji import animal_mark
+
+    def _amark(aid: str) -> str:
+        meta = ANIMAL_BY_ID.get(aid)
+        fb = str(meta[2]) if meta else ""
+        return animal_mark(aid, unicode_fallback=fb)
+
+    emoji = _amark(animal_id)
     label = RARITY_LABEL[rarity].lower()
     article = "an" if rarity in (UNCOMMON, EPIC, ASTRAL) else "a"
     mark = rarity_mark(rarity)
@@ -715,9 +723,8 @@ def hunt_catch_line(
         )
         strip: list[str] = []
         for aid in animal_ids:
-            extra = ANIMAL_BY_ID.get(aid)
-            if extra:
-                strip.append(extra[2])
+            if ANIMAL_BY_ID.get(aid):
+                strip.append(_amark(aid))
         if strip:
             lines.append(f"| You found: {' '.join(strip)}")
     else:
@@ -726,9 +733,8 @@ def hunt_catch_line(
         )
         extra_bits: list[str] = []
         for aid in extras or []:
-            extra = ANIMAL_BY_ID.get(aid)
-            if extra:
-                extra_bits.append(extra[2])
+            if ANIMAL_BY_ID.get(aid):
+                extra_bits.append(_amark(aid))
         if extra_bits:
             lines.append(f"| You found: {' '.join(extra_bits)}")
     # Team XP: collapse pet emojis onto one OwO-style line when possible
@@ -801,7 +807,9 @@ def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) ->
         shown = True
         pool = [row for row in ANIMALS if row[3] == rarity]
         cells: list[str] = []
-        for aid, _name, emoji, _rar in pool:
+        from .hunt_emoji import animal_mark
+
+        for aid, _name, uni, _rar in pool:
             try:
                 ever = int((caught or {}).get(aid) or 0)
             except (TypeError, ValueError):
@@ -811,7 +819,8 @@ def zoo_board(display_name: str, zoo: dict[str, int], caught: dict[str, int]) ->
             except (TypeError, ValueError):
                 have = 0
             if ever > 0 or have > 0:
-                cells.append(f"{emoji}{_small_count(have, width)}")
+                mark_e = animal_mark(aid, unicode_fallback=uni)
+                cells.append(f"{mark_e}{_small_count(have, width)}")
             else:
                 # Locked ? for undiscovered species inside an unlocked rank
                 cells.append(f"\u2753{_small_count(0, width)}")
@@ -870,7 +879,10 @@ def settings_slot_display(animal_id: str | None, xp: dict[str, int] | None = Non
     row = ANIMAL_BY_ID.get(animal_id)
     if not row:
         return "empty"
-    _aid, name, emoji, _rar = row
+    from .hunt_emoji import animal_mark
+
+    _aid, name, uni, _rar = row
+    emoji = animal_mark(animal_id, unicode_fallback=uni)
     shown = (display_name or name).strip() or name
     lvl = level_of(int((xp or {}).get(animal_id) or 0))
     return f"{emoji} [Lvl {lvl}] {shown}"

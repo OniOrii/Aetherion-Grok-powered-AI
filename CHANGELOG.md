@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-16]
 
+### Changed
+
+- **Hunt `/zoo` + `/weapons` app-emoji wiring (Ori only):** `/zoo`, catch strips, team settings slot labels, `/checklist`, `/weapons` board (incl. holder labels), `/inv` weapon rows, `/weapon` detail, and owned-weapon labels resolve through `animal_mark` / `weapon_mark` with unicode fallback — so pasted `HUNT_EMOJI_ANIMAL_*` / `HUNT_EMOJI_WEAPON_*` app emojis show without regenerating PNGs.
+
 ### Added
 
 - **Hunt richer emoji art packs (Ori only):** `scripts/generate_hunt_emojis.py` regenerates richer 128×128 PNGs — rank badges (bevel/glow letter tiles anchored to `RANK_FILL_HEX`), bordered HUD chips, silhouette animal pack (`hunt_animal_emojis/{id}.png`, all 62), weapon glyphs (`hunt_weapon_emojis/{kind}.png`, all 42). `upload_hunt_emojis.py` now uploads animal+weapon packs (`--animals` / `--weapons` / `--all`) and prints `HUNT_EMOJI_ANIMAL_*` / `HUNT_EMOJI_WEAPON_*` env lines; `--force` refreshes images. Paste env block + restart bot required. Zoo/team still show unicode until animal keys are set.
