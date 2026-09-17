@@ -66,7 +66,8 @@ def _embed(page: str) -> discord.Embed:
         embed.description = (
             "Play-money. No cash-out. Bets and grants move in tens.\n\n"
             f"New players start with **{ai_coins.STARTING_BALANCE}** Aether Coins.\n"
-            f"`/daily` \u2014 claim **{ai_coins.DAILY_DRIP}** once per Eastern day.\n"
+            f"`/daily` \u2014 claim **{ai_coins.DAILY_DRIP}** once per Eastern day. "
+            "Ori also gets Hunt supplies: **5** lootboxes, **5** crates, **1** raid ticket.\n"
             "`/balance` \u2014 your wallet.\n"
             "`/leaderboard` \u2014 top wallets on this server, including Aetherion's house wallet.\n\n"
             f"Blackjack, Connect Four, and Poker bets: {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET}.\n"
@@ -87,6 +88,7 @@ def _embed(page: str) -> discord.Embed:
             "`/battle` — 3v3 board. Phys ATK/PR, weapon MAG/MR, WP spend.\n"
             "`/raid` — pick Easy/Hard/Nightmare rift (Ember/Void/Crown); spend tickets; epic clears on Hard+. Craft: 30 shards → 1 ticket. `/bestiary` (`/dex`) — animal card.\n\n"
             "`/inv` `/lootbox` `/crate` `/use` `/equip` `/weapons` `/weapon` `/salvage`\n"
+            "`/daily` also grants Ori **5** lootboxes, **5** crates, and **1** raid ticket with the coin drip.\n"
             "`/use hunting|lucky|empower|prism` activates gems onto hunts, not pets. "
             "Tiers go through Fabled. `/weapons` is the zoo-style armory; `/weapon id` opens the detail card.\n\n"
             "Custom icons (optional): upload `assets/hunt_icons/` + `hunt_portraits/` as Discord emojis, "
