@@ -32,10 +32,10 @@ See [CHANGELOG.md](./CHANGELOG.md) for dated history. Every shipped change is lo
 - YouTube, YouTube Music, Mixcloud, and Audiomack links are rejected on purpose.
 
 ### Aether Coins
-Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/daily` grants **2,000** once per Eastern day. Bets and grants move in **tens**.
+Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/daily` grants **2,000** once per Eastern day. Ori also gets Hunt supplies: **5** lootboxes, **5** weapon crates, and **1** raid ticket. Bets and grants move in **tens**.
 
 - `/balance` — your wallet.
-- `/daily` — **2,000** Aether Coins once per Eastern day.
+- `/daily` — **2,000** Aether Coins once per Eastern day. Ori also receives **5** lootboxes, **5** crates, and **1** raid ticket.
 - `/leaderboard` — top wallets on this server, including Aetherion's house wallet (starts at **1,000,000**).
 - `/givecoins` — Ori only, 10–10,000 coins to a member.
 
@@ -55,7 +55,7 @@ Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/d
 Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt are still on hold. Save file: `data/aether_hunt.json`.
 
 - Catalog: **62** animals — **10** each C/U/R/E/M plus **6 Astral** and **6 Primordial**. **42** style-based weapons. Pet level cap **50**.
-- Manual hunt: **10** Aether Coins, **15s** cooldown.
+- Manual hunt: **10** Aether Coins, **15s** cooldown. `/daily` (Ori) adds **5** lootboxes, **5** crates, and **1** raid ticket.
 - `/hunt` — catch line, optional multi-find strip, team XP.
 - `/zoo` — C/U/R/E/M/A/P grid, Zoo Points, lifetime tally.
 - `/team` `/sell` `/sacrifice` `/rename` `/checklist`.
