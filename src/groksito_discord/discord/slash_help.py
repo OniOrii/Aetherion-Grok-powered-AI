@@ -105,6 +105,7 @@ def _embed(page: str) -> discord.Embed:
             "`/reactionrole post` `add` `remove` `list` — custom panels.\n"
             "People can keep **one** color from a panel at a time.\n"
             "`/welcome` — channel for new-member banners.\n"
+            "`/autorole` — role given the moment someone joins.\n"
             "`/datechannel` — voice channel that shows today's date at midnight Eastern.\n"
             "`/purge` — delete up to 100 recent messages in this channel.\n\n"
             "Ori only: `/givecoins`, `/edit`, `/status`.\n"
@@ -146,7 +147,7 @@ def _embed(page: str) -> discord.Embed:
         name="\U0001F6E1\ufe0f  Server",
         value=(
             "`/reactionrole` color roles\n"
-            "`/welcome` `/datechannel` `/purge`"
+            "`/welcome` `/autorole` `/datechannel` `/purge`"
         ),
         inline=True,
     )
