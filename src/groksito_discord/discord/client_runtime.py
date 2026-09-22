@@ -20,7 +20,6 @@ except Exception:
 
 from ..config import settings
 from ..core.safety import safe_reply as _safe_reply
-from .integrations import gamemeca
 from ..utils.text import extract_urls_from_text
 from ..media.delivery import register_image_request
 from ..media.audio_handler import (
@@ -41,19 +40,6 @@ _discord_ready = asyncio.Event()
 _discord_task: asyncio.Task | None = None
 rate_limiter: Any = None
 tree: Any = None
-
-
-async def _periodic_gamemeca_ranking_update(gamemeca_module):
-    try:
-        await gamemeca_module.refresh_ranking()
-    except Exception as e:
-        logger.debug(f"[Gamemeca] initial refresh failed (non-fatal): {e}")
-    while True:
-        await asyncio.sleep(24 * 3600)
-        try:
-            await gamemeca_module.refresh_ranking()
-        except Exception as e:
-            logger.warning(f"[Gamemeca] background refresh failed: {e}")
 
 
 def is_guild_allowed(guild_id: int | None) -> bool:
@@ -128,10 +114,6 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
         try:
             from ..utils import emoji_registry
             asyncio.create_task(emoji_registry.scan_all_accessible_emojis(_discord_client))
-        except Exception:
-            pass
-        try:
-            asyncio.create_task(_periodic_gamemeca_ranking_update(gamemeca))
         except Exception:
             pass
         try:
@@ -242,7 +224,7 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
                 except Exception:
                     pass
                 return
-            author_display = getattr(message.author, "display_name", None) or getattr(message.author, "name", "Usuario")
+            author_display = getattr(message.author, "display_name", None) or getattr(message.author, "name", "User")
             if message.author.id == 1022200760018161684:
                 author_display = "Ori (creator/Master of Aetherion, Discord ID 1022200760018161684)"
             cid = generate_correlation_id()
@@ -308,7 +290,7 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
             rl = getattr(_discord_client, "rate_limiter", rate_limiter)
             can_use, _ = rl.check(message.author.id)
             if not can_use:
-                await _safe_reply(message, "Tranquilo campeon, ya usaste tus 6 requests este minuto.", mention_author=False)
+                await _safe_reply(message, "Easy — you already used your 6 requests this minute.", mention_author=False)
                 return
             if message.reference and message.reference.message_id and referenced is None:
                 try:
