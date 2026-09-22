@@ -23,7 +23,7 @@ def register_status(tree, is_guild_allowed) -> None:
     @discord.app_commands.describe(
         text="Status text. Leave empty to see the current status or to resume rotation.",
         kind="How the status is shown",
-        rotate="On = cycle the default lines. Off = pin this text.",
+        rotate="On = cycle the default bubbles. Off = pin this text.",
     )
     @discord.app_commands.choices(
         kind=[
@@ -60,9 +60,8 @@ def register_status(tree, is_guild_allowed) -> None:
                 logger.exception("status rotate apply failed")
                 await interaction.response.send_message("Rotation is on, but Discord rejected the presence update.", ephemeral=True)
                 return
-            lines = ", ".join(f"{item['kind']} {item['text']}" for item in DEFAULT_ROTATION)
             await interaction.response.send_message(
-                f"Rotating every **{ROTATION_SECONDS}s**. Now **{stored['kind']} {stored['text']}**.\n{lines}",
+                f"Rotating **{len(DEFAULT_ROTATION)}** custom bubbles every **{ROTATION_SECONDS}s**. Now **{stored['text']}**.",
                 ephemeral=True,
             )
             return
@@ -86,9 +85,8 @@ def register_status(tree, is_guild_allowed) -> None:
 
         current = load_presence()
         mode = "rotating" if current.get("rotate", True) else "pinned"
-        label = current["kind"]
         shown = current["text"]
         await interaction.response.send_message(
-            f"Current status is **{mode}**: **{label} {shown}**.",
+            f"Current status is **{mode}**: **{shown}**.",
             ephemeral=True,
         )
