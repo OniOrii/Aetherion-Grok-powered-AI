@@ -226,6 +226,12 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
         try:
             if message.author.id == _discord_client.user.id:
                 return
+            if message.guild is None:
+                try:
+                    await message.channel.send("Aetherion only works in a server.")
+                except Exception:
+                    pass
+                return
             author_display = getattr(message.author, "display_name", None) or getattr(message.author, "name", "Usuario")
             if message.author.id == 1022200760018161684:
                 author_display = "Ori (creator/Master of Aetherion, Discord ID 1022200760018161684)"

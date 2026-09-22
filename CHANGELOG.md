@@ -15,6 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
+- **No DMs:** Aetherion ignores private messages and slash commands used in DMs. It replies that it only works in a server and does not call Grok. Server chat and server slashes are unchanged.
 - **Server logs (`/logs`, Administrators):** Carl-style event embeds in a channel you pick. Joins, leaves, kicks, bans, timeouts, nick/roles, voice, message delete/edit/purge, invites, channels, roles, emoji, and server settings. No Grok calls. Defaults cover the common events; menus toggle the rest.
 
 ### Fixed
@@ -139,7 +140,7 @@ _Nothing waiting. New work is dated the day it ships._
 - The Aether Coin mark used on `/slots` now sits next to coin amounts on blackjack, connect four, poker, `/balance`, `/daily`, `/leaderboard`, and `/givecoins`.
 - `/poker` default buy-in is 200. Blinds scale with the buy-in (20/40 at 200, larger on bigger stacks). 10-coin tables stay blindless so they do not all-in on the post.
 - Aetherion raises and calls more in `/poker` instead of checking every street or folding every raise. House raises size to the pot.
-- New players start with **5,000** Aether Coins. `/daily` grants **2,000**.
+- New players start with **5,000** Aether Coins. `/daily` grants **2,000`.
 - Aetherion has a house wallet that starts at **1,000,000**. Wins against players add to it, losses subtract, and it appears on `/leaderboard`.
 - Aetherion plays `/poker` from its own hole cards and the board only. It can value-bet, fold junk, or bluff. It cannot see anyone else's hole cards.
 - Aetherion no longer dumps the stack on ace-high. All-in and calling a shove need a pair or better, or a premium preflop hand. Bluffs stay small.

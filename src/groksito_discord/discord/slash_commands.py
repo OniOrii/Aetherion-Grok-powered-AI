@@ -48,6 +48,14 @@ def is_guild_allowed(guild_id):
 
 def register(tree, client) -> None:
     from .client import rate_limiter
+
+    @tree.interaction_check
+    async def _reject_dm_commands(interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            await interaction.response.send_message("Aetherion only works in a server.", ephemeral=True)
+            return False
+        return True
+
     register_help(tree, is_guild_allowed)
     register_logs(tree, is_guild_allowed)
     register_music(tree, is_guild_allowed)
