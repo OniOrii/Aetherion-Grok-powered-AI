@@ -71,7 +71,7 @@ Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt 
 - `/datechannel` — voice channel renamed at midnight Eastern (Administrators).
 - `/purge` — delete up to 100 recent messages (Administrators).
 - `/edit` — Ori only, rewrite text Aetherion already posted.
-- `/status` — Ori only, set Aetherion's status bubble.
+- `/status` — Ori only, pin a status bubble or resume the 90s rotation.
 - `/audio` — TTS in the current text channel. Right-click a message → Apps → **Leer en voz alta**.
 - `/ping` — alive check.
 - `/help` — command guide with a topic dropdown.
