@@ -15,7 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
-- **Rotating status:** Aetherion cycles the profile status every **90s** (The Cosmos, Hunt, the rift, poker, the stars, Crown Rift, God of AI!). `/status` with text pins one line and stops the cycle. `/status rotate:True` turns rotation back on. `/status` with no text shows the current line. Ready no longer overwrites a saved presence with a hard-coded Cosmos watch.
+- **Rotating status:** Aetherion cycles a custom status bubble every **90s**. `/status` with text pins one line and stops the cycle. `/status rotate:True` turns rotation back on. `/status` with no text shows the current line. Ready no longer overwrites a saved presence with a hard-coded Cosmos watch.
 - **No DMs:** Aetherion ignores private messages and slash commands used in DMs. It replies that it only works in a server and does not call Grok. Server chat and server slashes are unchanged.
 - **Server logs (`/logs`, Administrators):** Carl-style event embeds in a channel you pick. Joins, leaves, kicks, bans, timeouts, nick/roles, voice, message delete/edit/purge, invites, channels, roles, emoji, and server settings. No Grok calls. Defaults cover the common events; menus toggle the rest.
 
@@ -25,6 +25,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- **Status bubbles:** rotation is custom-status only. Dropped Watching/Playing/Listening/Competing lines (The Cosmos, Hunt, the rift, poker, the stars, Crown Rift, God of AI!). Cycle is now the 25 Ori lines starting with "I can see you".
 - **`/ping`:** gold embed now shows Discord gateway heartbeat ms, this slash command's round-trip, a short Excellent/Good/Okay/Slow label, server count, this server's name, and how many voice connections are up.
 - **Log avatars:** person logs (join, leave, kick, ban, timeout, nick, roles, voice, message delete/edit, invites) show that user's Discord avatar as the embed thumbnail.
 
