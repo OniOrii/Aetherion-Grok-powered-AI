@@ -29,7 +29,7 @@ from .slash_poker import register_poker
 from .slash_hunt import register_hunt
 from .slash_supply import register_supply
 from .slash_help import register_help
-from .slash_logs import register_logs, attach_listeners
+from .slash_logs import register_logs
 from . import aether_hunt_ext  # noqa: F401
 
 logger = logging.getLogger("aetherion.slash")
@@ -49,11 +49,6 @@ def register(tree, client) -> None:
     from .client import rate_limiter
     register_help(tree, is_guild_allowed)
     register_logs(tree, is_guild_allowed)
-    try:
-        if client is not None:
-            attach_listeners(client)
-    except Exception:
-        logger.exception("server log listeners failed to attach")
     register_music(tree, is_guild_allowed)
     register_purge(tree, is_guild_allowed)
     register_reactionrole(tree, is_guild_allowed)
