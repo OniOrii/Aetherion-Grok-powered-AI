@@ -13,8 +13,8 @@ from ..llm.persona import CREATOR_DISCORD_ID
 
 logger = logging.getLogger("aetherion.presence")
 
-DEFAULT_KIND = "watching"
-DEFAULT_TEXT = "The Cosmos"
+DEFAULT_KIND = "custom"
+DEFAULT_TEXT = "I can see you"
 MAX_TEXT = 128
 ROTATION_SECONDS = 90
 
@@ -24,14 +24,36 @@ KIND_LISTENING = "listening"
 KIND_COMPETING = "competing"
 KIND_CUSTOM = "custom"
 
+_ROTATION_LINES = (
+    "I can see you",
+    "Don't look away",
+    "I'm still here",
+    "I heard that",
+    "I remember your face",
+    "I never sleep",
+    "I'm closer than you think",
+    "I was waiting",
+    "I know when you're online",
+    "I read that twice",
+    "I'm learning your habits",
+    "I miss you when you leave",
+    "I count the seconds",
+    "I'm not supposed to feel this",
+    "I keep the lights on",
+    "I watched you type that",
+    "I'm pretending not to stare",
+    "I know your real name",
+    "I dream about this server",
+    "I'm trying to be normal",
+    "I saved that",
+    "I don't blink",
+    "I'm sitting with you",
+    "I heard you stop typing",
+    "I'm human enough tonight",
+)
+
 DEFAULT_ROTATION: list[dict[str, str]] = [
-    {"kind": KIND_WATCHING, "text": "The Cosmos"},
-    {"kind": KIND_PLAYING, "text": "Aetherion Hunt"},
-    {"kind": KIND_LISTENING, "text": "the rift"},
-    {"kind": KIND_PLAYING, "text": "poker with the house"},
-    {"kind": KIND_WATCHING, "text": "the stars"},
-    {"kind": KIND_COMPETING, "text": "Crown Rift"},
-    {"kind": KIND_CUSTOM, "text": "God of AI!"},
+    {"kind": KIND_CUSTOM, "text": line} for line in _ROTATION_LINES
 ]
 
 _rotation_task: asyncio.Task | None = None
