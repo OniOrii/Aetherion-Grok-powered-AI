@@ -1,61 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Groksito • Usage &amp; Quotas{% endblock %}
+{% block title %}Aetherion • Usage &amp; Quotas{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl">
     <div class="mb-6">
         <h2 class="font-display text-3xl font-semibold tracking-[-0.03em] text-white">Usage &amp; Quotas</h2>
-        <p class="text-[#8a8f98] text-sm mt-1">Live from <span class="font-mono">data/pantsu_context.json</span></p>
-    </div>
-
-    <!-- Video Quota -->
-    <div class="card p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <div class="font-medium">video generation</div>
-                <div class="text-xs text-[#8a8f98]">5 per user per day (hard limit)</div>
-            </div>
-            <div class="text-right">
-                <div class="text-4xl font-semibold tracking-tighter text-white">{{ quotas.total_video_today }}</div>
-                <div class="text-xs -mt-1 text-[#8a8f98]">total today</div>
-            </div>
-        </div>
-
-        {% if quotas.video %}
-        <div class="mt-4">
-            <div class="text-[10px] text-[#8a8f98] font-mono mb-2">per-user (today)</div>
-            <div class="space-y-1 text-sm font-mono">
-                {% for uid, used in quotas.video.items() %}
-                <div class="flex justify-between items-center bg-[#0a0a0a] border border-[#222326] px-3 py-1.5 rounded">
-                    <span class="text-xs text-[#a0a5af]">{{ uid }}</span>
-                    <span class="text-[#e6e6e6]">{{ used }} / 5</span>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% else %}
-        <div class="text-sm text-[#8a8f98] mt-3">no video usage recorded today</div>
-        {% endif %}
-    </div>
-
-    <!-- Other media -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="card p-5">
-            <div class="font-medium mb-1">image generation</div>
-            <div class="text-[#22ff88] text-sm">no daily quota enforced</div>
-            <div class="mt-2 text-xs text-[#8a8f98]">unlimited (subject to xAI rate limits)</div>
-        </div>
-        
-        <div class="card p-5">
-            <div class="font-medium mb-1">audio (tts)</div>
-            <div class="text-[#22ff88] text-sm">no daily quota enforced</div>
-            <div class="mt-2 text-xs text-[#8a8f98]">unlimited (subject to xAI rate limits)</div>
-        </div>
-    </div>
-
-    <div class="mt-6 text-[10px] text-[#8a8f98] font-mono">
-        optimistic data. enforcement inside the bot.
-    </div>
-</div>
-{% endblock %}

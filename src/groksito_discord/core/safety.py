@@ -50,11 +50,11 @@ async def safe_reply(
             max_length=max_length,
         )
     except Exception as send_err:
-        logger.warning(f"[safe_reply] Error al enviar respuesta: {send_err}")
+        logger.warning(f"[safe_reply] Failed to send reply: {send_err}")
         try:
             fallback = (
-                "La respuesta era demasiado larga para Discord. "
-                "Pedime que la resuma más corto."
+                "That reply was too long for Discord. "
+                "Ask me to summarize it shorter."
             )
             await target_message.reply(fallback, mention_author=mention_author)
             log_bot_utterance(target_message, fallback)
