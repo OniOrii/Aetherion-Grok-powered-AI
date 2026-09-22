@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Groksito • Stats &amp; Activity{% endblock %}
+{% block title %}Aetherion • Stats &amp; Activity{% endblock %}
 
 {% block content %}
 <div class="max-w-5xl">
@@ -39,7 +39,7 @@
             </div>
             <div>
                 <div class="text-[10px] text-[#8a8f98]">est. cost</div>
-                <div class="text-3xl font-semibold tracking-tighter text-[#22ff88]">${{ "%.4f"|format(stats.stats.estimated_cost_usd or 0) }}</div>
+                <div class="text-3xl font-semibold tracking-tighter text-[#22ff88]">${{ \"%.4f\"|format(stats.stats.estimated_cost_usd or 0) }}</div>
             </div>
         </div>
         {% else %}
@@ -55,7 +55,7 @@
                     <span class="text-[#8a8f98] w-20">{{ c.ts | format_ts if c.ts else '—' }}</span>
                     <span class="text-[#a0a5af]">{{ c.category or '—' }}</span>
                     <span class="text-[#8a8f98]">p={{ c.prompt }} c={{ c.completion }} t={{ c.total }}</span>
-                    <span class="text-[#22ff88]">~${{ "%.4f"|format(c.cost_usd or 0) }}</span>
+                    <span class="text-[#22ff88]">~${{ \"%.4f\"|format(c.cost_usd or 0) }}</span>
                     {% if c.cached_tokens %}<span class="text-[10px] text-[#f4b942]">cached={{ c.cached_tokens }}</span>{% endif %}
                     <button onclick="copyToClipboard('{{ c.prompt }}/{{ c.completion }} {{ c.category }}', this)"
                             class="ml-auto opacity-0 group-hover:opacity-100 text-[9px] px-1.5 py-px border border-[#222326] text-[#67f6ff]">copy</button>
@@ -108,7 +108,7 @@
                     <span class="text-[#8a8f98] text-[10px]">#{{ item.channel_id }}</span>
                 </div>
 
-                {% set content = item.content or "(no text)" %}
+                {% set content = item.content or \"(no text)\" %}
                 <div class="mt-0.5 text-[#a0a5af] whitespace-pre-wrap break-words">
                     {% if content|length > 160 %}
                         <span class="msg-preview">{{ content[:160] }}…</span>
