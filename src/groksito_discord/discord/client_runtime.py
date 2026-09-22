@@ -197,11 +197,21 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
     @_discord_client.event
     async def on_member_join(member):
         from .welcome import on_member_join as _welcome_join
+        from .slash_autorole import on_member_join as _autorole_join
+        try:
+            await _autorole_join(member)
+        except Exception:
+            logger.exception("autorole join failed")
         await _welcome_join(member)
 
     @_discord_client.event
     async def on_member_update(before, after):
         from .welcome import on_member_update as _welcome_update
+        from .slash_autorole import on_member_update as _autorole_update
+        try:
+            await _autorole_update(before, after)
+        except Exception:
+            logger.exception("autorole update failed")
         await _welcome_update(before, after)
 
     @_discord_client.event
