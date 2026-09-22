@@ -5,16 +5,25 @@ import logging
 
 import discord
 
-from .presence import apply_presence, is_status_owner, save_presence
+from .presence import (
+    DEFAULT_ROTATION,
+    ROTATION_SECONDS,
+    apply_presence,
+    enable_rotation,
+    is_status_owner,
+    load_presence,
+    pin_presence,
+)
 
 logger = logging.getLogger("aetherion.slash_status")
 
 
 def register_status(tree, is_guild_allowed) -> None:
-    @tree.command(name="status", description="Set Aetherion's status bubble. Ori only.")
+    @tree.command(name="status", description="Set or rotate Aetherion's status bubble. Ori only.")
     @discord.app_commands.describe(
-        text="Status text shown on Aetherion's profile",
+        text="Status text. Leave empty to see the current status or to resume rotation.",
         kind="How the status is shown",
+        rotate="On = cycle the default lines. Off = pin this text.",
     )
     @discord.app_commands.choices(
         kind=[
@@ -29,8 +38,9 @@ def register_status(tree, is_guild_allowed) -> None:
     @discord.app_commands.guild_only()
     async def status_slash(
         interaction: discord.Interaction,
-        text: str,
+        text: str | None = None,
         kind: discord.app_commands.Choice[str] | None = None,
+        rotate: bool | None = None,
     ):
         if not is_status_owner(getattr(interaction.user, "id", None)):
             await interaction.response.send_message("Only Ori can change Aetherion's status.", ephemeral=True)
@@ -38,22 +48,47 @@ def register_status(tree, is_guild_allowed) -> None:
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message("Aetherion is not available on this server.", ephemeral=True)
             return
+
         body = (text or "").strip()
-        if not body:
-            await interaction.response.send_message("Give me the status text.", ephemeral=True)
+        selected = kind.value if kind else "custom"
+
+        if rotate is True:
+            stored = enable_rotation(0)
+            try:
+                stored = await apply_presence(interaction.client, stored["kind"], stored["text"])
+            except Exception:
+                logger.exception("status rotate apply failed")
+                await interaction.response.send_message("Rotation is on, but Discord rejected the presence update.", ephemeral=True)
+                return
+            lines = ", ".join(f"{item['kind']} {item['text']}" for item in DEFAULT_ROTATION)
+            await interaction.response.send_message(
+                f"Rotating every **{ROTATION_SECONDS}s**. Now **{stored['kind']} {stored['text']}**.\n{lines}",
+                ephemeral=True,
+            )
             return
-        selected = (kind.value if kind else "custom")
-        save_presence(selected, body)
-        try:
-            stored = await apply_presence(interaction.client, selected, body)
-        except Exception:
-            logger.exception("status apply failed")
-            await interaction.response.send_message("Saved, but Discord rejected the presence update.", ephemeral=True)
+
+        if body:
+            stored = pin_presence(selected, body)
+            try:
+                stored = await apply_presence(interaction.client, stored["kind"], stored["text"])
+            except Exception:
+                logger.exception("status apply failed")
+                await interaction.response.send_message("Saved, but Discord rejected the presence update.", ephemeral=True)
+                return
+            label = stored["kind"]
+            shown = stored["text"]
+            if label == "custom":
+                note = f"Pinned custom bubble to **{shown}**. Rotation is off."
+            else:
+                note = f"Pinned status to **{label} {shown}**. Rotation is off."
+            await interaction.response.send_message(note, ephemeral=True)
             return
-        label = stored["kind"]
-        shown = stored["text"]
-        if label == "custom":
-            note = f"Custom bubble set to **{shown}**."
-        else:
-            note = f"Status set to **{label} {shown}**."
-        await interaction.response.send_message(note, ephemeral=True)
+
+        current = load_presence()
+        mode = "rotating" if current.get("rotate", True) else "pinned"
+        label = current["kind"]
+        shown = current["text"]
+        await interaction.response.send_message(
+            f"Current status is **{mode}**: **{label} {shown}**.",
+            ephemeral=True,
+        )
