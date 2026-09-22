@@ -133,10 +133,23 @@ def _who(user):
     uid = getattr(user, "id", "?")
     return f"{mention} (`{name}` · `{uid}`)" if mention else f"**{name}** (`{uid}`)"
 
-def _embed(title, desc=None):
+def _avatar_url(user):
+    if user is None:
+        return None
+    av = getattr(user, "display_avatar", None) or getattr(user, "avatar", None)
+    url = getattr(av, "url", None)
+    return str(url) if url else None
+
+def _face(embed, user):
+    url = _avatar_url(user)
+    if url:
+        embed.set_thumbnail(url=url)
+    return embed
+
+def _embed(title, desc=None, user=None):
     e = discord.Embed(title=title, description=desc or None, color=LOG_COLOR, timestamp=datetime.now(timezone.utc))
     e.set_footer(text="Aetherion logs")
-    return e
+    return _face(e, user)
 
 async def _actor(guild, action, target_id=None, seconds=8.0):
     if guild is None or action is None:
@@ -299,7 +312,7 @@ def register_logs(tree, is_guild_allowed):
 
 async def on_member_join(member):
     if member.bot: return
-    e = _embed("Member joined", _who(member))
+    e = _embed("Member joined", _who(member), member)
     e.add_field(name="Account created", value=discord.utils.format_dt(member.created_at, "R"), inline=True)
     if member.guild.member_count:
         e.add_field(name="Members", value=str(member.guild.member_count), inline=True)
@@ -309,9 +322,9 @@ async def on_member_remove(member):
     if getattr(member, "bot", False): return
     kicker = await _actor(member.guild, getattr(discord.AuditLogAction, "kick", None), getattr(member, "id", None))
     if kicker:
-        e = _embed("Member kicked", _who(member)); e.add_field(name="By", value=_who(kicker), inline=True)
+        e = _embed("Member kicked", _who(member), member); e.add_field(name="By", value=_who(kicker), inline=True)
         await emit(member.guild, "kick", e); return
-    e = _embed("Member left", _who(member))
+    e = _embed("Member left", _who(member), member)
     if getattr(member.guild, "member_count", None):
         e.add_field(name="Members", value=str(member.guild.member_count), inline=True)
     await emit(member.guild, "leave", e)
@@ -320,7 +333,7 @@ async def on_member_update(before, after):
     if after.bot: return
     g = after.guild
     if before.nick != after.nick:
-        e = _embed("Nickname changed", _who(after))
+        e = _embed("Nickname changed", _who(after), after)
         e.add_field(name="Before", value=_clip(before.nick or before.name), inline=True)
         e.add_field(name="After", value=_clip(after.nick or after.name), inline=True)
         await emit(g, "nickname", e)
@@ -328,7 +341,7 @@ async def on_member_update(before, after):
     new_r = {r.id for r in after.roles if not r.is_default()}
     added, removed = new_r - old_r, old_r - new_r
     if added or removed:
-        e = _embed("Roles updated", _who(after))
+        e = _embed("Roles updated", _who(after), after)
         if added: e.add_field(name="Added", value=" ".join(f"<@&{i}>" for i in added)[:900], inline=False)
         if removed: e.add_field(name="Removed", value=" ".join(f"<@&{i}>" for i in removed)[:900], inline=False)
         actor = await _actor(g, getattr(discord.AuditLogAction, "member_role_update", None), after.id)
@@ -336,14 +349,14 @@ async def on_member_update(before, after):
         await emit(g, "roles", e)
     if getattr(before, "timed_out_until", None) != getattr(after, "timed_out_until", None):
         if after.timed_out_until:
-            e = _embed("Timeout given", _who(after)); e.add_field(name="Until", value=discord.utils.format_dt(after.timed_out_until, "F"), inline=True)
+            e = _embed("Timeout given", _who(after), after); e.add_field(name="Until", value=discord.utils.format_dt(after.timed_out_until, "F"), inline=True)
         else:
-            e = _embed("Timeout removed", _who(after))
+            e = _embed("Timeout removed", _who(after), after)
         await emit(g, "timeout", e)
     bav = str(getattr(getattr(before, "display_avatar", None), "url", "") or "")
     aav = str(getattr(getattr(after, "display_avatar", None), "url", "") or "")
     if bav and aav and bav != aav:
-        e = _embed("Avatar changed", _who(after)); e.set_thumbnail(url=aav)
+        e = _embed("Avatar changed", _who(after), after); e.set_thumbnail(url=aav)
         await emit(g, "avatar", e)
 
 async def on_user_update(before, after):
@@ -355,22 +368,22 @@ async def on_user_update(before, after):
     for guild in list(getattr(client, "guilds", []) or []):
         if guild.get_member(after.id) is None: continue
         if name_ch:
-            e = _embed("Username changed", _who(after))
+            e = _embed("Username changed", _who(after), after)
             e.add_field(name="Before", value=_clip(before.name), inline=True)
             e.add_field(name="After", value=_clip(after.name), inline=True)
             await emit(guild, "nickname", e)
         if av_ch:
-            e = _embed("Avatar changed", _who(after)); e.set_thumbnail(url=str(after.display_avatar.url))
+            e = _embed("Avatar changed", _who(after), after); e.set_thumbnail(url=str(after.display_avatar.url))
             await emit(guild, "avatar", e)
 
 async def on_member_ban(guild, user):
-    e = _embed("Member banned", _who(user))
+    e = _embed("Member banned", _who(user), user)
     actor = await _actor(guild, getattr(discord.AuditLogAction, "ban", None), getattr(user, "id", None))
     if actor: e.add_field(name="By", value=_who(actor), inline=True)
     await emit(guild, "ban", e)
 
 async def on_member_unban(guild, user):
-    e = _embed("Member unbanned", _who(user))
+    e = _embed("Member unbanned", _who(user), user)
     actor = await _actor(guild, getattr(discord.AuditLogAction, "unban", None), getattr(user, "id", None))
     if actor: e.add_field(name="By", value=_who(actor), inline=True)
     await emit(guild, "unban", e)
@@ -380,15 +393,15 @@ async def on_voice_state_update(member, before, after):
     old, new = before.channel, after.channel
     oid, nid = getattr(old, "id", None), getattr(new, "id", None)
     if oid is None and nid is not None:
-        e = _embed("Joined voice", _who(member)); e.add_field(name="Channel", value=new.mention, inline=True)
+        e = _embed("Joined voice", _who(member), member); e.add_field(name="Channel", value=new.mention, inline=True)
         await emit(member.guild, "voicejoin", e)
     elif oid is not None and nid is None:
-        e = _embed("Left voice", _who(member)); e.add_field(name="Channel", value=old.mention, inline=True)
+        e = _embed("Left voice", _who(member), member); e.add_field(name="Channel", value=old.mention, inline=True)
         actor = await _actor(member.guild, getattr(discord.AuditLogAction, "member_disconnect", None), member.id, 6)
         if actor: e.add_field(name="Disconnected by", value=_who(actor), inline=True)
         await emit(member.guild, "voiceleave", e)
     elif oid and nid and oid != nid:
-        e = _embed("Moved voice", _who(member))
+        e = _embed("Moved voice", _who(member), member)
         e.add_field(name="From", value=old.mention, inline=True); e.add_field(name="To", value=new.mention, inline=True)
         actor = await _actor(member.guild, getattr(discord.AuditLogAction, "member_move", None), member.id, 6)
         if actor: e.add_field(name="Moved by", value=_who(actor), inline=True)
@@ -398,7 +411,7 @@ async def on_voice_state_update(member, before, after):
         if getattr(before, attr, None) != getattr(after, attr, None):
             bits.append(f"{label}: {'on' if getattr(after, attr, False) else 'off'}")
     if bits and (oid or nid):
-        e = _embed("Voice flags", _who(member)); e.add_field(name="Changed", value="\n".join(bits), inline=False)
+        e = _embed("Voice flags", _who(member), member); e.add_field(name="Changed", value="\n".join(bits), inline=False)
         loc = new or old
         if loc: e.add_field(name="Channel", value=loc.mention, inline=True)
         await emit(member.guild, "voicemute", e)
@@ -406,7 +419,7 @@ async def on_voice_state_update(member, before, after):
 async def on_message(message):
     if message.guild is None or message.author.bot: return
     if not INVITE_RE.search(message.content or ""): return
-    e = _embed("Invite posted", _who(message.author))
+    e = _embed("Invite posted", _who(message.author), message.author)
     e.add_field(name="Channel", value=getattr(message.channel, "mention", "?"), inline=True)
     e.add_field(name="Invite", value=_clip(", ".join(INVITE_RE.findall(message.content)[:5]), 300), inline=False)
     await emit(message.guild, "invite", e, getattr(message.channel, "id", None))
@@ -419,7 +432,7 @@ async def on_raw_message_delete(payload):
     cached = payload.cached_message
     author = getattr(cached, "author", None)
     if author is not None and guild.me and author.id == guild.me.id: return
-    e = _embed("Message deleted")
+    e = _embed("Message deleted", user=author)
     if author: e.add_field(name="Author", value=_who(author), inline=False)
     ch = guild.get_channel(payload.channel_id)
     if ch: e.add_field(name="Channel", value=ch.mention, inline=True)
@@ -443,7 +456,7 @@ async def on_raw_message_edit(payload):
     if author is None and isinstance(data.get("author"), dict) and data["author"].get("id"):
         author = guild.get_member(int(data["author"]["id"]))
     if author is not None and author.bot: return
-    e = _embed("Message edited", _who(author) if author else None)
+    e = _embed("Message edited", _who(author) if author else None, author)
     ch = guild.get_channel(int(payload.channel_id))
     if ch:
         e.add_field(name="Channel", value=ch.mention, inline=True)
