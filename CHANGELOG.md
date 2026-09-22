@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-22]
 
+### Fixed
+
+- **Restored `/join` `/leave` `/audio` `/welcome` `/datechannel` and Apps → Read aloud.** Those handlers lived at the bottom of `slash_commands.py` and were deleted on 2026-09-16 when `/givesupply` was wired (`66981c3`, −232 lines after `/ping`). Later `/logs` `/autorole` `/ping` and Hunt-unregister edits never put them back. Same bodies as the 2026-09-15 restore; context menu label is **Read aloud**. Hunt stays unregistered.
+
 ### Changed
 
 - **`/help` matches live Aetherion:** overview and Server tools list `/logs`. Chat notes servers-only (no DMs) and the live `/ping` embed (gateway, command round-trip, servers, voice). Server tools describe `/status` pin vs 90s rotate. Hunt stays off the pages.
