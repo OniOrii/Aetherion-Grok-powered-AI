@@ -34,6 +34,7 @@ from .slash_autorole import register_autorole
 logger = logging.getLogger("aetherion.slash")
 
 _ALLOWED_GUILD_IDS = set(settings.allowed_guild_ids)
+RATE_LIMIT_MSG = "Easy — you already used your 6 requests this minute."
 
 
 def is_guild_allowed(guild_id):
@@ -178,12 +179,12 @@ def register(tree, client) -> None:
 
     @tree.command(
         name="audio",
-        description="Generate TTS audio. Inline: [pause][laugh][sigh]. Optional wrapping style. Reply to a message.",
+        description="Speak text in this channel. Inline tags: [pause] [laugh] [sigh]. Optional wrapping style. Reply to a message.",
     )
     @discord.app_commands.describe(
         text="Text to speak. Inline: [pause], [laugh], [sigh], [breath], [chuckle], [long-pause], etc.",
         voice="Grok voice for the audio.",
-        estilo="Optional wrapping style.",
+        style="Optional wrapping style.",
     )
     @discord.app_commands.choices(
         voice=[
@@ -194,13 +195,13 @@ def register(tree, client) -> None:
             discord.app_commands.Choice(name="Sal (balanced)", value="sal"),
             discord.app_commands.Choice(name="Leo (authoritative)", value="leo"),
         ],
-        estilo=[discord.app_commands.Choice(name=label, value=tag) for label, tag in AUDIO_WRAPPING_TAGS],
+        style=[discord.app_commands.Choice(name=label, value=tag) for label, tag in AUDIO_WRAPPING_TAGS],
     )
     async def audio_slash(
         interaction: discord.Interaction,
         text: Optional[str] = None,
         voice: Optional[discord.app_commands.Choice[str]] = None,
-        estilo: Optional[discord.app_commands.Choice[str]] = None,
+        style: Optional[discord.app_commands.Choice[str]] = None,
     ):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message(
@@ -210,9 +211,7 @@ def register(tree, client) -> None:
         rl = getattr(client, "rate_limiter", rate_limiter)
         can_use, _ = rl.check(interaction.user.id)
         if not can_use:
-            await interaction.response.send_message(
-                "Tranquilo campeon, ya usaste tus 6 requests este minuto.", ephemeral=True
-            )
+            await interaction.response.send_message(RATE_LIMIT_MSG, ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         provided = (text or "").strip()
@@ -220,10 +219,12 @@ def register(tree, client) -> None:
         if not final_text:
             await interaction.followup.send(embed=build_audio_speech_tags_embed(), ephemeral=True)
             return
-        selected_style = estilo.value if estilo else None
+        selected_style = style.value if style else None
         final_text = apply_wrapping_speech_tag(final_text, selected_style)
         selected_voice = voice.value if voice else getattr(settings, "tts_default_voice", "zagan") or "zagan"
-        selected_lang = getattr(settings, "tts_default_language", "es") or "es"
+        selected_lang = getattr(settings, "tts_default_language", None) or "en"
+        if str(selected_lang).lower() in {"es", "es-es", "es-mx"}:
+            selected_lang = "en"
         request_id = None
         try:
             ch = getattr(interaction, "channel", None)
@@ -240,13 +241,13 @@ def register(tree, client) -> None:
             text=final_text, voice=selected_voice, language=selected_lang, request_id=request_id
         )
         if result and "SUCCESS" in result:
-            style_note = f" \u00b7 estilo **{selected_style}**" if selected_style else ""
+            style_note = f" \u00b7 style **{selected_style}**" if selected_style else ""
             await interaction.followup.send(
-                f"Audio generado con la voz **{selected_voice}**{style_note} y enviado al canal.",
+                f"Audio generated with voice **{selected_voice}**{style_note} and sent to the channel.",
                 ephemeral=True,
             )
         else:
-            await interaction.followup.send(result or "No se pudo generar el audio.", ephemeral=True)
+            await interaction.followup.send(result or "Could not generate the audio.", ephemeral=True)
 
     @tree.command(name="join", description="Join your current voice channel.")
     async def join_slash(interaction: discord.Interaction):
@@ -305,9 +306,7 @@ def register(tree, client) -> None:
         rl = getattr(client, "rate_limiter", rate_limiter)
         can_use, _ = rl.check(interaction.user.id)
         if not can_use:
-            await interaction.response.send_message(
-                "Tranquilo campeon, ya usaste tus 6 requests este minuto.", ephemeral=True
-            )
+            await interaction.response.send_message(RATE_LIMIT_MSG, ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         final_text = (getattr(message, "content", "") or "").strip()
@@ -315,7 +314,9 @@ def register(tree, client) -> None:
             await interaction.followup.send("That message has no text to read aloud.", ephemeral=True)
             return
         selected_voice = getattr(settings, "tts_default_voice", "zagan") or "zagan"
-        selected_lang = getattr(settings, "tts_default_language", "es") or "es"
+        selected_lang = getattr(settings, "tts_default_language", None) or "en"
+        if str(selected_lang).lower() in {"es", "es-es", "es-mx"}:
+            selected_lang = "en"
         request_id = None
         try:
             ch = getattr(interaction, "channel", None)
