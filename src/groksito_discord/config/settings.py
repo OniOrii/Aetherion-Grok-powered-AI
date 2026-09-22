@@ -113,8 +113,8 @@ class AetherionSettings(BaseSettings):
         description="Default voice_id for TTS generation (zagan, eve, ara, rex, sal, leo, orion). Configurable from web dashboard. zagan is the proud-warrior default.",
     )
     tts_default_language: str = Field(
-        default="es",
-        description="Default language code (BCP-47) for TTS (e.g. 'es', 'es-ES', 'es-MX', 'en', 'auto'). Language is REQUIRED by the xAI TTS API. 'es' works well for Spanish; use 'auto' for mixed or detection.",
+        default="en",
+        description="Default language code (BCP-47) for TTS (e.g. 'en', 'en-US', 'auto'). Language is required by the xAI TTS API.",
     )
     
     welcome_enabled: bool = Field(default=False, description="Post when a member joins.")
