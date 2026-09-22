@@ -322,6 +322,12 @@ async def ensure_discord_connected(conversational: bool = True) -> "discord.Clie
         except Exception as e:
             logger.exception(f"{cid_p}Unhandled error in on_message: {e}")
 
+    try:
+        from .slash_logs import attach_listeners as _attach_server_logs
+        _attach_server_logs(_discord_client)
+    except Exception:
+        logger.exception("server log listeners failed to attach")
+
     async def _runner():
         try:
             await _discord_client.start(settings.discord_bot_token)
