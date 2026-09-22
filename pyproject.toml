@@ -59,9 +59,6 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools.package-data]
-"groksito_discord" = ["discord/assets/hunt_ranks/*.png", "discord/assets/hunt_ranks/*.md"]
-
 [project.scripts]
 groksito = "groksito_discord.main:run"
 aetherion = "groksito_discord.main:run"

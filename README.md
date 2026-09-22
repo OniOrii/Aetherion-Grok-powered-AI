@@ -4,7 +4,7 @@
 ![Discord](https://img.shields.io/badge/Discord-Bot-7289da.svg)
 ![xAI](https://img.shields.io/badge/xAI-Grok-ff6b6b.svg)
 
-**Aetherion** is a standalone Discord bot that brings Grok (xAI) into a real server: text chat, vision, image/video/audio generation, live voice, SoundCloud music on the same voice connection, play-money games with **Aether Coins**, and an Ori-only **Hunt** WIP.
+**Aetherion** is a standalone Discord bot that brings Grok (xAI) into a real server: text chat, vision, image/video/audio generation, live voice, SoundCloud music on the same voice connection, play-money games with **Aether Coins**.
 
 Forked from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito-discord-bot) and rebuilt as Aetherion by [@OniOrii](https://github.com/OniOrii).
 
@@ -32,10 +32,10 @@ See [CHANGELOG.md](./CHANGELOG.md) for dated history. Every shipped change is lo
 - YouTube, YouTube Music, Mixcloud, and Audiomack links are rejected on purpose.
 
 ### Aether Coins
-Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/daily` grants **2,000** once per Eastern day. Ori also gets Hunt supplies: **5** lootboxes, **5** weapon crates, and **1** raid ticket. Bets and grants move in **tens**.
+Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/daily` grants **2,000** once per Eastern day. Bets and grants move in **tens**.
 
 - `/balance` — your wallet.
-- `/daily` — **2,000** Aether Coins once per Eastern day. Ori also receives **5** lootboxes, **5** crates, and **1** raid ticket.
+- `/daily` — **2,000** Aether Coins once per Eastern day.
 - `/leaderboard` — top wallets on this server, including Aetherion's house wallet (starts at **1,000,000**).
 - `/givecoins` — Ori only, 10–10,000 coins to a member.
 
@@ -50,20 +50,6 @@ Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/d
   - Challenge a member or leave opponent empty to play the house. Bet **10–1,000** each. Winner takes both stakes.
 - `/poker` — Texas Hold'em, 2–4 seats. Friends Join, or Seat Aetherion.
   - Buy-in **10–1,000** (default **200**). Fold / Check-Call / Raise / All-in. Hole cards stay private (**My cards**). Hands chart is a reference only.
-
-### Aetherion Hunt (Ori only, WIP)
-Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt are still on hold. Save file: `data/aether_hunt.json`.
-
-- Catalog: **62** animals — **10** each C/U/R/E/M plus **6 Astral** and **6 Primordial**. **42** style-based weapons. Pet level cap **50**.
-- Manual hunt: **10** Aether Coins, **15s** cooldown. `/daily` (Ori) adds **5** lootboxes, **5** crates, and **1** raid ticket.
-- `/hunt` — catch line, optional multi-find strip, team XP.
-- `/zoo` — C/U/R/E/M/A/P grid, Zoo Points, lifetime tally. Actions: sell / sacrifice / rename / checklist / bestiary.
-- `/team` — three battle slots + settings cog.
-- `/battle` — 3v3 board image (species portraits), phys ATK/PR and weapon MAG/MR with WP spend.
-- `/inv` — bags. Buttons open lootbox / crate. Actions: use / equip / salvage.
-- `/weapon` — armory board, or `id:` for the detail card.
-- `/raid` — Easy / Hard / Nightmare (Ember / Void / Crown).
-- Gems: hunting / lucky / empower / prism, tiers through Fabled. `/inv use` activates them onto hunts, not onto pets.
 
 ### Server tools
 - `/reactionrole post|add|remove|list|colors` — exclusive color roles (Administrators).
@@ -91,8 +77,6 @@ Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt 
 | `/poker` | anyone | Texas Hold'em |
 | `/balance` `/daily` `/leaderboard` | anyone | Wallet |
 | `/givecoins` | Ori | Grant coins |
-| `/hunt` `/zoo` `/team` `/battle` `/raid` | Ori | Hunt loop |
-| `/inv` `/weapon` | Ori | Hunt bags, gems, armory |
 | `/audio` | anyone | Speak text in-channel |
 | `/ping` | anyone | Awake check |
 | `/welcome` `/autorole` `/datechannel` `/purge` `/reactionrole` `/logs` | Administrators | Server setup |
@@ -139,7 +123,6 @@ Point the service at this repo. Set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`. After
 - Voice: join a VC, `/join`, say **Aetherion** then the question.
 - Music: `/play query: song or soundcloud url`. Do not paste a YouTube link.
 - Games: `/blackjack`, `/slots`, `/cointoss`, `/connect4`, `/poker`. Claim `/daily` once a day.
-- Hunt (Ori): `/hunt`, `/zoo`, `/team`, `/battle`, `/inv`.
 - Admins: `/welcome`, `/autorole`, `/datechannel`, `/reactionrole colors`, `/purge`, `/logs`.
 - `/help` for the in-Discord command guide.
 
@@ -150,8 +133,6 @@ High-level pieces under `src/groksito_discord/`:
 - `discord/slash_commands.py` — wires every slash module.
 - `discord/slash_help.py` — `/help` pages.
 - `discord/slash_blackjack.py`, `slash_slots.py`, `slash_cointoss.py`, `slash_connect4.py`, `slash_poker.py` — games.
-- `discord/slash_hunt.py`, `aether_hunt.py`, `aether_hunt_ext.py`, `aether_battle.py`, `aether_gear.py` — Hunt WIP.
-- `discord/assets/hunt_portraits/` and `discord/assets/hunt_ranks/` — Hunt art.
 - `discord/ai_coins.py` — wallets, daily drip, house wallet, grants.
 - `discord/slash_music.py` + `media/voice_music.py` — SoundCloud only.
 - `media/voice_session.py` — DAVE decrypt, wake word, STT, TTS.
@@ -159,7 +140,7 @@ High-level pieces under `src/groksito_discord/`:
 - `core/conversation.py` — when Grok answers in text.
 - `web/` — optional FastAPI dashboard.
 
-Runtime files live in `data/` (wallets, hunt save, date dock, welcome channel, context). OAuth tokens live in `oauth/`. Neither folder is committed except `data/.gitkeep`.
+Runtime files live in `data/` (wallets, date dock, welcome channel, context). OAuth tokens live in `oauth/`. Neither folder is committed except `data/.gitkeep`.
 
 More internals: [ARCHITECTURE.md](./ARCHITECTURE.md). OAuth: [GROK_OAUTH.md](./GROK_OAUTH.md).
 
@@ -169,4 +150,4 @@ More internals: [ARCHITECTURE.md](./ARCHITECTURE.md). OAuth: [GROK_OAUTH.md](./G
 - Started from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito-discord-bot).
 - Grok models and APIs by xAI.
 
-**Status:** Active. Self-hostable with Docker or Railway. Talks in voice, plays SoundCloud on that same connection, runs blackjack / slots / coin toss / Connect Four / poker on Aether Coins, and ships an Ori-only Hunt WIP.
+**Status:** Active. Self-hostable with Docker or Railway. Talks in voice, plays SoundCloud on that same connection, runs blackjack / slots / coin toss / Connect Four / poker on Aether Coins.

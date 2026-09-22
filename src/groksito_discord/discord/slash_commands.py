@@ -27,12 +27,9 @@ from .slash_slots import register_slots
 from .slash_cointoss import register_cointoss
 from .slash_connect4 import register_connect4
 from .slash_poker import register_poker
-from .slash_hunt import register_hunt
-from .slash_supply import register_supply
 from .slash_help import register_help
 from .slash_logs import register_logs
 from .slash_autorole import register_autorole
-from . import aether_hunt_ext  # noqa: F401
 
 logger = logging.getLogger("aetherion.slash")
 
@@ -70,8 +67,6 @@ def register(tree, client) -> None:
     register_cointoss(tree, is_guild_allowed)
     register_connect4(tree, is_guild_allowed)
     register_poker(tree, is_guild_allowed)
-    register_hunt(tree, is_guild_allowed)
-    register_supply(tree, is_guild_allowed)
 
     @tree.command(name="ping", description="Aetherion latency and connection status.")
     async def ping(interaction: discord.Interaction):
