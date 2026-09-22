@@ -31,6 +31,7 @@ from .slash_hunt import register_hunt
 from .slash_supply import register_supply
 from .slash_help import register_help
 from .slash_logs import register_logs
+from .slash_autorole import register_autorole
 from . import aether_hunt_ext  # noqa: F401
 
 logger = logging.getLogger("aetherion.slash")
@@ -58,6 +59,7 @@ def register(tree, client) -> None:
 
     register_help(tree, is_guild_allowed)
     register_logs(tree, is_guild_allowed)
+    register_autorole(tree, is_guild_allowed)
     register_music(tree, is_guild_allowed)
     register_purge(tree, is_guild_allowed)
     register_reactionrole(tree, is_guild_allowed)
