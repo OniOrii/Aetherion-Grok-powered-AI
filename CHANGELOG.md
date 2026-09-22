@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-22]
 
+### Changed
+
+- **English-only surface:** setup prompts, TTS errors, Grok error replies, dashboard titles, and the default TTS language (`en`) are English. Intent detectors still recognize Spanish phrases so old messages still fire the right tools. Package path `src/groksito_discord` is unchanged.
+
 ### Removed
 
 - **Gamemeca ranking loop:** the daily `refresh_ranking` background task from the Groksito fork is gone. Aetherion does not use that game-chart integration. The leftover module file stays so imports elsewhere do not break.
