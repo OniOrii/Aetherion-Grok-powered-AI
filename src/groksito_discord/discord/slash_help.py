@@ -26,7 +26,7 @@ def _embed(page: str) -> discord.Embed:
             "Video generation is available when that setting is on.\n\n"
             f"`/audio` \u2014 speak text in this channel. Default voice is **Zagan**.\n"
             "Right-click a message \u2192 Apps \u2192 **Leer en voz alta** to hear that message.\n"
-            "`/ping` \u2014 check that the bot is awake."
+            "`/ping` \u2014 gateway and command latency."
         )
         return embed
 
