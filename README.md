@@ -59,7 +59,7 @@ Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/d
 - `/purge` — delete up to 100 recent messages (Administrators).
 - `/edit` — Ori only, rewrite text Aetherion already posted.
 - `/status` — Ori only, pin a status bubble or resume the 90s rotation.
-- `/audio` — TTS in the current text channel. Right-click a message → Apps → **Leer en voz alta**.
+- `/audio` — TTS in the current text channel. Right-click a message → Apps → **Read aloud**.
 - `/ping` — alive check.
 - `/help` — command guide with a topic dropdown.
 
