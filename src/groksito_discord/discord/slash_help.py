@@ -21,12 +21,13 @@ def _embed(page: str) -> discord.Embed:
     if key == "chat":
         embed.title = "\u2726 Aetherion \u00b7 Chat"
         embed.description = (
-            "Aetherion is Grok in Discord. Mention **@Aetherion** or reply to it.\n\n"
+            "Aetherion is Grok in Discord. Mention **@Aetherion** or reply to it.\n"
+            "It only works in a server \u2014 DMs are ignored.\n\n"
             "It can read pictures you attach, search the web, and generate or edit images. "
             "Video generation is available when that setting is on.\n\n"
             f"`/audio` \u2014 speak text in this channel. Default voice is **Zagan**.\n"
             "Right-click a message \u2192 Apps \u2192 **Read aloud** to hear that message.\n"
-            "`/ping` \u2014 gateway and command latency."
+            "`/ping` \u2014 gateway heartbeat, this command's round-trip, server count, and open voice connections."
         )
         return embed
 
@@ -86,15 +87,17 @@ def _embed(page: str) -> discord.Embed:
             "`/welcome` \u2014 welcome-banner channel.\n"
             "`/autorole` \u2014 role given the moment someone joins.\n"
             "`/datechannel` \u2014 voice channel that shows today's date at midnight Eastern.\n"
+            "`/logs` \u2014 Carl-style event log. Pick a channel; menus toggle joins, leaves, deletes, voice, and the rest. A test embed posts when you set the channel.\n"
             "`/purge` \u2014 delete up to 100 recent messages in this channel.\n\n"
-            "Ori only: `/givecoins`, `/edit`, `/status`."
+            "Ori only: `/givecoins`, `/edit`, `/status`.\n"
+            "`/status` with text pins one line. `/status rotate:True` resumes the 90s cycle."
         )
         return embed
 
     embed.title = "\u2726 Aetherion \u00b7 Help"
     embed.description = (
         "Grok in Discord \u2014 chat, vision, live voice, SoundCloud, and Aether Coin games.\n"
-        "Mention **@Aetherion** or reply to it. Use the menu for a topic."
+        "Works in servers only. Mention **@Aetherion** or reply to it. Use the menu for a topic."
     )
     embed.add_field(
         name="\U0001F399\ufe0f  Talk & voice",
@@ -117,7 +120,7 @@ def _embed(page: str) -> discord.Embed:
         name="\U0001F6E1\ufe0f  Server",
         value=(
             "`/reactionrole` color roles\n"
-            "`/welcome` `/autorole` `/datechannel` `/purge`"
+            "`/welcome` `/autorole` `/datechannel` `/logs` `/purge`"
         ),
         inline=True,
     )
@@ -156,7 +159,7 @@ class HelpView(discord.ui.View):
             discord.SelectOption(label="Voice & music", value="voice", description="/join and SoundCloud"),
             discord.SelectOption(label="Games", value="games", description="Blackjack, slots, coin toss, Connect Four, poker"),
             discord.SelectOption(label="Aether Coins", value="coins", description="Wallet, daily, bets"),
-            discord.SelectOption(label="Server tools", value="server", description="Roles, welcome, date dock"),
+            discord.SelectOption(label="Server tools", value="server", description="Roles, welcome, logs, date dock"),
         ],
     )
     async def pick_topic(self, interaction: discord.Interaction, select: discord.ui.Select):

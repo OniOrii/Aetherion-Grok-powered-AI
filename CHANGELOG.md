@@ -15,6 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- **`/help` matches live Aetherion:** overview and Server tools list `/logs`. Chat notes servers-only (no DMs) and the live `/ping` embed (gateway, command round-trip, servers, voice). Server tools describe `/status` pin vs 90s rotate. Hunt stays off the pages.
 - **Aetherion surface branding:** user-facing Groksito labels are now Aetherion. Railway/startup banner art prints **AETHERION**, logs say Aetherion, README / GROK_OAUTH / ARCHITECTURE / dashboard titles match, `/help` and README say **Read aloud**, `.env.example` and `scripts/configure_env.py` prompts are English. Package path `src/groksito_discord`, loggers, CLI `groksito` (with `aetherion` alias), and imports are unchanged so Railway keeps booting. Deep rename later.
 
 ### Removed
