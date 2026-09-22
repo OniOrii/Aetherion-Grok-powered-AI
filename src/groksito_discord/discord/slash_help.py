@@ -25,7 +25,7 @@ def _embed(page: str) -> discord.Embed:
             "It can read pictures you attach, search the web, and generate or edit images. "
             "Video generation is available when that setting is on.\n\n"
             f"`/audio` \u2014 speak text in this channel. Default voice is **Zagan**.\n"
-            "Right-click a message \u2192 Apps \u2192 **Leer en voz alta** to hear that message.\n"
+            "Right-click a message \u2192 Apps \u2192 **Read aloud** to hear that message.\n"
             "`/ping` \u2014 gateway and command latency."
         )
         return embed
