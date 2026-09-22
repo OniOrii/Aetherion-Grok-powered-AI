@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Optional
 import logging
+import time
 
 import discord
 
@@ -62,12 +63,40 @@ def register(tree, client) -> None:
     register_hunt(tree, is_guild_allowed)
     register_supply(tree, is_guild_allowed)
 
-    @tree.command(name="ping", description="Check if Aetherion is awake.")
+    @tree.command(name="ping", description="Aetherion latency and connection status.")
     async def ping(interaction: discord.Interaction):
         if interaction.guild and not is_guild_allowed(interaction.guild.id):
             await interaction.response.send_message(
                 "Aetherion is not available on this server.", ephemeral=True
             )
             return
-        embed = discord.Embed(title="\u2726 Aetherion", description="Still here.", color=0xC9A227)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        started = time.perf_counter()
+        await interaction.response.defer(ephemeral=True)
+        rest_ms = (time.perf_counter() - started) * 1000
+        client = interaction.client
+        ws_ms = float(getattr(client, "latency", 0) or 0) * 1000
+        if ws_ms < 0:
+            ws_ms = 0.0
+        if ws_ms < 80:
+            grade = "Excellent"
+        elif ws_ms < 150:
+            grade = "Good"
+        elif ws_ms < 250:
+            grade = "Okay"
+        else:
+            grade = "Slow"
+        guilds = len(getattr(client, "guilds", []) or [])
+        voices = len(getattr(client, "voice_clients", []) or [])
+        embed = discord.Embed(
+            title="\u2726 Aetherion",
+            description=f"Alive \u00b7 {grade}",
+            color=0xC9A227,
+        )
+        embed.add_field(name="Gateway", value=f"**{ws_ms:.0f} ms**", inline=True)
+        embed.add_field(name="Command", value=f"**{rest_ms:.0f} ms**", inline=True)
+        embed.add_field(name="Servers", value=str(guilds), inline=True)
+        if interaction.guild is not None:
+            embed.add_field(name="This server", value=interaction.guild.name, inline=True)
+        embed.add_field(name="Voice", value=str(voices), inline=True)
+        embed.set_footer(text="Gateway is the Discord heartbeat. Command is this slash reply.")
+        await interaction.edit_original_response(embed=embed)
