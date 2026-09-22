@@ -1,5 +1,5 @@
 """
-Groksito Discord Bot — Main Entry Point (Standalone)
+Aetherion Discord Bot — Main Entry Point (Standalone)
 
 Fully wired conversational entrypoint.
 
@@ -128,7 +128,7 @@ except Exception as oauth_import_err:
 
 def _print_config_summary() -> None:
     """Print a safe summary of the current configuration."""
-    logger.info("=== Groksito Configuration ===")
+    logger.info("=== Aetherion Configuration ===")
     logger.info(f"Data directory: {settings.data_dir}")
     logger.info(f"Video generation: {'ENABLED' if settings.enable_video_generation else 'DISABLED'}")
     logger.info(f"Allowed guilds: {settings.allowed_guild_ids or 'ALL (no whitelist)'}")
@@ -138,9 +138,9 @@ def _print_config_summary() -> None:
 
 def _print_startup_banner() -> None:
     """
-    Print a single cyberpunk/neon-styled ASCII banner for Groksito at startup.
+    Print a single cyberpunk/neon-styled ASCII banner for Aetherion at startup.
 
-    - Uses the block "GROKSITO" art (futuristic terminal aesthetic).
+    - Uses the block "AETHERION" art (futuristic terminal aesthetic).
     - Framed with rules and a tagline for strong cyberpunk vibe (neon, matrix, holo).
     - Printed with rich colors (cyan/magenta) for local + docker (FORCE_COLOR).
     - Called only from the real startup path (main), never for --status/--check.
@@ -155,21 +155,21 @@ def _print_startup_banner() -> None:
 
         # The core block art — professional yet strong cyberpunk block letters.
         # (Improved framing + subtitle give the "glitch / neon terminal / matrix" feel.)
-        groksito_art = (
-            "██████╗ ██████╗  ██████╗ ██╗  ██╗███████╗██╗████████╗ ██████╗\n"
-            "██╔════╝ ██╔══██╗██╔═══██╗██║ ██╔╝██╔════╝██║╚══██╔══╝██╔═══██╗\n"
-            "██║  ███╗██████╔╝██║   ██║█████╔╝ ███████╗██║   ██║   ██║   ██║\n"
-            "██║   ██║██╔══██╗██║   ██║██╔═██╗ ╚════██║██║   ██║   ██║   ██║\n"
-            "╚██████╔╝██║  ██║╚██████╔╝██║  ██╗███████║██║   ██║   ╚██████╔╝\n"
-            "╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝   ╚═╝    ╚═════╝"
+        aetherion_art = (
+            " █████╗ ███████╗████████╗██╗  ██╗███████╗██████╗ ██╗ ██████╗ ███╗   ██╗\n"
+            "██╔══██╗██╔═════╝╚══██╔══╝██║  ██║██╔═════╝██╔══██╗██║██╔═══██╗████╗  ██║\n"
+            "███████║█████╗     ██║   ███████║█████╗  ██████╔╝██║██║   ██║██╔██╗ ██║\n"
+            "██╔══██║██╔══╝     ██║   ██╔══██║██╔══╝  ██╔══██╗██║██║   ██║██║╚██╗██║\n"
+            "██║  ██║███████╗   ██║   ██║  ██║███████╗██║  ██║██║╚██████╔╝██║ ╚████║\n"
+            "╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝"
         )
 
         banner_console.print()
         banner_console.rule(
-            "[bold cyan]▌ NEURAL INTERFACE // xAI :: GROKSITO v0.2 // MAX NATIVENESS ▐[/]",
+            "[bold cyan]▌ NEURAL INTERFACE // xAI :: AETHERION v0.2 // MAX NATIVENESS ▐[/]",
             style="cyan",
         )
-        banner_console.print(groksito_art, style="bold bright_magenta", highlight=False)
+        banner_console.print(aetherion_art, style="bold bright_magenta", highlight=False)
         banner_console.print(
             "[dim cyan]>>> EXTREME LAZINESS ENABLED :: LET GROK DECIDE :: TOKEN EFFICIENT <<<[/]",
             justify="center",
@@ -179,7 +179,7 @@ def _print_startup_banner() -> None:
     except Exception:
         # Fallback: never break startup because of banner art
         print("\n" + "=" * 64)
-        print("GROKSITO — NEURAL INTERFACE // xAI")
+        print("AETHERION — NEURAL INTERFACE // xAI")
         print("=" * 64 + "\n")
 
 
@@ -207,7 +207,7 @@ async def main() -> None:
         logger.error("Run with --check to validate configuration without connecting.")
         sys.exit(1)
 
-    logger.info("🚀 Starting Groksito Discord Bot")
+    logger.info("🚀 Starting Aetherion Discord Bot")
 
     # Write an early "process is alive, connecting" heartbeat so the web
     # dashboard doesn't show "down" during the normal ~10-30s startup window.
@@ -223,14 +223,14 @@ async def main() -> None:
         # This process is the CONVERSATIONAL OWNER
         client = await ensure_discord_connected(conversational=True)
 
-        logger.info("✅ Groksito fully wired and connected.")
+        logger.info("✅ Aetherion fully wired and connected.")
         logger.info("   (LLM + tools + media generation stack is active)")
         logger.info("   The bot is now ready to handle mentions and replies.")
 
         await asyncio.Future()
 
     except Exception as exc:
-        logger.exception(f"Fatal error starting Groksito: {exc}")
+        logger.exception(f"Fatal error starting Aetherion: {exc}")
         await asyncio.sleep(10)
         raise
 
@@ -335,7 +335,7 @@ def run() -> None:
                 print("   # or set XAI_API_KEY in .env")
                 sys.exit(1)
 
-            src = "OAuth (SuperGrok)" if (settings.auth_mode in ("oauth", "auto") or (bearer and len(str(bearer)) > 50)) else "API key"
+            src = "OAuth (SuperGrok)" if (settings.auth_mode in ("oauth", "auto") or (bearer and len(str(bearer)) > 50) ) else "API key"
             print(f"\n[Auth Test] Using {src} credential (len={len(str(bearer))}). Making minimal verification call...")
 
             try:
@@ -376,7 +376,7 @@ def run() -> None:
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("🛑 Shutting down Groksito...")
+        logger.info("🛑 Shutting down Aetherion...")
     except Exception:
         logger.exception("Unhandled error")
         sys.exit(1)
