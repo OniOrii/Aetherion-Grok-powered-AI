@@ -68,6 +68,7 @@ Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt 
 ### Server tools
 - `/reactionrole post|add|remove|list|colors` — exclusive color roles (Administrators).
 - `/welcome` — welcome-banner channel (Administrators).
+- `/autorole` — role given as soon as someone joins (Administrators).
 - `/datechannel` — voice channel renamed at midnight Eastern (Administrators).
 - `/purge` — delete up to 100 recent messages (Administrators).
 - `/edit` — Ori only, rewrite text Aetherion already posted.
@@ -94,7 +95,7 @@ Original animals and weapons. Non-Ori users are rejected. Expedition / autohunt 
 | `/inv` `/weapon` | Ori | Hunt bags, gems, armory |
 | `/audio` | anyone | Speak text in-channel |
 | `/ping` | anyone | Awake check |
-| `/welcome` `/datechannel` `/purge` `/reactionrole` | Administrators | Server setup |
+| `/welcome` `/autorole` `/datechannel` `/purge` `/reactionrole` `/logs` | Administrators | Server setup |
 | `/edit` `/status` | Ori | Bot text and presence |
 
 ## Install and run
@@ -139,7 +140,7 @@ Point the service at this repo. Set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`. After
 - Music: `/play query: song or soundcloud url`. Do not paste a YouTube link.
 - Games: `/blackjack`, `/slots`, `/cointoss`, `/connect4`, `/poker`. Claim `/daily` once a day.
 - Hunt (Ori): `/hunt`, `/zoo`, `/team`, `/battle`, `/inv`.
-- Admins: `/welcome`, `/datechannel`, `/reactionrole colors`, `/purge`.
+- Admins: `/welcome`, `/autorole`, `/datechannel`, `/reactionrole colors`, `/purge`, `/logs`.
 - `/help` for the in-Discord command guide.
 
 ## Layout
