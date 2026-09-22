@@ -1,6 +1,6 @@
-# xAI OAuth for Groksito (SuperGrok / X Premium+)
+# xAI OAuth for Aetherion (SuperGrok / X Premium+)
 
-Groksito supports authenticating to xAI services using browser-based OAuth 2.0 + PKCE instead of (or in addition to) a classic `XAI_API_KEY`. This allows users with an active SuperGrok or X Premium+ subscription to use their existing quota for:
+Aetherion supports authenticating to xAI services using browser-based OAuth 2.0 + PKCE instead of (or in addition to) a classic `XAI_API_KEY`. This allows users with an active SuperGrok or X Premium+ subscription to use their existing quota for:
 
 - Grok chat / Responses API (the main conversational brain)
 - Image generation (`/v1/images/generations`)
@@ -56,7 +56,7 @@ The exact same bearer string is used for the Responses client and raw `Authoriza
 2. (Optional) Set `GROK_AUTH_MODE=auto` (or `oauth`)
 3. `groksito --login-oauth`
 4. Browser opens → log in with the X account that has SuperGrok / Premium+.
-5. Approve the Groksito (or "Grok CLI") client.
+5. Approve the Aetherion (or "Grok CLI") client.
 6. Callback received → tokens saved locally.
 7. Run `groksito --auth-status` and `--test-auth` (strongly recommended).
 8. Start the bot normally.
@@ -161,7 +161,7 @@ The image creates `/app/oauth` at build time. The volume ensures tokens written 
 ## Quotas, Tiers, and Differences from API Keys
 
 - OAuth consumes your **SuperGrok / X Premium+ subscription quota** (not the pay-per-token developer API key pool).
-- Rate limits and media allowances are enforced by xAI/SuperGrok on the API side (Groksito does not apply a separate bot-side video daily cap).
+- Rate limits and media allowances are enforced by xAI/SuperGrok on the API side (Aetherion does not apply a separate bot-side video daily cap).
 - Some accounts encounter 403s only on the OAuth client surface.
 - The functional experience (models, tools, endpoints) is otherwise identical.
 
