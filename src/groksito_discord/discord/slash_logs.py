@@ -296,3 +296,254 @@ def register_logs(tree, is_guild_allowed):
             else:
                 note += _SEND_HINT.get(probe, "Could not post in that channel.")
         await interaction.response.send_message(content=note or None, embed=_status_embed(interaction.guild, cfg), view=LogSetupView(interaction.user.id, interaction.guild.id), ephemeral=True)
+
+async def on_member_join(member):
+    if member.bot: return
+    e = _embed("Member joined", _who(member))
+    e.add_field(name="Account created", value=discord.utils.format_dt(member.created_at, "R"), inline=True)
+    if member.guild.member_count:
+        e.add_field(name="Members", value=str(member.guild.member_count), inline=True)
+    await emit(member.guild, "join", e)
+
+async def on_member_remove(member):
+    if getattr(member, "bot", False): return
+    kicker = await _actor(member.guild, getattr(discord.AuditLogAction, "kick", None), getattr(member, "id", None))
+    if kicker:
+        e = _embed("Member kicked", _who(member)); e.add_field(name="By", value=_who(kicker), inline=True)
+        await emit(member.guild, "kick", e); return
+    e = _embed("Member left", _who(member))
+    if getattr(member.guild, "member_count", None):
+        e.add_field(name="Members", value=str(member.guild.member_count), inline=True)
+    await emit(member.guild, "leave", e)
+
+async def on_member_update(before, after):
+    if after.bot: return
+    g = after.guild
+    if before.nick != after.nick:
+        e = _embed("Nickname changed", _who(after))
+        e.add_field(name="Before", value=_clip(before.nick or before.name), inline=True)
+        e.add_field(name="After", value=_clip(after.nick or after.name), inline=True)
+        await emit(g, "nickname", e)
+    old_r = {r.id for r in before.roles if not r.is_default()}
+    new_r = {r.id for r in after.roles if not r.is_default()}
+    added, removed = new_r - old_r, old_r - new_r
+    if added or removed:
+        e = _embed("Roles updated", _who(after))
+        if added: e.add_field(name="Added", value=" ".join(f"<@&{i}>" for i in added)[:900], inline=False)
+        if removed: e.add_field(name="Removed", value=" ".join(f"<@&{i}>" for i in removed)[:900], inline=False)
+        actor = await _actor(g, getattr(discord.AuditLogAction, "member_role_update", None), after.id)
+        if actor: e.add_field(name="By", value=_who(actor), inline=True)
+        await emit(g, "roles", e)
+    if getattr(before, "timed_out_until", None) != getattr(after, "timed_out_until", None):
+        if after.timed_out_until:
+            e = _embed("Timeout given", _who(after)); e.add_field(name="Until", value=discord.utils.format_dt(after.timed_out_until, "F"), inline=True)
+        else:
+            e = _embed("Timeout removed", _who(after))
+        await emit(g, "timeout", e)
+    bav = str(getattr(getattr(before, "display_avatar", None), "url", "") or "")
+    aav = str(getattr(getattr(after, "display_avatar", None), "url", "") or "")
+    if bav and aav and bav != aav:
+        e = _embed("Avatar changed", _who(after)); e.set_thumbnail(url=aav)
+        await emit(g, "avatar", e)
+
+async def on_user_update(before, after):
+    if after.bot: return
+    name_ch = before.name != after.name or getattr(before, "global_name", None) != getattr(after, "global_name", None)
+    av_ch = str(before.display_avatar.url) != str(after.display_avatar.url)
+    if not name_ch and not av_ch: return
+    client = after._state._get_client() if hasattr(after, "_state") else None
+    for guild in list(getattr(client, "guilds", []) or []):
+        if guild.get_member(after.id) is None: continue
+        if name_ch:
+            e = _embed("Username changed", _who(after))
+            e.add_field(name="Before", value=_clip(before.name), inline=True)
+            e.add_field(name="After", value=_clip(after.name), inline=True)
+            await emit(guild, "nickname", e)
+        if av_ch:
+            e = _embed("Avatar changed", _who(after)); e.set_thumbnail(url=str(after.display_avatar.url))
+            await emit(guild, "avatar", e)
+
+async def on_member_ban(guild, user):
+    e = _embed("Member banned", _who(user))
+    actor = await _actor(guild, getattr(discord.AuditLogAction, "ban", None), getattr(user, "id", None))
+    if actor: e.add_field(name="By", value=_who(actor), inline=True)
+    await emit(guild, "ban", e)
+
+async def on_member_unban(guild, user):
+    e = _embed("Member unbanned", _who(user))
+    actor = await _actor(guild, getattr(discord.AuditLogAction, "unban", None), getattr(user, "id", None))
+    if actor: e.add_field(name="By", value=_who(actor), inline=True)
+    await emit(guild, "unban", e)
+
+async def on_voice_state_update(member, before, after):
+    if member.bot: return
+    old, new = before.channel, after.channel
+    oid, nid = getattr(old, "id", None), getattr(new, "id", None)
+    if oid is None and nid is not None:
+        e = _embed("Joined voice", _who(member)); e.add_field(name="Channel", value=new.mention, inline=True)
+        await emit(member.guild, "voicejoin", e)
+    elif oid is not None and nid is None:
+        e = _embed("Left voice", _who(member)); e.add_field(name="Channel", value=old.mention, inline=True)
+        actor = await _actor(member.guild, getattr(discord.AuditLogAction, "member_disconnect", None), member.id, 6)
+        if actor: e.add_field(name="Disconnected by", value=_who(actor), inline=True)
+        await emit(member.guild, "voiceleave", e)
+    elif oid and nid and oid != nid:
+        e = _embed("Moved voice", _who(member))
+        e.add_field(name="From", value=old.mention, inline=True); e.add_field(name="To", value=new.mention, inline=True)
+        actor = await _actor(member.guild, getattr(discord.AuditLogAction, "member_move", None), member.id, 6)
+        if actor: e.add_field(name="Moved by", value=_who(actor), inline=True)
+        await emit(member.guild, "voicemove", e)
+    bits = []
+    for attr, label in (("self_mute","Self mute"),("self_deaf","Self deaf"),("mute","Server mute"),("deaf","Server deaf"),("self_stream","Stream"),("self_video","Camera")):
+        if getattr(before, attr, None) != getattr(after, attr, None):
+            bits.append(f"{label}: {'on' if getattr(after, attr, False) else 'off'}")
+    if bits and (oid or nid):
+        e = _embed("Voice flags", _who(member)); e.add_field(name="Changed", value="\n".join(bits), inline=False)
+        loc = new or old
+        if loc: e.add_field(name="Channel", value=loc.mention, inline=True)
+        await emit(member.guild, "voicemute", e)
+
+async def on_message(message):
+    if message.guild is None or message.author.bot: return
+    if not INVITE_RE.search(message.content or ""): return
+    e = _embed("Invite posted", _who(message.author))
+    e.add_field(name="Channel", value=getattr(message.channel, "mention", "?"), inline=True)
+    e.add_field(name="Invite", value=_clip(", ".join(INVITE_RE.findall(message.content)[:5]), 300), inline=False)
+    await emit(message.guild, "invite", e, getattr(message.channel, "id", None))
+
+async def on_raw_message_delete(payload):
+    if not payload.guild_id: return
+    client = payload._state._get_client() if hasattr(payload, "_state") else None
+    guild = client.get_guild(payload.guild_id) if client else None
+    if guild is None: return
+    cached = payload.cached_message
+    author = getattr(cached, "author", None)
+    if author is not None and guild.me and author.id == guild.me.id: return
+    e = _embed("Message deleted")
+    if author: e.add_field(name="Author", value=_who(author), inline=False)
+    ch = guild.get_channel(payload.channel_id)
+    if ch: e.add_field(name="Channel", value=ch.mention, inline=True)
+    e.add_field(name="Content", value=_clip(cached.content) if cached else "Not in cache (bot did not see the original).", inline=False)
+    actor = await _actor(guild, getattr(discord.AuditLogAction, "message_delete", None), getattr(author, "id", None), 6)
+    if actor: e.add_field(name="Deleted by", value=_who(actor), inline=True)
+    await emit(guild, "message_delete", e, payload.channel_id)
+
+async def on_raw_message_edit(payload):
+    if not payload.guild_id: return
+    data = payload.data or {}
+    if "content" not in data: return
+    client = payload._state._get_client() if hasattr(payload, "_state") else None
+    guild = client.get_guild(int(payload.guild_id)) if client else None
+    if guild is None: return
+    cached = payload.cached_message
+    before = getattr(cached, "content", None) if cached else None
+    after = data.get("content")
+    if before is not None and before == after: return
+    author = getattr(cached, "author", None)
+    if author is None and isinstance(data.get("author"), dict) and data["author"].get("id"):
+        author = guild.get_member(int(data["author"]["id"]))
+    if author is not None and author.bot: return
+    e = _embed("Message edited", _who(author) if author else None)
+    ch = guild.get_channel(int(payload.channel_id))
+    if ch:
+        e.add_field(name="Channel", value=ch.mention, inline=True)
+        e.add_field(name="Jump", value=f"[Open](https://discord.com/channels/{guild.id}/{payload.channel_id}/{payload.message_id})", inline=True)
+    e.add_field(name="Before", value=_clip(before if before is not None else "*not cached*"), inline=False)
+    e.add_field(name="After", value=_clip(after), inline=False)
+    await emit(guild, "message_edit", e, int(payload.channel_id))
+
+async def on_raw_bulk_message_delete(payload):
+    if not payload.guild_id: return
+    client = payload._state._get_client() if hasattr(payload, "_state") else None
+    guild = client.get_guild(payload.guild_id) if client else None
+    if guild is None: return
+    e = _embed("Messages purged", f"**{len(payload.message_ids)}** messages removed.")
+    ch = guild.get_channel(payload.channel_id)
+    if ch: e.add_field(name="Channel", value=ch.mention, inline=True)
+    await emit(guild, "message_purge", e, payload.channel_id)
+
+def _ch_label(ch):
+    return f"{ch.mention} ({type(ch).__name__.replace('Channel','')})" if getattr(ch, "mention", None) else f"**#{getattr(ch,'name','unknown')}**"
+
+async def on_guild_channel_create(channel):
+    e = _embed("Channel created", _ch_label(channel))
+    actor = await _actor(channel.guild, getattr(discord.AuditLogAction, "channel_create", None), channel.id)
+    if actor: e.add_field(name="By", value=_who(actor), inline=True)
+    await emit(channel.guild, "channel_create", e)
+
+async def on_guild_channel_delete(channel):
+    e = _embed("Channel deleted", f"**#{getattr(channel,'name','unknown')}**")
+    actor = await _actor(channel.guild, getattr(discord.AuditLogAction, "channel_delete", None), channel.id)
+    if actor: e.add_field(name="By", value=_who(actor), inline=True)
+    await emit(channel.guild, "channel_delete", e)
+
+async def on_guild_channel_update(before, after):
+    bits = []
+    if before.name != after.name: bits.append(f"Name: `#{before.name}` → `#{after.name}`")
+    if getattr(before, "topic", None) != getattr(after, "topic", None): bits.append("Topic changed")
+    if getattr(before, "nsfw", None) != getattr(after, "nsfw", None): bits.append(f"NSFW: {getattr(after, 'nsfw', False)}")
+    if getattr(before, "slowmode_delay", None) != getattr(after, "slowmode_delay", None): bits.append(f"Slowmode: {getattr(after, 'slowmode_delay', 0)}s")
+    if not bits: return
+    e = _embed("Channel updated", _ch_label(after)); e.add_field(name="Changes", value="\n".join(bits)[:900], inline=False)
+    await emit(after.guild, "channel_update", e)
+
+async def on_guild_role_create(role):
+    e = _embed("Role created", role.mention)
+    actor = await _actor(role.guild, getattr(discord.AuditLogAction, "role_create", None), role.id)
+    if actor: e.add_field(name="By", value=_who(actor), inline=True)
+    await emit(role.guild, "role_create", e)
+
+async def on_guild_role_delete(role):
+    e = _embed("Role deleted", f"**{role.name}**")
+    actor = await _actor(role.guild, getattr(discord.AuditLogAction, "role_delete", None), role.id)
+    if actor: e.add_field(name="By", value=_who(actor), inline=True)
+    await emit(role.guild, "role_delete", e)
+
+async def on_guild_role_update(before, after):
+    bits = []
+    if before.name != after.name: bits.append(f"Name: `{before.name}` → `{after.name}`")
+    if before.color != after.color: bits.append("Color changed")
+    if before.permissions != after.permissions: bits.append("Permissions changed")
+    if not bits: return
+    e = _embed("Role updated", after.mention); e.add_field(name="Changes", value="\n".join(bits), inline=False)
+    await emit(after.guild, "role_update", e)
+
+async def on_guild_emojis_update(guild, before, after):
+    b, a = {e.id: e for e in before}, {e.id: e for e in after}
+    added = [e for i,e in a.items() if i not in b]
+    removed = [e for i,e in b.items() if i not in a]
+    if not added and not removed: return
+    lines = [f"Added {e} `{e.name}`" for e in added] + [f"Removed `{e.name}`" for e in removed]
+    await emit(guild, "emoji", _embed("Emojis updated", "\n".join(lines)[:900]))
+
+async def on_guild_update(before, after):
+    bits = []
+    if before.name != after.name: bits.append(f"Name: `{before.name}` → `{after.name}`")
+    if before.icon != after.icon: bits.append("Icon changed")
+    if before.owner_id != after.owner_id: bits.append("Owner changed")
+    if not bits: return
+    await emit(after, "server", _embed("Server updated", "\n".join(bits)))
+
+_attached_clients = set()
+
+def attach_listeners(client):
+    if client is None:
+        return
+    mark = id(client)
+    if mark in _attached_clients:
+        return
+    pairs = (("on_member_join", on_member_join),("on_member_update", on_member_update),("on_member_remove", on_member_remove),("on_user_update", on_user_update),("on_member_ban", on_member_ban),("on_member_unban", on_member_unban),("on_voice_state_update", on_voice_state_update),("on_message", on_message),("on_raw_message_delete", on_raw_message_delete),("on_raw_message_edit", on_raw_message_edit),("on_raw_bulk_message_delete", on_raw_bulk_message_delete),("on_guild_channel_create", on_guild_channel_create),("on_guild_channel_delete", on_guild_channel_delete),("on_guild_channel_update", on_guild_channel_update),("on_guild_role_create", on_guild_role_create),("on_guild_role_delete", on_guild_role_delete),("on_guild_role_update", on_guild_role_update),("on_guild_emojis_update", on_guild_emojis_update),("on_guild_update", on_guild_update))
+    extra = getattr(client, "extra_events", None)
+    if not isinstance(extra, dict):
+        extra = {}
+        client.extra_events = extra
+    for name, fn in pairs:
+        try:
+            client.add_listener(fn, name)
+        except Exception:
+            logger.exception("add_listener failed for %s", name)
+        bucket = extra.setdefault(name, [])
+        if fn not in bucket:
+            bucket.append(fn)
+    _attached_clients.add(mark)
+    logger.info("server log listeners attached")
