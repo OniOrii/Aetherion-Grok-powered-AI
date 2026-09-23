@@ -15,7 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
-- **`/profile` and `/server`:** member card (account, join date, boost, timeout, voice, roles, Aether Coin wallet and rank) and server snapshot (members, boosts, channels, Aetherion welcome / logs / date dock / autorole, wallet count). No XP or levels. Gold embeds.
+- **`/profile` and `/server`:** member card (account, join date, time in server, boost, timeout, voice, roles, Aether Coin wallet and rank, daily claimed/open) and server snapshot (members, presence split, boosts and booster names, channels, richest player wallet, Aetherion welcome / logs / date dock / autorole). Profile color follows the member's highest colored role. Viewing Aetherion shows the house wallet. No XP, no pending-bet line, no date-dock countdown, no log timestamps.
 
 ### Fixed
 
