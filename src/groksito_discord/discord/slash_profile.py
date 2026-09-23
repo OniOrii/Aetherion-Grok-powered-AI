@@ -1,4 +1,4 @@
-"""Public /profile and /server. Discord facts plus Aether Coins. No XP."""
+"""Public /profile and /server. Discord facts plus Aether Coins. Activity is this server only."""
 from __future__ import annotations
 
 import json
@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 import discord
 
 from ..config import settings
+from . import activity
 from . import ai_coins
 from .brand import GOLD, stamp
 from .slash_autorole import get_guild_autorole_id
@@ -136,9 +137,75 @@ def profile_embed(member: discord.Member, bot_user=None) -> discord.Embed:
     embed.add_field(name="Daily", value=_daily_line(member.id, house=house), inline=True)
     embed.add_field(name="Roles", value=_roles_line(member), inline=False)
     extra = "house wallet" if house else (
-        "bot account" if getattr(member, "bot", False) else "no levels \u00b7 coins + Discord facts"
+        "bot account" if getattr(member, "bot", False) else "card \u00b7 this server"
     )
     return stamp(embed, bot_user, extra=extra)
+
+
+def activity_embed(member: discord.Member, bot_user=None) -> discord.Embed:
+    guild = member.guild
+    if guild is None:
+        snap = {"started": "\u2014", "messages": 0, "voice_seconds": 0, "xp": 0, "level": 0, "into": 0, "need": activity.xp_need(0)}
+    else:
+        snap = activity.snapshot(guild.id, member.id)
+    embed = discord.Embed(
+        title=f"\u2726 {member.display_name} \u00b7 Activity",
+        description=f"{member.mention} \u00b7 this server only \u00b7 from now on",
+        color=_accent(member),
+    )
+    av = getattr(member, "display_avatar", None)
+    if av is not None:
+        embed.set_thumbnail(url=str(av.url))
+    embed.add_field(name="Level", value=str(snap["level"]), inline=True)
+    embed.add_field(name="XP", value=f"{snap['into']} / {snap['need']}", inline=True)
+    embed.add_field(name="Total XP", value=f"{snap['xp']:,}", inline=True)
+    embed.add_field(name="Messages", value=f"{snap['messages']:,}", inline=True)
+    embed.add_field(name="Voice", value=activity.format_voice(snap["voice_seconds"]), inline=True)
+    embed.add_field(name="Tracked since", value=snap["started"], inline=True)
+    embed.add_field(
+        name="Note",
+        value="Counts start when Aetherion is online. Bots and Aetherion are skipped. No history before that date.",
+        inline=False,
+    )
+    return stamp(embed, bot_user, extra="activity \u00b7 this server")
+
+
+class ProfileView(discord.ui.View):
+    def __init__(self, actor_id: int, member: discord.Member, bot_user=None, page: str = "card"):
+        super().__init__(timeout=180)
+        self.actor_id = actor_id
+        self.member = member
+        self.bot_user = bot_user
+        self.page = page
+        self._sync()
+
+    def _sync(self) -> None:
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = child.custom_id == self.page
+
+    def embed(self) -> discord.Embed:
+        if self.page == "activity":
+            return activity_embed(self.member, self.bot_user)
+        return profile_embed(self.member, self.bot_user)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.actor_id:
+            await interaction.response.send_message("This profile menu is not yours. Run `/profile`.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="Card", style=discord.ButtonStyle.primary, custom_id="card")
+    async def card_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.page = "card"
+        self._sync()
+        await interaction.response.edit_message(embed=self.embed(), view=self)
+
+    @discord.ui.button(label="Activity", style=discord.ButtonStyle.secondary, custom_id="activity")
+    async def activity_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.page = "activity"
+        self._sync()
+        await interaction.response.edit_message(embed=self.embed(), view=self)
 
 
 def _richest_line(guild: discord.Guild, snap: list) -> str:
@@ -222,7 +289,7 @@ def server_embed(guild: discord.Guild, bot_user=None) -> discord.Embed:
         ),
         inline=False,
     )
-    return stamp(embed, bot_user, extra="no levels \u00b7 snapshot of this server")
+    return stamp(embed, bot_user, extra="snapshot of this server")
 
 
 def register_profile(tree, is_guild_allowed) -> None:
@@ -244,7 +311,8 @@ def register_profile(tree, is_guild_allowed) -> None:
                 return
             target = fetched
         bot_user = getattr(interaction.client, "user", None)
-        await interaction.response.send_message(embed=profile_embed(target, bot_user))
+        view = ProfileView(interaction.user.id, target, bot_user)
+        await interaction.response.send_message(embed=view.embed(), view=view)
 
     @tree.command(name="server", description="Show this server's stats and Aetherion setup.")
     @discord.app_commands.guild_only()
