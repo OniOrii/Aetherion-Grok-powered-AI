@@ -11,6 +11,7 @@ import discord
 
 from ..config import settings
 from . import activity
+from . import activity_card
 from . import ai_coins
 from .brand import GOLD, stamp
 from .slash_autorole import get_guild_autorole_id
@@ -142,32 +143,71 @@ def profile_embed(member: discord.Member, bot_user=None) -> discord.Embed:
     return stamp(embed, bot_user, extra=extra)
 
 
-def activity_embed(member: discord.Member, bot_user=None) -> discord.Embed:
+async def _avatar_bytes(member: discord.Member) -> bytes | None:
+    av = getattr(member, "display_avatar", None)
+    if av is None:
+        return None
+    try:
+        return await av.read()
+    except Exception:
+        logger.exception("avatar fetch failed")
+        return None
+
+
+def activity_embed(member: discord.Member, bot_user=None, snap=None) -> discord.Embed:
     guild = member.guild
-    if guild is None:
-        snap = {"started": "\u2014", "messages": 0, "voice_seconds": 0, "xp": 0, "level": 0, "into": 0, "need": activity.xp_need(0)}
-    else:
-        snap = activity.snapshot(guild.id, member.id)
+    if snap is None:
+        snap = activity.snapshot(guild.id, member.id, guild) if guild is not None else {
+            "started": "\u2014",
+            "messages": 0,
+            "voice_seconds": 0,
+            "xp": 0,
+            "level": 0,
+            "into": 0,
+            "need": activity.xp_need(0),
+            "msg_rank": None,
+            "voice_rank": None,
+            "top_channels": [],
+        }
     embed = discord.Embed(
         title=f"\u2726 {member.display_name} \u00b7 Activity",
-        description=f"{member.mention} \u00b7 this server only \u00b7 from now on",
+        description="Lifetime on this server. Counts start when Aetherion is online.",
         color=_accent(member),
     )
-    av = getattr(member, "display_avatar", None)
-    if av is not None:
-        embed.set_thumbnail(url=str(av.url))
-    embed.add_field(name="Level", value=str(snap["level"]), inline=True)
-    embed.add_field(name="XP", value=f"{snap['into']} / {snap['need']}", inline=True)
-    embed.add_field(name="Total XP", value=f"{snap['xp']:,}", inline=True)
-    embed.add_field(name="Messages", value=f"{snap['messages']:,}", inline=True)
-    embed.add_field(name="Voice", value=activity.format_voice(snap["voice_seconds"]), inline=True)
-    embed.add_field(name="Tracked since", value=snap["started"], inline=True)
-    embed.add_field(
-        name="Note",
-        value="Counts start when Aetherion is online. Bots and Aetherion are skipped. No history before that date.",
-        inline=False,
-    )
-    return stamp(embed, bot_user, extra="activity \u00b7 this server")
+    embed.set_image(url="attachment://activity.png")
+    return stamp(embed, bot_user, extra="activity \u00b7 lifetime \u00b7 this server")
+
+
+async def activity_payload(member: discord.Member, bot_user=None):
+    guild = member.guild
+    snap = activity.snapshot(guild.id, member.id, guild) if guild is not None else {
+        "started": "\u2014",
+        "messages": 0,
+        "voice_seconds": 0,
+        "xp": 0,
+        "level": 0,
+        "into": 0,
+        "need": activity.xp_need(0),
+        "msg_rank": None,
+        "voice_rank": None,
+        "top_channels": [],
+    }
+    raw = await _avatar_bytes(member)
+    try:
+        buf = activity_card.render_activity_card(member, snap, raw)
+        image = discord.File(buf, filename="activity.png")
+        return activity_embed(member, bot_user, snap), image
+    except Exception:
+        logger.exception("activity card render failed")
+        embed = discord.Embed(
+            title=f"\u2726 {member.display_name} \u00b7 Activity",
+            description=f"{member.mention} \u00b7 this server only \u00b7 lifetime",
+            color=_accent(member),
+        )
+        embed.add_field(name="Level", value=str(snap.get("level") or 0), inline=True)
+        embed.add_field(name="Messages", value=f"{int(snap.get('messages') or 0):,}", inline=True)
+        embed.add_field(name="Voice", value=activity.format_voice(int(snap.get("voice_seconds") or 0)), inline=True)
+        return stamp(embed, bot_user, extra="activity \u00b7 lifetime \u00b7 this server"), None
 
 
 class ProfileView(discord.ui.View):
@@ -185,8 +225,6 @@ class ProfileView(discord.ui.View):
                 child.disabled = child.custom_id == self.page
 
     def embed(self) -> discord.Embed:
-        if self.page == "activity":
-            return activity_embed(self.member, self.bot_user)
         return profile_embed(self.member, self.bot_user)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -199,13 +237,15 @@ class ProfileView(discord.ui.View):
     async def card_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.page = "card"
         self._sync()
-        await interaction.response.edit_message(embed=self.embed(), view=self)
+        await interaction.response.edit_message(embed=self.embed(), attachments=[], view=self)
 
     @discord.ui.button(label="Activity", style=discord.ButtonStyle.secondary, custom_id="activity")
     async def activity_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.page = "activity"
         self._sync()
-        await interaction.response.edit_message(embed=self.embed(), view=self)
+        embed, image = await activity_payload(self.member, self.bot_user)
+        files = [image] if image is not None else []
+        await interaction.response.edit_message(embed=embed, attachments=files, view=self)
 
 
 def _richest_line(guild: discord.Guild, snap: list) -> str:
