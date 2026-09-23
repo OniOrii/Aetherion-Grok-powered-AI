@@ -171,7 +171,7 @@ def activity_embed(member: discord.Member, bot_user=None, snap=None) -> discord.
         }
     embed = discord.Embed(
         title=f"\u2726 {member.display_name} \u00b7 Activity",
-        description="Lifetime on this server. Counts start when Aetherion is online.",
+        description="Lifetime on this server.",
         color=_accent(member),
     )
     embed.set_image(url="attachment://activity.png")
