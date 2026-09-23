@@ -1,10 +1,15 @@
 """Public /profile and /server. Discord facts plus Aether Coins. No XP."""
 from __future__ import annotations
 
+import json
 import logging
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import discord
 
+from ..config import settings
 from . import ai_coins
 from .brand import GOLD, stamp
 from .slash_autorole import get_guild_autorole_id
@@ -13,12 +18,31 @@ from .welcome import get_guild_welcome_channel_id
 from .date_dock import get_guild_date_channel_id
 
 logger = logging.getLogger("aetherion.slash_profile")
+EASTERN = ZoneInfo("America/Detroit")
 
 
 def _dt(value) -> str:
     if value is None:
         return "Unknown"
     return f"{discord.utils.format_dt(value, 'D')} ({discord.utils.format_dt(value, 'R')})"
+
+
+def _tenure(joined) -> str:
+    if joined is None:
+        return "Unknown"
+    now = discord.utils.utcnow()
+    if joined.tzinfo is None:
+        joined = joined.replace(tzinfo=now.tzinfo)
+    days = max(0, (now - joined).days)
+    if days < 1:
+        return "Joined today"
+    if days < 31:
+        return f"{days} day" + ("" if days == 1 else "s")
+    years, rem = divmod(days, 365)
+    months = rem // 30
+    if years:
+        return f"{years}y {months}mo" if months else f"{years}y"
+    return f"{months} mo"
 
 
 def _roles_line(member: discord.Member) -> str:
@@ -34,32 +58,70 @@ def _roles_line(member: discord.Member) -> str:
     return text[:1024]
 
 
-def _wallet_lines(user_id: int) -> tuple[str, str]:
+def _accent(member: discord.Member) -> int:
+    colored = [
+        r
+        for r in member.roles
+        if not r.is_default() and getattr(r.color, "value", 0)
+    ]
+    if not colored:
+        return GOLD
+    colored.sort(key=lambda r: r.position, reverse=True)
+    return int(colored[0].color.value)
+
+
+def _last_daily(user_id: int) -> str | None:
+    try:
+        path = Path(getattr(settings, "data_dir", Path("./data"))) / "ai_coins.json"
+        if not path.exists():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        row = (data.get("users") or {}).get(str(int(user_id)))
+        if isinstance(row, dict):
+            raw = row.get("last_daily")
+            return str(raw) if raw else None
+    except Exception:
+        logger.exception("daily peek failed")
+    return None
+
+
+def _daily_line(user_id: int, *, house: bool) -> str:
+    if house:
+        return "House \u00b7 no daily"
+    today = datetime.now(EASTERN).date().isoformat()
+    last = _last_daily(user_id)
+    if last == today:
+        return "Claimed today"
+    return f"Open \u00b7 {ai_coins.coins(f'{ai_coins.DAILY_DRIP:,}')} via `/daily`"
+
+
+def _wallet_lines(user_id: int, *, house: bool) -> tuple[str, str]:
+    lookup = ai_coins.HOUSE_ID if house else int(user_id)
     rows = ai_coins.snapshot_wallets()
-    people = [(uid, bal, pending) for uid, bal, pending in rows]
+    people = list(rows)
     people.sort(key=lambda row: row[1] + row[2], reverse=True)
-    match = next((row for row in people if row[0] == int(user_id)), None)
+    match = next((row for row in people if row[0] == lookup), None)
     if match is None:
         return "No wallet yet", "Play a game or claim `/daily`."
-    bal, pending = match[1], match[2]
-    rank = next(i for i, row in enumerate(people, start=1) if row[0] == int(user_id))
-    coins = ai_coins.coins(f"{bal:,}")
-    if pending:
-        coins += f" \u00b7 held {ai_coins.coins(f'{pending:,}')}"
-    return coins, f"#{rank} of {len(people)}"
+    coins = ai_coins.coins(f"{match[1]:,}")
+    rank = next(i for i, row in enumerate(people, start=1) if row[0] == lookup)
+    label = f"House \u00b7 #{rank} of {len(people)}" if house else f"#{rank} of {len(people)}"
+    return coins, label
 
 
 def profile_embed(member: discord.Member, bot_user=None) -> discord.Embed:
+    house = bool(bot_user and member.id == getattr(bot_user, "id", 0))
     embed = discord.Embed(
         title=f"\u2726 {member.display_name}",
         description=f"{member.mention} \u00b7 `{member.id}`",
-        color=GOLD,
+        color=_accent(member),
     )
     av = getattr(member, "display_avatar", None)
     if av is not None:
         embed.set_thumbnail(url=str(av.url))
     embed.add_field(name="Account", value=_dt(getattr(member, "created_at", None)), inline=True)
     embed.add_field(name="Joined", value=_dt(getattr(member, "joined_at", None)), inline=True)
+    embed.add_field(name="In server", value=_tenure(getattr(member, "joined_at", None)), inline=True)
     boost = getattr(member, "premium_since", None)
     embed.add_field(name="Boost", value=_dt(boost) if boost else "No", inline=True)
     timeout = getattr(member, "timed_out_until", None)
@@ -68,12 +130,57 @@ def profile_embed(member: discord.Member, bot_user=None) -> discord.Embed:
     voice = getattr(getattr(member, "voice", None), "channel", None)
     if voice is not None:
         embed.add_field(name="Voice", value=voice.mention, inline=True)
-    coins, rank = _wallet_lines(member.id)
+    coins, rank = _wallet_lines(member.id, house=house)
     embed.add_field(name="Aether Coins", value=coins, inline=True)
     embed.add_field(name="Wallet rank", value=rank, inline=True)
+    embed.add_field(name="Daily", value=_daily_line(member.id, house=house), inline=True)
     embed.add_field(name="Roles", value=_roles_line(member), inline=False)
-    extra = "bot account" if getattr(member, "bot", False) else "no levels \u00b7 coins + Discord facts"
+    extra = "house wallet" if house else (
+        "bot account" if getattr(member, "bot", False) else "no levels \u00b7 coins + Discord facts"
+    )
     return stamp(embed, bot_user, extra=extra)
+
+
+def _presence_line(guild: discord.Guild) -> str:
+    counts = {"online": 0, "idle": 0, "dnd": 0, "offline": 0}
+    for member in guild.members:
+        if getattr(member, "bot", False):
+            continue
+        raw = getattr(member, "status", None)
+        key = str(getattr(raw, "value", raw) or "offline").lower()
+        if key in {"invisible", "offline"}:
+            key = "offline"
+        elif key not in counts:
+            key = "offline"
+        counts[key] += 1
+    return (
+        f"{counts['online']} online \u00b7 {counts['idle']} idle \u00b7 "
+        f"{counts['dnd']} DND \u00b7 {counts['offline']} offline"
+    )
+
+
+def _booster_line(guild: discord.Guild) -> str:
+    subs = list(getattr(guild, "premium_subscribers", None) or [])
+    if not subs:
+        subs = [m for m in guild.members if getattr(m, "premium_since", None)]
+    if not subs:
+        return "None"
+    shown = subs[:8]
+    text = ", ".join(m.mention for m in shown)
+    extra = len(subs) - len(shown)
+    if extra:
+        text += f" +{extra}"
+    return text[:1024]
+
+
+def _richest_line(guild: discord.Guild, snap: list) -> str:
+    players = [row for row in snap if row[0] != ai_coins.HOUSE_ID]
+    if not players:
+        return "No player wallets yet"
+    top = max(players, key=lambda row: row[1])
+    who = guild.get_member(top[0])
+    name = who.mention if who is not None else f"`{top[0]}`"
+    return f"{name} \u00b7 {ai_coins.coins(f'{top[1]:,}')}"
 
 
 def server_embed(guild: discord.Guild, bot_user=None) -> discord.Embed:
@@ -98,9 +205,19 @@ def server_embed(guild: discord.Guild, bot_user=None) -> discord.Embed:
         embed.set_thumbnail(url=str(icon.url))
     embed.add_field(name="Owner", value=owner_line, inline=True)
     embed.add_field(name="Created", value=_dt(getattr(guild, "created_at", None)), inline=True)
-    embed.add_field(name="Members", value=f"{guild.member_count or humans + bots} \u00b7 {humans} people \u00b7 {bots} bots", inline=False)
+    embed.add_field(
+        name="Members",
+        value=f"{guild.member_count or humans + bots} \u00b7 {humans} people \u00b7 {bots} bots",
+        inline=False,
+    )
+    embed.add_field(name="Presence", value=_presence_line(guild), inline=False)
     embed.add_field(name="Boosts", value=f"Tier {tier} \u00b7 {boosts}", inline=True)
-    embed.add_field(name="Channels", value=f"{text_n} text \u00b7 {voice_n} voice" + (f" \u00b7 {forum_n} forum" if forum_n else ""), inline=True)
+    embed.add_field(name="Boosters", value=_booster_line(guild), inline=False)
+    embed.add_field(
+        name="Channels",
+        value=f"{text_n} text \u00b7 {voice_n} voice" + (f" \u00b7 {forum_n} forum" if forum_n else ""),
+        inline=True,
+    )
     embed.add_field(name="Roles / emoji", value=f"{len(guild.roles)} \u00b7 {len(guild.emojis)}", inline=True)
     embed.add_field(name="Verification", value=verify, inline=True)
 
@@ -133,7 +250,10 @@ def server_embed(guild: discord.Guild, bot_user=None) -> discord.Embed:
     house_bal = house[1] if house else ai_coins.HOUSE_START
     embed.add_field(
         name="Aether Coins",
-        value=f"{len(wallets)} wallets \u00b7 house {ai_coins.coins(f'{house_bal:,}')}",
+        value=(
+            f"{len(wallets)} wallets \u00b7 house {ai_coins.coins(f'{house_bal:,}')}\n"
+            f"Richest {_richest_line(guild, snap)}"
+        ),
         inline=False,
     )
     return stamp(embed, bot_user, extra="no levels \u00b7 snapshot of this server")
