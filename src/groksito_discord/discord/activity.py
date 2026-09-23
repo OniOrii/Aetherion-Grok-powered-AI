@@ -75,7 +75,7 @@ def _user(guild_row: dict, user_id: int) -> dict:
     users = guild_row.setdefault("users", {})
     row = users.get(str(user_id))
     if not isinstance(row, dict):
-        row = {"messages": 0, "voice_seconds": 0, "xp": 0}
+        row = {"messages": 0, "voice_seconds": 0, "xp": 0, "channels": {}}
         users[str(user_id)] = row
     try:
         row["messages"] = int(row.get("messages", 0) or 0)
@@ -89,6 +89,8 @@ def _user(guild_row: dict, user_id: int) -> dict:
         row["xp"] = int(row.get("xp", 0) or 0)
     except (TypeError, ValueError):
         row["xp"] = 0
+    if not isinstance(row.get("channels"), dict):
+        row["channels"] = {}
     return row
 
 
@@ -118,7 +120,7 @@ def format_voice(seconds: int) -> str:
     return f"{seconds}s"
 
 
-def snapshot(guild_id: int, user_id: int) -> dict:
+def snapshot(guild_id: int, user_id: int, guild=None) -> dict:
     with _lock:
         store = _load()
         grow = _guild(store, guild_id)
@@ -129,6 +131,52 @@ def snapshot(guild_id: int, user_id: int) -> dict:
             live = max(0, int(time.time() - started))
         voice = int(row["voice_seconds"]) + live
         level, into, need = level_from_xp(int(row["xp"]))
+        people = []
+        for uid, data in (grow.get("users") or {}).items():
+            if not isinstance(data, dict):
+                continue
+            try:
+                mid = int(uid)
+                msgs = int(data.get("messages") or 0)
+                vs = int(data.get("voice_seconds") or 0)
+            except (TypeError, ValueError):
+                continue
+            extra = _voice_started.get((int(guild_id), mid))
+            if extra:
+                vs += max(0, int(time.time() - extra))
+            people.append((mid, msgs, vs))
+        msg_rank = None
+        voice_rank = None
+        if people:
+            by_msg = sorted(people, key=lambda r: r[1], reverse=True)
+            by_voice = sorted(people, key=lambda r: r[2], reverse=True)
+            for i, rowp in enumerate(by_msg, start=1):
+                if rowp[0] == int(user_id) and rowp[1] > 0:
+                    msg_rank = i
+                    break
+            for i, rowp in enumerate(by_voice, start=1):
+                if rowp[0] == int(user_id) and rowp[2] > 0:
+                    voice_rank = i
+                    break
+        scored = []
+        raw_ch = row.get("channels") or {}
+        for cid, val in raw_ch.items():
+            try:
+                count = int(val if not isinstance(val, dict) else val.get("n") or 0)
+            except (TypeError, ValueError):
+                continue
+            if count <= 0:
+                continue
+            name = str(cid)
+            if guild is not None:
+                try:
+                    ch = guild.get_channel(int(cid))
+                except (TypeError, ValueError):
+                    ch = None
+                if ch is not None:
+                    name = getattr(ch, "name", name)
+            scored.append((name, count))
+        scored.sort(key=lambda r: r[1], reverse=True)
         return {
             "started": str(grow.get("started") or _today()),
             "messages": int(row["messages"]),
@@ -137,16 +185,32 @@ def snapshot(guild_id: int, user_id: int) -> dict:
             "level": level,
             "into": into,
             "need": need,
+            "msg_rank": msg_rank,
+            "voice_rank": voice_rank,
+            "tracked": len(people),
+            "top_channels": scored[:4],
         }
 
 
-def record_message(guild_id: int, user_id: int) -> None:
+def record_message(guild_id: int, user_id: int, channel_id: int | None = None) -> None:
     key = (int(guild_id), int(user_id))
     now = time.time()
     with _lock:
         store = _load()
         row = _user(_guild(store, guild_id), user_id)
         row["messages"] += 1
+        if channel_id:
+            channels = row.setdefault("channels", {})
+            cid = str(int(channel_id))
+            cur = channels.get(cid)
+            if isinstance(cur, dict):
+                cur["n"] = int(cur.get("n") or 0) + 1
+                channels[cid] = cur
+            else:
+                try:
+                    channels[cid] = int(cur or 0) + 1
+                except (TypeError, ValueError):
+                    channels[cid] = 1
         last = _msg_xp_at.get(key, 0.0)
         if now - last >= MSG_COOLDOWN:
             row["xp"] += MSG_XP
@@ -215,7 +279,8 @@ async def on_message(message) -> None:
     author = getattr(message, "author", None)
     if author is None or getattr(author, "bot", False):
         return
-    record_message(message.guild.id, author.id)
+    channel = getattr(message, "channel", None)
+    record_message(message.guild.id, author.id, getattr(channel, "id", None))
 
 
 async def on_voice_state_update(member, before, after) -> None:
@@ -230,10 +295,6 @@ async def on_voice_state_update(member, before, after) -> None:
     elif old is not None and new is not None and old.id != new.id:
         voice_leave(member.guild.id, member.id)
         voice_join(member.guild.id, member.id)
-
-
-async def on_ready() -> None:
-    return
 
 
 def attach_listeners(client) -> None:
