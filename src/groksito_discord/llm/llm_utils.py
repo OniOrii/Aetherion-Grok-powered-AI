@@ -101,11 +101,11 @@ def _build_stub_response(
     user_message: str, author_name: str, image_urls: list[str] | None
 ) -> str:
     """Fallback when no API key or during early development."""
-    vision_note = f"\n[Imágenes: {len(image_urls or [])}]" if image_urls else ""
+    vision_note = f"\n[Images: {len(image_urls or [])}]" if image_urls else ""
     return (
-        f"✅ Groksito recibió tu mensaje (modo sin API key / desarrollo).\n\n"
-        f"Usuario: {author_name}\n"
-        f"Mensaje: {(user_message or '')[:300]}{vision_note}"
+        f"\u2705 Aetherion received your message (no API key / development mode).\n\n"
+        f"User: {author_name}\n"
+        f"Message: {(user_message or '')[:300]}{vision_note}"
     )
 
 
@@ -225,7 +225,6 @@ def _extract_and_log_token_usage(
 
         cached = 0
         try:
-            # Responses API path (primary)
             if hasattr(usage, "input_tokens_details"):
                 details = getattr(usage, "input_tokens_details", None)
                 if details:
@@ -235,7 +234,6 @@ def _extract_and_log_token_usage(
                 if isinstance(details, dict):
                     cached = details.get("cached_tokens", 0)
 
-            # Chat Completions / fallback compatibility (some responses or SDK paths use prompt_tokens_details)
             if not cached:
                 if hasattr(usage, "prompt_tokens_details"):
                     pdetails = getattr(usage, "prompt_tokens_details", None)
@@ -246,10 +244,6 @@ def _extract_and_log_token_usage(
                     if isinstance(pdetails, dict):
                         cached = pdetails.get("cached_tokens", 0) or cached
 
-            # Guard against nonsense / block-granularity artifacts (xAI often reports exactly 128
-            # for the first cache block on light prefixes; our ultra-minimal design frequently hits
-            # this minimum reusable chunk size. Not a code bug, but we surface it cleanly and
-            # never let cached exceed the actual prompt tokens reported).
             if cached and prompt > 0:
                 cached = min(cached, prompt)
             if cached < 0:
@@ -282,10 +276,6 @@ def _extract_and_log_token_usage(
                     f"{cid_prefix()}[CACHE] metrics logging failed: {cache_log_err}"
                 )
 
-        # Observability for the frequent "128" reports: with our extreme-light prefixes (tiny sys + zero ctx on most turns)
-        # the effective cacheable stable prefix is often exactly one 128-token block. This is *expected normal behavior*
-        # of xAI prompt cache block granularity + our "maximum nativeness / ultra-light" choices (not a bug or stuck counter).
-        # Extraction is now more accurate (supports both details shapes + guards). Log at debug for visibility.
         if cached == 128 and prompt < 300:
             logger.debug(
                 f"{cid_prefix()}[TOKENS] cached=128 (normal min-block granularity for light prefix) prompt={prompt} cat={category}"
@@ -297,11 +287,6 @@ def _extract_and_log_token_usage(
         )
 
 
-# =============================================================================
-# Lightweight Responses API resilience (for main conversational calls + optional summary)
-# =============================================================================
-
-
 async def _call_responses_with_retry(client: AsyncOpenAI, **kwargs) -> Any:
     """
     Call client.responses.create with improved resilience for transient errors only.
@@ -311,14 +296,10 @@ async def _call_responses_with_retry(client: AsyncOpenAI, **kwargs) -> Any:
       - APITimeoutError / APIConnectionError (network)
       - APIError with 5xx status (server errors)
     Fail fast (no retry): auth (401/403), bad requests (4xx non-429), policy/422 content errors, client errors.
-    This keeps happy-path latency unchanged and respects "fail fast for user errors".
-
-    Configuration comes from central settings (api_max_retries, api_retry_base_delay_seconds)
-    so behavior is tunable without code changes. Defaults preserve prior behavior.
     """
     max_attempts = getattr(settings, "api_max_retries", 3)
     base_delay = getattr(settings, "api_retry_base_delay_seconds", 0.5)
-    max_delay = 8.0  # pragmatic cap to avoid excessive waits even on long backoff
+    max_delay = 8.0
 
     for attempt in range(1, max_attempts + 1):
         try:
@@ -329,7 +310,6 @@ async def _call_responses_with_retry(client: AsyncOpenAI, **kwargs) -> Any:
                     f"{cid_prefix()}[LLM][RETRY] Transient error after {max_attempts} attempts: {type(e).__name__} (exhausted)"
                 )
                 raise
-            # Full jitter: random delay in [0, base * 2**(attempt-1)] — recommended to avoid thundering herd on rate limits
             raw_delay = base_delay * (2 ** (attempt - 1))
             delay = min(max_delay, random.uniform(0, raw_delay))
             logger.info(
@@ -351,12 +331,8 @@ async def _call_responses_with_retry(client: AsyncOpenAI, **kwargs) -> Any:
                 )
                 await asyncio.sleep(delay)
                 continue
-            # Non-transient (auth 401/403, bad payload 400, policy, etc.) or final attempt: propagate
-            # so outer handlers (vision special case, user message classification) can decide.
             raise
         except Exception:
-            # Unknown / unexpected — never swallow. Let caller (call_grok_for_groksito) classify.
-            # This includes things like validation errors in the openai lib itself.
             raise
 
 
@@ -367,8 +343,7 @@ async def _maybe_proactive_summarize(
 ) -> None:
     """
     (Optional) Proactive summarization of older channel history.
-    Disabled by default for maximum Grok nativeness — the base model + full history
-    (plus smart/referenced context) is trusted. Only runs if explicitly enabled in config.
+    Disabled by default for maximum Grok nativeness.
     """
     try:
         if not getattr(settings, "summarization_enabled", False):
@@ -406,7 +381,7 @@ async def _maybe_proactive_summarize(
                 },
                 {
                     "role": "user",
-                    "content": "Resume los mensajes antiguos de forma concisa y útil.",
+                    "content": "Summarize the older messages concisely and usefully.",
                 },
             ],
         )
@@ -416,8 +391,9 @@ async def _maybe_proactive_summarize(
             return
 
         if (
-            "sin información" in summary_text.lower()
+            "sin informaci" in summary_text.lower()
             or "sin contenido" in summary_text.lower()
+            or "no information" in summary_text.lower()
         ):
             return
 
