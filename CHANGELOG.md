@@ -13,6 +13,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 ## [2026-09-22]
 
+### Added
+
+- **`/profile` and `/server`:** member card (account, join date, boost, timeout, voice, roles, Aether Coin wallet and rank) and server snapshot (members, boosts, channels, Aetherion welcome / logs / date dock / autorole, wallet count). No XP or levels. Gold embeds.
+
 ### Changed
 
 - **Gold embed stamp:** `/help`, `/ping`, and empty `/audio` help use gold `0xC9A227`, Aetherion author/thumbnail when the bot user is available, and a `\u2726 Aetherion` footer. `/logs` stays gold with its existing `Aetherion logs` footer.
@@ -34,7 +38,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Fixed
 
-- **Slash registry guard:** `tests/test_slash_registry.py` fails if `/join` `/leave` `/audio` `/welcome` `/datechannel`, Read aloud, or the other live slashes disappear from source again, and if Hunt slashes come back. `/help` is checked against the same list.
+- **Slash registry guard:** `tests/test_slash_registry.py` fails if `/join` `/leave` `/audio` `/welcome` `/datechannel`, Read aloud, `/profile`, `/server`, or the other live slashes disappear from source again, and if Hunt slashes come back. `/help` is checked against the same list.
 - **Restored `/join` `/leave` `/audio` `/welcome` `/datechannel` and Apps \u2192 Read aloud.** Those handlers lived at the bottom of `slash_commands.py` and were deleted on 2026-09-16 when `/givesupply` was wired (`66981c3`, \u2212232 lines after `/ping`). Later `/logs` `/autorole` `/ping` and Hunt-unregister edits never put them back. Same bodies as the 2026-09-15 restore; context menu label is **Read aloud**. Hunt stays unregistered.
 
 ### Removed
