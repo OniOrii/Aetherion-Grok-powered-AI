@@ -295,11 +295,19 @@ async def send_welcome(member: discord.Member) -> None:
         return
     text = _fill(getattr(settings, "welcome_message", None) or "", member)
     banner = await _banner(member)
+    embed = discord.Embed(description=text, color=0xC9A227)
+    embed.set_thumbnail(url=_avatar_url(member))
+    guild_icon = getattr(getattr(member.guild, "icon", None), "url", None)
+    footer_kw = {"text": f"\u2726 Aetherion \u00b7 {member.guild.name}"}
+    if guild_icon:
+        footer_kw["icon_url"] = str(guild_icon)
+    embed.set_footer(**footer_kw)
     try:
         if banner:
-            await channel.send(content=text, file=banner)
+            embed.set_image(url="attachment://welcome.png")
+            await channel.send(embed=embed, file=banner)
         else:
-            await channel.send(content=text)
+            await channel.send(embed=embed)
     except Exception:
         logger.exception("welcome send failed")
 
