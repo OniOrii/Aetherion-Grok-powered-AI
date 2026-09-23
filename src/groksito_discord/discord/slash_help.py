@@ -6,17 +6,17 @@ import logging
 import discord
 
 from . import ai_coins
+from .brand import GOLD, stamp
 
 logger = logging.getLogger("aetherion.slash_help")
 
-HELP_COLOR = 0xC9A227
+HELP_COLOR = GOLD
 PAGES = ("overview", "chat", "voice", "games", "coins", "server")
 
 
-def _embed(page: str) -> discord.Embed:
+def _embed(page: str, bot_user=None) -> discord.Embed:
     key = page if page in PAGES else "overview"
     embed = discord.Embed(color=HELP_COLOR)
-    embed.set_footer(text="\u2726 Aetherion \u00b7 pick a topic below, or run /help topic:")
 
     if key == "chat":
         embed.title = "\u2726 Aetherion \u00b7 Chat"
@@ -25,11 +25,11 @@ def _embed(page: str) -> discord.Embed:
             "It only works in a server \u2014 DMs are ignored.\n\n"
             "It can read pictures you attach, search the web, and generate or edit images. "
             "Video generation is available when that setting is on.\n\n"
-            f"`/audio` \u2014 speak text in this channel. Default voice is **Zagan**.\n"
+            "`/audio` \u2014 speak text in this channel. Default voice is **Zagan**.\n"
             "Right-click a message \u2192 Apps \u2192 **Read aloud** to hear that message.\n"
             "`/ping` \u2014 gateway heartbeat, this command's round-trip, server count, and open voice connections."
         )
-        return embed
+        return stamp(embed, bot_user, extra="pick a topic below, or run /help topic:")
 
     if key == "voice":
         embed.title = "\u2726 Aetherion \u00b7 Voice & music"
@@ -43,7 +43,7 @@ def _embed(page: str) -> discord.Embed:
             "You can also say **Aetherion play \u2026**, **Aetherion pause**, or **Aetherion stop**.\n"
             "YouTube links are rejected on purpose."
         )
-        return embed
+        return stamp(embed, bot_user, extra="pick a topic below, or run /help topic:")
 
     if key == "games":
         embed.title = "\u2726 Aetherion \u00b7 Games"
@@ -60,7 +60,7 @@ def _embed(page: str) -> discord.Embed:
             f"`/poker` \u2014 Texas Hold'em, 2\u20134 seats. Friends Join, or Seat Aetherion. "
             f"Buy-in {ai_coins.MIN_BET}\u2013{ai_coins.MAX_BET} (default 200). **My cards** is private. **Hands** is a rank chart only."
         )
-        return embed
+        return stamp(embed, bot_user, extra="pick a topic below, or run /help topic:")
 
     if key == "coins":
         embed.title = "\u2726 Aetherion \u00b7 Aether Coins"
@@ -75,7 +75,7 @@ def _embed(page: str) -> discord.Embed:
             "Coin toss bets: 10\u201310,000.\n"
             "Ori only: `/givecoins`."
         )
-        return embed
+        return stamp(embed, bot_user, extra="pick a topic below, or run /help topic:")
 
     if key == "server":
         embed.title = "\u2726 Aetherion \u00b7 Server tools"
@@ -92,7 +92,7 @@ def _embed(page: str) -> discord.Embed:
             "Ori only: `/givecoins`, `/edit`, `/status`.\n"
             "`/status` with text pins one line. `/status rotate:True` resumes the 90s cycle."
         )
-        return embed
+        return stamp(embed, bot_user, extra="pick a topic below, or run /help topic:")
 
     embed.title = "\u2726 Aetherion \u00b7 Help"
     embed.description = (
@@ -124,14 +124,15 @@ def _embed(page: str) -> discord.Embed:
         ),
         inline=True,
     )
-    return embed
+    return stamp(embed, bot_user, extra="pick a topic below, or run /help topic:")
 
 
 class HelpView(discord.ui.View):
-    def __init__(self, user_id: int, page: str):
+    def __init__(self, user_id: int, page: str, bot_user=None):
         super().__init__(timeout=180)
         self.user_id = user_id
         self.page = page if page in PAGES else "overview"
+        self.bot_user = bot_user
         self._sync_select()
 
     def _sync_select(self) -> None:
@@ -165,7 +166,8 @@ class HelpView(discord.ui.View):
     async def pick_topic(self, interaction: discord.Interaction, select: discord.ui.Select):
         self.page = str(select.values[0])
         self._sync_select()
-        await interaction.response.edit_message(embed=_embed(self.page), view=self)
+        bot_user = self.bot_user or getattr(interaction.client, "user", None)
+        await interaction.response.edit_message(embed=_embed(self.page, bot_user), view=self)
 
 
 def register_help(tree, is_guild_allowed) -> None:
@@ -191,5 +193,6 @@ def register_help(tree, is_guild_allowed) -> None:
             )
             return
         page = topic.value if topic else "overview"
-        view = HelpView(interaction.user.id, page)
-        await interaction.response.send_message(embed=_embed(page), view=view)
+        bot_user = getattr(interaction.client, "user", None)
+        view = HelpView(interaction.user.id, page, bot_user)
+        await interaction.response.send_message(embed=_embed(page, bot_user), view=view)
