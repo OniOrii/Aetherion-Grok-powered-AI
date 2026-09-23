@@ -8,9 +8,9 @@ from pathlib import Path
 import discord
 
 from ..config import settings
+from .brand import GOLD, stamp
 
 logger = logging.getLogger("aetherion.slash_autorole")
-GOLD = 0xC9A227
 
 
 def _store_path() -> Path:
@@ -145,8 +145,7 @@ def _status_embed(guild: discord.Guild) -> discord.Embed:
     else:
         body = "No join role is set. `/autorole role:@Member` turns it on."
     embed = discord.Embed(title="\u2726 Auto-role", description=body, color=GOLD)
-    embed.set_footer(text="Administrators · /autorole off:True clears it")
-    return embed
+    return stamp(embed, extra="Administrators \u00b7 /autorole off:True clears it")
 
 
 def register_autorole(tree, is_guild_allowed) -> None:

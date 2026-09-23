@@ -11,6 +11,13 @@ Older packaged history stays under version headings. Aetherion work from Septemb
 
 _Nothing waiting. New work is dated the day it ships._
 
+## [2026-09-23]
+
+### Changed
+
+- **Gold stamp on more public cards:** `/balance`, `/daily`, `/leaderboard`, `/autorole`, `/play` now-playing, empty `/audio` help, and reaction-role panels use the shared Aetherion author / gold / footer stamp. Game tables, welcome banners, and log event embeds are unchanged.
+- **`/help` and README list live cards:** overview and Server tools name `/profile` and `/server`. README command table, usage, server tools, and layout also list them, plus `discord/client.py`, `core/grok_oauth.py`, and `llm/client.py`.
+
 ## [2026-09-22]
 
 ### Added
