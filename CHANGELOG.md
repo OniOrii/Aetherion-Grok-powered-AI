@@ -17,6 +17,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 - **`/profile` and `/server`:** member card (account, join date, boost, timeout, voice, roles, Aether Coin wallet and rank) and server snapshot (members, boosts, channels, Aetherion welcome / logs / date dock / autorole, wallet count). No XP or levels. Gold embeds.
 
+### Fixed
+
+- **Slash sync 50035:** Discord rejected the whole command upload because the `/audio` description was 109 characters (cap is 100). Shortened it so `/profile`, `/server`, and the rest can sync.
+
 ### Changed
 
 - **Gold embed stamp:** `/help`, `/ping`, and empty `/audio` help use gold `0xC9A227`, Aetherion author/thumbnail when the bot user is available, and a `\u2726 Aetherion` footer. `/logs` stays gold with its existing `Aetherion logs` footer.
