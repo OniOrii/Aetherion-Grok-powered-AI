@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Groksito Dashboard{% endblock %}</title>
+    <title>{% block title %}Aetherion Dashboard{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Dark mode: set class before paint to avoid flash. Supports system + localStorage + toggle.
         (function() {
             try {
-                var stored = localStorage.getItem('groksito-theme');
+                var stored = localStorage.getItem('aetherion-theme');
                 var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                 if (stored === 'dark' || (!stored && prefersDark)) {
                     document.documentElement.classList.add('dark');
@@ -20,13 +19,11 @@
         })();
     </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
 
         :root {
             --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             --font-sans: 'Inter', system_ui, sans-serif;
-
-            /* Elegant terminal palette */
             --bg: #0a0a0a;
             --bg-elev: #111214;
             --border: #222326;
@@ -50,7 +47,6 @@
             letter-spacing: -0.025em;
         }
 
-        /* Terminal cards - solid dark with thin elegant borders */
         .card {
             background-color: var(--bg-elev);
             border: 1px solid var(--border);
@@ -79,15 +75,11 @@
             font-family: var(--font-mono);
         }
 
-        /* Elegant terminal accents */
         .accent-cyan { color: var(--accent-cyan); }
         .accent-green { color: var(--accent-green); }
         .terminal-text { font-family: var(--font-mono); }
 
-        /* Very subtle scanline + grid texture (non-distracting) */
-        .terminal-surface {
-            position: relative;
-        }
+        .terminal-surface { position: relative; }
         .terminal-surface::before {
             content: '';
             position: absolute;
@@ -105,7 +97,6 @@
             z-index: 1;
         }
 
-        /* Status dots with terminal LED feel */
         .status-dot {
             display: inline-block;
             width: 8px;
@@ -117,10 +108,8 @@
         .status-dot.cyan { background-color: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
         .status-dot.amber { background-color: var(--accent-amber); }
 
-        /* Clean data / mono numbers */
         .mono { font-family: var(--font-mono); font-feature-settings: "tnum"; }
 
-        /* Subtle focus and hover for terminal feel */
         a:hover, button:hover { color: var(--accent-cyan); }
         .focus-cyan:focus-visible {
             outline: 1px solid var(--accent-cyan);
@@ -131,23 +120,21 @@
 </head>
 <body class="bg-[#0a0a0a] text-[#e6e6e6]">
     <div class="min-h-screen terminal-surface">
-        <!-- Top nav - clean elegant terminal header -->
         <nav class="border-b border-[#222326] bg-[#0a0a0a]">
             <div class="max-w-screen-xl mx-auto px-6">
                 <div class="flex h-16 items-center justify-between">
                     <div class="flex items-center gap-x-3">
                         <div class="w-8 h-8 border border-[#67f6ff] text-[#67f6ff] flex items-center justify-center text-sm font-semibold tracking-[-1px]">
-                            G
+                            A
                         </div>
                         <div class="flex items-baseline gap-x-1.5">
-                            <span class="font-semibold tracking-tight text-lg">groksito</span>
+                            <span class="font-semibold tracking-tight text-lg">aetherion</span>
                             <span class="text-[#67f6ff] text-xs font-medium tracking-[2px]">WEB</span>
                         </div>
                         <span class="ml-2 text-[10px] px-2 py-0.5 border border-[#222326] text-[#8a8f98] rounded">READ-ONLY</span>
                     </div>
-                    
+
                     <div class="flex items-center gap-x-3 text-sm">
-                        <!-- Dark mode toggle - terminal style -->
                         <button id="theme-toggle"
                                 class="flex items-center justify-center w-8 h-8 rounded border border-[#222326] hover:border-[#67f6ff] text-sm transition-colors font-mono"
                                 title="Toggle theme"
@@ -165,44 +152,41 @@
         </nav>
 
         <div class="max-w-screen-xl mx-auto px-6 py-8">
-            <!-- Clean page header -->
             <div class="flex items-end justify-between mb-8">
                 <div>
                     <h1 class="font-display text-3xl font-semibold tracking-[-0.03em] text-white">Management Panel</h1>
-                    <p class="text-[#8a8f98] mt-1 text-sm">read-only observability for the Groksito Discord bot</p>
+                    <p class="text-[#8a8f98] mt-1 text-sm">read-only observability for the Aetherion Discord bot</p>
                 </div>
                 <div class="text-right text-[10px] text-[#8a8f98] font-mono">
                     separate process • localhost:8010
                 </div>
             </div>
 
-            <!-- Terminal-style nav tabs -->
             <div class="flex gap-x-px mb-8 border-b border-[#222326] overflow-x-auto font-mono text-sm">
-                <a href="/" 
+                <a href="/"
                    class="nav-link px-4 py-2.5 whitespace-nowrap border-b-2 {% if active == 'dashboard' %}border-[#67f6ff] text-[#67f6ff]{% else %}border-transparent text-[#8a8f98] hover:text-[#e6e6e6] hover:border-[#333] {% endif %}">
                     dashboard
                 </a>
-                <a href="/guilds" 
+                <a href="/guilds"
                    class="nav-link px-4 py-2.5 whitespace-nowrap border-b-2 {% if active == 'guilds' %}border-[#67f6ff] text-[#67f6ff]{% else %}border-transparent text-[#8a8f98] hover:text-[#e6e6e6] hover:border-[#333] {% endif %}">
                     guilds
                 </a>
-                <a href="/stats" 
+                <a href="/stats"
                    class="nav-link px-4 py-2.5 whitespace-nowrap border-b-2 {% if active == 'stats' %}border-[#67f6ff] text-[#67f6ff]{% else %}border-transparent text-[#8a8f98] hover:text-[#e6e6e6] hover:border-[#333] {% endif %}">
-                    stats &amp; activity
+                    stats & activity
                 </a>
-                <a href="/capabilities" 
+                <a href="/capabilities"
                    class="nav-link px-4 py-2.5 whitespace-nowrap border-b-2 {% if active == 'capabilities' %}border-[#67f6ff] text-[#67f6ff]{% else %}border-transparent text-[#8a8f98] hover:text-[#e6e6e6] hover:border-[#333] {% endif %}">
                     capabilities
                 </a>
-                <a href="/usage" 
+                <a href="/usage"
                    class="nav-link px-4 py-2.5 whitespace-nowrap border-b-2 {% if active == 'usage' %}border-[#67f6ff] text-[#67f6ff]{% else %}border-transparent text-[#8a8f98] hover:text-[#e6e6e6] hover:border-[#333] {% endif %}">
                     usage
                 </a>
-                <a href="/config" 
+                <a href="/config"
                    class="nav-link px-4 py-2.5 whitespace-nowrap border-b-2 {% if active == 'config' %}border-[#67f6ff] text-[#67f6ff]{% else %}border-transparent text-[#8a8f98] hover:text-[#e6e6e6] hover:border-[#333] {% endif %}">
                     config
                 </a>
-
             </div>
 
             {% block content %}{% endblock %}
@@ -210,28 +194,26 @@
     </div>
 
     <script>
-        // Theme toggle (terminal style icon)
         function initThemeToggle() {
             var btn = document.getElementById('theme-toggle');
             var icon = document.getElementById('theme-icon');
             if (!btn || !icon) return;
 
             function updateIcon() {
-                // Use simple symbols for clean terminal look
                 var isDark = document.documentElement.classList.contains('dark');
                 icon.textContent = isDark ? '●' : '○';
             }
 
             btn.addEventListener('click', function() {
                 var isDark = document.documentElement.classList.toggle('dark');
-                try { localStorage.setItem('groksito-theme', isDark ? 'dark' : 'light'); } catch (e) {}
+                try { localStorage.setItem('aetherion-theme', isDark ? 'dark' : 'light'); } catch (e) {}
                 updateIcon();
             });
 
             try {
                 var mq = window.matchMedia('(prefers-color-scheme: dark)');
                 mq.addEventListener('change', function(e) {
-                    if (!localStorage.getItem('groksito-theme')) {
+                    if (!localStorage.getItem('aetherion-theme')) {
                         if (e.matches) document.documentElement.classList.add('dark');
                         else document.documentElement.classList.remove('dark');
                         updateIcon();
@@ -242,7 +224,6 @@
             updateIcon();
         }
 
-        // Lightweight copy-to-clipboard with terminal feedback
         window.copyToClipboard = function(text, el) {
             if (!text) return;
             navigator.clipboard.writeText(text).then(function() {
@@ -256,7 +237,6 @@
                     }, 1200);
                 }
             }).catch(function() {
-                // Fallback for older browsers
                 var ta = document.createElement('textarea');
                 ta.value = text;
                 document.body.appendChild(ta);
@@ -271,7 +251,6 @@
             });
         };
 
-        // Simple relative time (for timestamps in stats/activity)
         window.formatRelativeTime = function(ts) {
             if (!ts) return '—';
             var now = Date.now() / 1000;
