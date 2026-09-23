@@ -15,6 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- **Gold embed stamp:** `/help`, `/ping`, welcome banners, `/logs` test/status, and empty `/audio` help use gold `0xC9A227`, Aetherion author/thumbnail when the bot user is available, and a `\u2726 Aetherion` footer.
 - **Setup wizard is English:** `scripts/configure_env.py` menus, confirms, OAuth prompts, and errors are English. Title is Aetherion. Default TTS language offered is `en`. Start-over confirm word is `RESET`.
 - **TTS leftover errors are English:** generate-audio replies in `audio_handler.py` (missing credential, empty text, rate limit, empty audio, attach failure, network, retries) plus the empty `/audio` help embed and spoken placeholders (`[code omitted]`, `[link]`, truncated note). Handler default language is `en`.
 - **English-only surface:** setup prompts, TTS errors, Grok error replies, dashboard titles, and the default TTS language (`en`) are English. Intent detectors still recognize Spanish phrases so old messages still fire the right tools. Package path `src/groksito_discord` is unchanged.
@@ -26,14 +27,14 @@ _Nothing waiting. New work is dated the day it ships._
 ### Changed
 
 - **`/audio` and Read aloud are English:** option is `style:` not `estilo:`. Replies and the rate-limit line are English. TTS language falls back to **en** instead of **es** even if an old setting still says Spanish.
-- **Chat rate-limit copy:** "Easy — you already used your 6 requests this minute." instead of "Tranquilo campeon...".
+- **Chat rate-limit copy:** "Easy \u2014 you already used your 6 requests this minute." instead of "Tranquilo campeon...".
 - **`/help` matches live Aetherion:** overview and Server tools list `/logs`. Chat notes servers-only (no DMs) and the live `/ping` embed (gateway, command round-trip, servers, voice). Server tools describe `/status` pin vs 90s rotate. Hunt stays off the pages.
 - **Aetherion surface branding:** user-facing Groksito labels are now Aetherion. Railway/startup banner art prints **AETHERION**, logs say Aetherion, README / GROK_OAUTH / ARCHITECTURE / dashboard titles match, `/help` and README say **Read aloud**, `.env.example` and `scripts/configure_env.py` prompts are English. Package path `src/groksito_discord`, loggers, CLI `groksito` (with `aetherion` alias), and imports are unchanged so Railway keeps booting. Deep rename later.
 
 ### Fixed
 
 - **Slash registry guard:** `tests/test_slash_registry.py` fails if `/join` `/leave` `/audio` `/welcome` `/datechannel`, Read aloud, or the other live slashes disappear from source again, and if Hunt slashes come back. `/help` is checked against the same list.
-- **Restored `/join` `/leave` `/audio` `/welcome` `/datechannel` and Apps → Read aloud.** Those handlers lived at the bottom of `slash_commands.py` and were deleted on 2026-09-16 when `/givesupply` was wired (`66981c3`, −232 lines after `/ping`). Later `/logs` `/autorole` `/ping` and Hunt-unregister edits never put them back. Same bodies as the 2026-09-15 restore; context menu label is **Read aloud**. Hunt stays unregistered.
+- **Restored `/join` `/leave` `/audio` `/welcome` `/datechannel` and Apps \u2192 Read aloud.** Those handlers lived at the bottom of `slash_commands.py` and were deleted on 2026-09-16 when `/givesupply` was wired (`66981c3`, \u2212232 lines after `/ping`). Later `/logs` `/autorole` `/ping` and Hunt-unregister edits never put them back. Same bodies as the 2026-09-15 restore; context menu label is **Read aloud**. Hunt stays unregistered.
 
 ### Removed
 
