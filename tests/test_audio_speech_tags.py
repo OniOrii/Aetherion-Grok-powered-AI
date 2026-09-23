@@ -32,7 +32,7 @@ def test_build_audio_speech_tags_embed_points_to_usage_not_tag_lists():
     assert embed.url == XAI_TTS_DOCS_URL
     assert embed.description
     assert "inline" in embed.description.lower()
-    assert "estilo" in embed.description.lower()
+    assert "style" in embed.description.lower()
     assert embed.fields == []
 
 

@@ -5,6 +5,7 @@ import logging
 
 import discord
 
+from .brand import stamp
 from ..media.voice_music import _play_fail_speech, resolve_track, start_playback
 from ..media.voice_session import get_recv_cls, start_session
 
@@ -67,6 +68,7 @@ def register_music(tree, is_guild_allowed) -> None:
             await interaction.followup.send(f"Found it but could not play it: {e}", ephemeral=True)
             return
         embed = discord.Embed(title="\u2726 Now playing", description=f"**{track['title']}**", color=0xC9A227)
+        stamp(embed, getattr(interaction.client, "user", None), extra="SoundCloud")
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @tree.command(name="pause", description="Pause or resume the current song.")
