@@ -15,7 +15,8 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
-- **Gold embed stamp:** `/help`, `/ping`, welcome banners, `/logs` test/status, and empty `/audio` help use gold `0xC9A227`, Aetherion author/thumbnail when the bot user is available, and a `\u2726 Aetherion` footer.
+- **Gold embed stamp:** `/help`, `/ping`, and empty `/audio` help use gold `0xC9A227`, Aetherion author/thumbnail when the bot user is available, and a `\u2726 Aetherion` footer. `/logs` stays gold with its existing `Aetherion logs` footer.
+- **Welcome posts restored:** joins post the welcome text and banner image again. The gold embed wrapper is gone.
 - **Setup wizard is English:** `scripts/configure_env.py` menus, confirms, OAuth prompts, and errors are English. Title is Aetherion. Default TTS language offered is `en`. Start-over confirm word is `RESET`.
 - **TTS leftover errors are English:** generate-audio replies in `audio_handler.py` (missing credential, empty text, rate limit, empty audio, attach failure, network, retries) plus the empty `/audio` help embed and spoken placeholders (`[code omitted]`, `[link]`, truncated note). Handler default language is `en`.
 - **English-only surface:** setup prompts, TTS errors, Grok error replies, dashboard titles, and the default TTS language (`en`) are English. Intent detectors still recognize Spanish phrases so old messages still fire the right tools. Package path `src/groksito_discord` is unchanged.
