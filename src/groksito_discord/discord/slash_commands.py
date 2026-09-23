@@ -30,11 +30,12 @@ from .slash_poker import register_poker
 from .slash_help import register_help
 from .slash_logs import register_logs
 from .slash_autorole import register_autorole
+from .brand import stamp
 
 logger = logging.getLogger("aetherion.slash")
 
 _ALLOWED_GUILD_IDS = set(settings.allowed_guild_ids)
-RATE_LIMIT_MSG = "Easy — you already used your 6 requests this minute."
+RATE_LIMIT_MSG = "Easy \u2014 you already used your 6 requests this minute."
 
 
 def is_guild_allowed(guild_id):
@@ -104,7 +105,7 @@ def register(tree, client) -> None:
         if interaction.guild is not None:
             embed.add_field(name="This server", value=interaction.guild.name, inline=True)
         embed.add_field(name="Voice", value=str(voices), inline=True)
-        embed.set_footer(text="Gateway is the Discord heartbeat. Command is this slash reply.")
+        stamp(embed, getattr(client, "user", None), extra="gateway heartbeat \u00b7 command round-trip")
         await interaction.edit_original_response(embed=embed)
 
     @tree.command(
