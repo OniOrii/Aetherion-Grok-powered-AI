@@ -120,10 +120,10 @@ def log_usage(
 def get_recent_usage_summary(n: int = 10) -> str:
     """Human-readable summary of the most recent N calls + session totals."""
     if not _recent_usage:
-        return "Todavía no hay registros de uso de tokens en esta sesión del bot."
+        return "No token usage has been recorded in this bot session yet."
 
     recent = list(_recent_usage)[-n:]
-    lines = [f"**Últimos {len(recent)} requests de tokens:**"]
+    lines = [f"**Last {len(recent)} token requests:**"]
 
     for e in recent:
         dt = datetime.fromtimestamp(e["ts"]).strftime("%H:%M:%S")
@@ -143,13 +143,13 @@ def get_recent_usage_summary(n: int = 10) -> str:
 
     lines.append("")
     lines.append(
-        f"**Totales de esta sesión:** { _session_totals['calls']} llamadas | "
+        f"**Session totals:** { _session_totals['calls']} calls | "
         f"prompt={_session_totals['prompt_tokens']} | "
         f"completion={_session_totals['completion_tokens']} | "
         f"total={_session_totals['total_tokens']} | "
         f"~${_session_totals['estimated_cost_usd']:.4f} USD"
     )
-    lines.append("_Los precios son estimaciones basadas en grok-4.3 (input $1.25 / M, output $2.50 / M). "
+    lines.append("_Prices are estimates based on grok-4.3 (input $1.25 / M, output $2.50 / M). "
                  "Cached tokens (from prompt_cache_key) are billed at a large discount. "
                  "cached=128 (or small multiples) is *normal and expected* with our maximum-nativeness light design "
                  "(tiny SYSTEM_PROMPT + zero/minimal context on most turns + tiny continuation tools = small stable prefix). "
@@ -163,7 +163,7 @@ def get_daily_summary() -> str:
     today = date.today()
     todays = [e for e in _recent_usage if e.get("date") == today]
     if not todays:
-        return "No hay uso de tokens registrado hoy todavía."
+        return "No token usage recorded for today yet."
 
     p = sum(e["prompt"] for e in todays)
     c = sum(e["completion"] for e in todays)
@@ -171,8 +171,8 @@ def get_daily_summary() -> str:
     cost = sum(e["cost_usd"] for e in todays)
 
     return (
-        f"**Uso de hoy** ({len(todays)} requests):\n"
-        f"prompt={p} | completion={c} | total={t} | costo estimado ~${cost:.4f} USD"
+        f"**Today's usage** ({len(todays)} requests):\n"
+        f"prompt={p} | completion={c} | total={t} | estimated cost ~${cost:.4f} USD"
     )
 
 
