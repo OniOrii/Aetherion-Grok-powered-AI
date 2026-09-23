@@ -30,6 +30,7 @@ from .slash_poker import register_poker
 from .slash_help import register_help
 from .slash_logs import register_logs
 from .slash_autorole import register_autorole
+from .slash_profile import register_profile
 from .brand import stamp
 
 logger = logging.getLogger("aetherion.slash")
@@ -59,6 +60,7 @@ def register(tree, client) -> None:
     register_help(tree, is_guild_allowed)
     register_logs(tree, is_guild_allowed)
     register_autorole(tree, is_guild_allowed)
+    register_profile(tree, is_guild_allowed)
     register_music(tree, is_guild_allowed)
     register_purge(tree, is_guild_allowed)
     register_reactionrole(tree, is_guild_allowed)
