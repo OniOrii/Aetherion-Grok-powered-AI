@@ -15,6 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- **Setup wizard is English:** `scripts/configure_env.py` menus, confirms, OAuth prompts, and errors are English. Title is Aetherion. Default TTS language offered is `en`. Start-over confirm word is `RESET`.
 - **TTS leftover errors are English:** generate-audio replies in `audio_handler.py` (missing credential, empty text, rate limit, empty audio, attach failure, network, retries) plus the empty `/audio` help embed and spoken placeholders (`[code omitted]`, `[link]`, truncated note). Handler default language is `en`.
 - **English-only surface:** setup prompts, TTS errors, Grok error replies, dashboard titles, and the default TTS language (`en`) are English. Intent detectors still recognize Spanish phrases so old messages still fire the right tools. Package path `src/groksito_discord` is unchanged.
 
