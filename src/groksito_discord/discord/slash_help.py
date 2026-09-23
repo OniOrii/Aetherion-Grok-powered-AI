@@ -89,6 +89,9 @@ def _embed(page: str, bot_user=None) -> discord.Embed:
             "`/datechannel` \u2014 voice channel that shows today's date at midnight Eastern.\n"
             "`/logs` \u2014 Carl-style event log. Pick a channel; menus toggle joins, leaves, deletes, voice, and the rest. A test embed posts when you set the channel.\n"
             "`/purge` \u2014 delete up to 100 recent messages in this channel.\n\n"
+            "Anyone:\n"
+            "`/profile` \u2014 member card (account, join, roles, wallet, daily). Activity page is lifetime on this server.\n"
+            "`/server` \u2014 member count, boosts, channels, Aetherion welcome / logs / date dock / autorole, richest wallet.\n\n"
             "Ori only: `/givecoins`, `/edit`, `/status`.\n"
             "`/status` with text pins one line. `/status rotate:True` resumes the 90s cycle."
         )
@@ -119,6 +122,7 @@ def _embed(page: str, bot_user=None) -> discord.Embed:
     embed.add_field(
         name="\U0001F6E1\ufe0f  Server",
         value=(
+            "`/profile` `/server`\n"
             "`/reactionrole` color roles\n"
             "`/welcome` `/autorole` `/datechannel` `/logs` `/purge`"
         ),
