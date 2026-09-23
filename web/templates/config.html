@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Groksito • Configuration{% endblock %}
+{% block title %}Aetherion • Configuration{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl">
@@ -163,7 +163,6 @@
                         {% if meta %}
                         <div class="config-row setting-row {% if meta.advanced %}advanced-setting hidden{% endif %}"
                              data-key="{{ key }}" data-text="{{ key }} {{ meta.help | default('') | lower }} {{ meta.display_name | default('') | lower }} {{ meta.subtitle | default('') | lower }}">
-                            <!-- Left: Label + subtitle + key -->
                             <div>
                                 <label class="config-label text-sm" for="{{ key }}">
                                     {{ meta.display_name or key.replace('_', ' ').title() }}
@@ -174,7 +173,6 @@
                                 <div class="config-key">{{ key }}</div>
                             </div>
 
-                            <!-- Middle: Input control -->
                             <div class="config-input">
                                 {% if meta.type == 'bool' %}
                                 <label class="relative inline-flex items-center cursor-pointer">
@@ -203,7 +201,6 @@
                                 {% endif %}
                             </div>
 
-                            <!-- Right: Help + badges -->
                             <div class="flex flex-col gap-0.5">
                                 <div class="config-help">{{ meta.help or '' }}</div>
                                 <div class="flex flex-wrap items-center gap-x-2 text-[10px] text-[#8a8f98] mt-0.5">
@@ -248,7 +245,6 @@
 </div>
 
 <script>
-    // Lightweight client-side search + advanced toggle for config page
     (function() {
         const search = document.getElementById('config-search');
         const advToggle = document.getElementById('show-advanced');
@@ -270,11 +266,9 @@
         if (search) search.addEventListener('input', filter);
         if (advToggle) {
             advToggle.addEventListener('change', filter);
-            // default OFF as requested
             advToggle.checked = false;
         }
 
-        // initial filter
         filter();
     })();
 </script>
