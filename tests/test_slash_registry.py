@@ -33,6 +33,8 @@ REQUIRED = (
     "audio",
     "join",
     "leave",
+    "profile",
+    "server",
 )
 REMOVED_HUNT = (
     "hunt",
@@ -85,7 +87,6 @@ def test_inline_voice_welcome_audio_handlers_were_not_truncated():
 def test_help_still_lists_the_required_slashes():
     help_text = (DISCORD / "slash_help.py").read_text(encoding="utf-8")
     missing = [name for name in REQUIRED if f"/{name}" not in help_text]
-    # Ori-only /edit /status /givecoins live on the server page.
     assert not missing, f"/help is missing: {missing}"
 
 
