@@ -18,6 +18,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for dated history. Every shipped change is lo
 - Can search the web, generate or edit images, generate video (when enabled), and speak text out loud.
 - Default spoken voice is **Zagan**. Other Grok voices: Ara, Eve, Rex, Sal, Leo.
 - `/help` explains commands with topic pages.
+- `/profile` shows a member card and a lifetime activity page for this server. `/server` shows the guild snapshot and Aetherion setup.
 
 ### Live voice
 - `/join` while you are already in a voice channel. `/leave` to disconnect.
@@ -52,15 +53,18 @@ Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/d
   - Buy-in **10–1,000** (default **200**). Fold / Check-Call / Raise / All-in. Hole cards stay private (**My cards**). Hands chart is a reference only.
 
 ### Server tools
+- `/profile` — member card (account, join, roles, wallet, daily) plus an Activity page for lifetime stats on this server.
+- `/server` — member count, boosts, channels, Aetherion welcome / logs / date dock / autorole, richest wallet.
 - `/reactionrole post|add|remove|list|colors` — exclusive color roles (Administrators).
 - `/welcome` — welcome-banner channel (Administrators).
 - `/autorole` — role given as soon as someone joins (Administrators).
 - `/datechannel` — voice channel renamed at midnight Eastern (Administrators).
+- `/logs` — Carl-style event log channel (Administrators).
 - `/purge` — delete up to 100 recent messages (Administrators).
 - `/edit` — Ori only, rewrite text Aetherion already posted.
 - `/status` — Ori only, pin a status bubble or resume the 90s rotation.
 - `/audio` — TTS in the current text channel. Right-click a message → Apps → **Read aloud**.
-- `/ping` — alive check.
+- `/ping` — gateway heartbeat, command round-trip, servers, voice.
 - `/help` — command guide with a topic dropdown.
 
 ## Slash command list
@@ -78,7 +82,8 @@ Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/d
 | `/balance` `/daily` `/leaderboard` | anyone | Wallet |
 | `/givecoins` | Ori | Grant coins |
 | `/audio` | anyone | Speak text in-channel |
-| `/ping` | anyone | Awake check |
+| `/ping` | anyone | Gateway and command latency |
+| `/profile` `/server` | anyone | Member card and server snapshot |
 | `/welcome` `/autorole` `/datechannel` `/purge` `/reactionrole` `/logs` | Administrators | Server setup |
 | `/edit` `/status` | Ori | Bot text and presence |
 
@@ -123,6 +128,7 @@ Point the service at this repo. Set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`. After
 - Voice: join a VC, `/join`, say **Aetherion** then the question.
 - Music: `/play query: song or soundcloud url`. Do not paste a YouTube link.
 - Games: `/blackjack`, `/slots`, `/cointoss`, `/connect4`, `/poker`. Claim `/daily` once a day.
+- Cards: `/profile`, `/server`.
 - Admins: `/welcome`, `/autorole`, `/datechannel`, `/reactionrole colors`, `/purge`, `/logs`.
 - `/help` for the in-Discord command guide.
 
@@ -130,14 +136,18 @@ Point the service at this repo. Set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`. After
 
 High-level pieces under `src/groksito_discord/`:
 
+- `discord/client.py` — Discord client and rate limiter.
 - `discord/slash_commands.py` — wires every slash module.
 - `discord/slash_help.py` — `/help` pages.
+- `discord/slash_profile.py` — `/profile` and `/server`.
 - `discord/slash_blackjack.py`, `slash_slots.py`, `slash_cointoss.py`, `slash_connect4.py`, `slash_poker.py` — games.
 - `discord/ai_coins.py` — wallets, daily drip, house wallet, grants.
 - `discord/slash_music.py` + `media/voice_music.py` — SoundCloud only.
 - `media/voice_session.py` — DAVE decrypt, wake word, STT, TTS.
 - `discord/reaction_roles.py`, `welcome.py`, `date_dock.py` — server utilities.
 - `core/conversation.py` — when Grok answers in text.
+- `core/grok_oauth.py` — SuperGrok / X Premium+ OAuth.
+- `llm/client.py` — Grok API client.
 - `web/` — optional FastAPI dashboard.
 
 Runtime files live in `data/` (wallets, date dock, welcome channel, context). OAuth tokens live in `oauth/`. Neither folder is committed except `data/.gitkeep`.
