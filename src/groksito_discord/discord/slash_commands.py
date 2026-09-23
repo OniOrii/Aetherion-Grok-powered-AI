@@ -182,7 +182,7 @@ def register(tree, client) -> None:
 
     @tree.command(
         name="audio",
-        description="Speak text in this channel. Inline tags: [pause] [laugh] [sigh]. Optional wrapping style. Reply to a message.",
+        description="Speak text here. Tags: [pause] [laugh] [sigh]. Optional style, or reply.",
     )
     @discord.app_commands.describe(
         text="Text to speak. Inline: [pause], [laugh], [sigh], [breath], [chuckle], [long-pause], etc.",
