@@ -267,8 +267,8 @@ def apply_wrapping_speech_tag(text: str, tag: str | None) -> str:
     return f"<{clean_tag}>{text}</{clean_tag}>"
 
 def build_audio_speech_tags_embed() -> discord.Embed:
-    embed = discord.Embed(title="\U0001F50A /audio \u2014 Text-to-Speech", url=XAI_TTS_DOCS_URL, description=("Type the **text** to speak, or **reply to a message** and run `/audio`.\n\n" "\u2022 **Inline tags** go in the text (`[pause]`, `[laugh]`, `[sigh]`, etc.).\n" "\u2022 **Wrapping style** is the optional `style` option (whisper, soft, slow, etc.).\n" "\u2022 **Voice** is optional: zagan, eve, ara, rex, sal, leo."), color=0x5865F2)
-    embed.set_footer(text="xAI TTS docs \u00b7 Speech tags")
+    embed = discord.Embed(title="\U0001F50A /audio \u2014 Text-to-Speech", url=XAI_TTS_DOCS_URL, description=("Type the **text** to speak, or **reply to a message** and run `/audio`.\n\n" "\u2022 **Inline tags** go in the text (`[pause]`, `[laugh]`, `[sigh]`, etc.).\n" "\u2022 **Wrapping style** is the optional `style` option (whisper, soft, slow, etc.).\n" "\u2022 **Voice** is optional: zagan, eve, ara, rex, sal, leo."), color=0xC9A227)
+    embed.set_footer(text="\u2726 Aetherion \u00b7 Speech tags")
     return embed
 
 async def prepare_text_from_interaction(interaction: discord.Interaction, provided_text: str = "") -> str:
