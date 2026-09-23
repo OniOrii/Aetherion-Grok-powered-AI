@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Groksito • Guilds &amp; Access{% endblock %}
+{% block title %}Aetherion • Guilds & Access{% endblock %}
 
 {% block content %}
 <div class="max-w-5xl">
     <div class="mb-6">
-        <h2 class="font-display text-3xl font-semibold tracking-[-0.03em] text-white">Guilds &amp; Access Control</h2>
+        <h2 class="font-display text-3xl font-semibold tracking-[-0.03em] text-white">Guilds & Access Control</h2>
         <p class="text-[#8a8f98] text-sm mt-1">Live snapshot of connected servers + safe management of the bot's guild whitelist (ALLOWED_GUILD_IDS).</p>
     </div>
 
@@ -117,7 +117,7 @@
             <div class="mt-4 flex items-center gap-3">
                 <button type="button" onclick="reviewAndSave()"
                         class="px-5 py-2 bg-[#111214] border border-[#67f6ff] text-[#67f6ff] hover:bg-[#1a1b1e] text-sm font-mono rounded">
-                    REVIEW CHANGES &amp; SAVE
+                    REVIEW CHANGES & SAVE
                 </button>
                 <div class="text-[10px] text-[#8a8f98] font-mono">All changes require bot restart to take effect.</div>
             </div>
@@ -152,7 +152,7 @@
         <div class="flex gap-3">
             <button onclick="confirmAndSubmit()" id="confirm-btn"
                     class="flex-1 px-4 py-2 bg-[#111214] border border-[#22ff88] text-[#22ff88] hover:bg-[#1a1b1e] disabled:opacity-50 font-mono text-sm" disabled>
-                CONFIRM &amp; SAVE TO .ENV
+                CONFIRM & SAVE TO .ENV
             </button>
             <button onclick="hideModal()" class="px-4 py-2 border border-[#222326] hover:border-[#8a8f98] text-sm font-mono">CANCEL</button>
         </div>
@@ -164,7 +164,6 @@
 </div>
 
 <script>
-    // Original allowed from server render (for diff calculation)
     const ORIGINAL_ALLOWED = (document.querySelector('#access-control')?.dataset.originalAllowed || '{{ current_allowed|join(",") }}')
         .split(',').map(x => parseInt(x.trim())).filter(Boolean);
 
@@ -173,28 +172,18 @@
         document.querySelectorAll('.guild-checkbox').forEach(cb => {
             if (cb.checked) ids.add(parseInt(cb.value));
         });
-        // Also include any that were in original but not rendered in checkboxes (legacy)
-        // For simplicity we rely on the checkboxes + manual
         return Array.from(ids).sort((a,b)=>a-b);
     }
 
-    function updatePlannedList() {
-        // Optional live preview could be added here
-    }
+    function updatePlannedList() {}
 
     function toggleGuild(gid, shouldAdd) {
-        // For the current list remove buttons
         const checkboxes = document.querySelectorAll('.guild-checkbox');
-        let found = false;
         checkboxes.forEach(cb => {
             if (parseInt(cb.value) === gid) {
                 cb.checked = shouldAdd;
-                found = true;
             }
         });
-        if (!found && !shouldAdd) {
-            // remove from any manual state if needed
-        }
         updatePlannedList();
     }
 
@@ -205,10 +194,7 @@
             alert('Please enter a valid numeric guild ID.');
             return;
         }
-        // Add a temporary checkbox if not present
-        let container = document.querySelector('#access-control .bg-\\[\\#0a0a0a\\]');
-        if (!container) container = document.querySelector('#access-control');
-
+        let container = document.querySelector('#access-control');
         let existing = document.querySelector(`.guild-checkbox[value="${val}"]`);
         if (existing) {
             existing.checked = true;
@@ -219,8 +205,7 @@
                 <input type="checkbox" class="guild-checkbox" value="${val}" checked onchange="updatePlannedList()">
                 <span class="font-mono text-[#67f6ff]">${val} <span class="text-[#8a8f98]">(manual)</span></span>
             `;
-            // append to the snapshot list area if possible
-            const listArea = document.querySelector('#access-control .bg-\\[\\#0a0a0a\\]');
+            const listArea = document.getElementById('addable-guilds');
             if (listArea) listArea.appendChild(label);
             else container.appendChild(label);
         }
@@ -231,12 +216,9 @@
     function reviewAndSave() {
         const finalIds = getCheckedGuildIds();
         const original = ORIGINAL_ALLOWED;
-
         const added = finalIds.filter(id => !original.includes(id));
         const removed = original.filter(id => !finalIds.includes(id));
-
         let diffHtml = '<div class="text-[#8a8f98] text-xs mb-2">EXACT CHANGES TO ALLOWED_GUILD_IDS:</div>';
-
         if (added.length === 0 && removed.length === 0) {
             diffHtml += '<div class="text-[#22ff88]">No changes — current selection matches existing whitelist.</div>';
         } else {
@@ -254,29 +236,20 @@
                 });
             }
         }
-
         diffHtml += `<div class="mt-3 pt-3 border-t border-[#222326] text-[#8a8f98] text-xs">Final list will be: [${finalIds.join(', ')}]</div>`;
-
         const modal = document.getElementById('confirm-modal');
         document.getElementById('modal-diff').innerHTML = diffHtml;
-
-        // reset checkboxes
         document.getElementById('ack-diff').checked = false;
         document.getElementById('ack-restart').checked = false;
         document.getElementById('confirm-btn').disabled = true;
-
-        // wire live enable
         const enableBtn = () => {
             const ok = document.getElementById('ack-diff').checked && document.getElementById('ack-restart').checked;
             document.getElementById('confirm-btn').disabled = !ok;
         };
         document.getElementById('ack-diff').onchange = enableBtn;
         document.getElementById('ack-restart').onchange = enableBtn;
-
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-
-        // store final for submit
         window.__pendingGuildIds = finalIds;
     }
 
@@ -297,25 +270,20 @@
         document.getElementById('whitelist-form').submit();
     }
 
-    // Init: make sure checkboxes reflect current_allowed
     function initGuildCheckboxes() {
         const original = ORIGINAL_ALLOWED;
         document.querySelectorAll('.guild-checkbox').forEach(cb => {
             const id = parseInt(cb.value);
             cb.checked = original.includes(id);
         });
-
-        // store guilds data for name lookup in modal
         window.__guildsData = [];
         {% for g in guilds.guilds %}
         window.__guildsData.push({id: {{ g.id }}, name: "{{ g.name | replace('"', '\\"') }}"});
         {% endfor %}
     }
 
-    // Bootstrap
     document.addEventListener('DOMContentLoaded', () => {
         initGuildCheckboxes();
-        // attach update listener
         document.querySelectorAll('.guild-checkbox').forEach(cb => cb.addEventListener('change', updatePlannedList));
     });
 </script>
