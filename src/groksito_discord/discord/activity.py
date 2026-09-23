@@ -182,42 +182,66 @@ def seed_open_voice(guild_id: int, user_id: int) -> None:
         _voice_started[key] = time.time()
 
 
+def _wrap(client, name, fn) -> None:
+    hooked = getattr(client, "_aetherion_activity_events", None)
+    if hooked is None:
+        hooked = set()
+        client._aetherion_activity_events = hooked
+    if name in hooked:
+        return
+    existing = getattr(client, name, None)
+    if existing is fn:
+        hooked.add(name)
+        return
+    if existing is not None and callable(existing):
+        def _bind(old, new, ev):
+            async def _wrapped(*args, **kwargs):
+                try:
+                    await new(*args, **kwargs)
+                except Exception:
+                    logger.exception("activity %s failed", ev)
+                return await old(*args, **kwargs)
+            _wrapped.__name__ = ev
+            return _wrapped
+        setattr(client, name, _bind(existing, fn, name))
+    else:
+        setattr(client, name, fn)
+    hooked.add(name)
+
+
+async def on_message(message) -> None:
+    if getattr(message, "guild", None) is None:
+        return
+    author = getattr(message, "author", None)
+    if author is None or getattr(author, "bot", False):
+        return
+    record_message(message.guild.id, author.id)
+
+
+async def on_voice_state_update(member, before, after) -> None:
+    if member is None or getattr(member, "bot", False) or getattr(member, "guild", None) is None:
+        return
+    old = getattr(before, "channel", None)
+    new = getattr(after, "channel", None)
+    if old is None and new is not None:
+        voice_join(member.guild.id, member.id)
+    elif old is not None and new is None:
+        voice_leave(member.guild.id, member.id)
+    elif old is not None and new is not None and old.id != new.id:
+        voice_leave(member.guild.id, member.id)
+        voice_join(member.guild.id, member.id)
+
+
+async def on_ready() -> None:
+    return
+
+
 def attach_listeners(client) -> None:
     if client is None or getattr(client, "_aetherion_activity", False):
         return
     client._aetherion_activity = True
 
-    async def on_message(message) -> None:
-        try:
-            if getattr(message, "guild", None) is None:
-                return
-            author = getattr(message, "author", None)
-            if author is None or getattr(author, "bot", False):
-                return
-            me = getattr(client, "user", None)
-            if me is not None and author.id == me.id:
-                return
-            record_message(message.guild.id, author.id)
-        except Exception:
-            logger.exception("activity message failed")
-
-    async def on_voice_state_update(member, before, after) -> None:
-        try:
-            if member is None or getattr(member, "bot", False) or member.guild is None:
-                return
-            old = getattr(before, "channel", None)
-            new = getattr(after, "channel", None)
-            if old is None and new is not None:
-                voice_join(member.guild.id, member.id)
-            elif old is not None and new is None:
-                voice_leave(member.guild.id, member.id)
-            elif old is not None and new is not None and old.id != new.id:
-                voice_leave(member.guild.id, member.id)
-                voice_join(member.guild.id, member.id)
-        except Exception:
-            logger.exception("activity voice failed")
-
-    async def on_ready() -> None:
+    async def _seed_ready() -> None:
         try:
             for guild in list(getattr(client, "guilds", []) or []):
                 for channel in getattr(guild, "voice_channels", []) or []:
@@ -228,7 +252,7 @@ def attach_listeners(client) -> None:
         except Exception:
             logger.exception("activity voice seed failed")
 
-    client.add_listener(on_message, "on_message")
-    client.add_listener(on_voice_state_update, "on_voice_state_update")
-    client.add_listener(on_ready, "on_ready")
+    _wrap(client, "on_message", on_message)
+    _wrap(client, "on_voice_state_update", on_voice_state_update)
+    _wrap(client, "on_ready", _seed_ready)
     logger.info("activity listeners attached")
