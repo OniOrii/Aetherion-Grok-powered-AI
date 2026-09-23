@@ -159,20 +159,6 @@ def _presence_line(guild: discord.Guild) -> str:
     )
 
 
-def _booster_line(guild: discord.Guild) -> str:
-    subs = list(getattr(guild, "premium_subscribers", None) or [])
-    if not subs:
-        subs = [m for m in guild.members if getattr(m, "premium_since", None)]
-    if not subs:
-        return "None"
-    shown = subs[:8]
-    text = ", ".join(m.mention for m in shown)
-    extra = len(subs) - len(shown)
-    if extra:
-        text += f" +{extra}"
-    return text[:1024]
-
-
 def _richest_line(guild: discord.Guild, snap: list) -> str:
     players = [row for row in snap if row[0] != ai_coins.HOUSE_ID]
     if not players:
@@ -212,7 +198,6 @@ def server_embed(guild: discord.Guild, bot_user=None) -> discord.Embed:
     )
     embed.add_field(name="Presence", value=_presence_line(guild), inline=False)
     embed.add_field(name="Boosts", value=f"Tier {tier} \u00b7 {boosts}", inline=True)
-    embed.add_field(name="Boosters", value=_booster_line(guild), inline=False)
     embed.add_field(
         name="Channels",
         value=f"{text_n} text \u00b7 {voice_n} voice" + (f" \u00b7 {forum_n} forum" if forum_n else ""),
