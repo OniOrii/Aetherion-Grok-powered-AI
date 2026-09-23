@@ -141,24 +141,6 @@ def profile_embed(member: discord.Member, bot_user=None) -> discord.Embed:
     return stamp(embed, bot_user, extra=extra)
 
 
-def _presence_line(guild: discord.Guild) -> str:
-    counts = {"online": 0, "idle": 0, "dnd": 0, "offline": 0}
-    for member in guild.members:
-        if getattr(member, "bot", False):
-            continue
-        raw = getattr(member, "status", None)
-        key = str(getattr(raw, "value", raw) or "offline").lower()
-        if key in {"invisible", "offline"}:
-            key = "offline"
-        elif key not in counts:
-            key = "offline"
-        counts[key] += 1
-    return (
-        f"{counts['online']} online \u00b7 {counts['idle']} idle \u00b7 "
-        f"{counts['dnd']} DND \u00b7 {counts['offline']} offline"
-    )
-
-
 def _richest_line(guild: discord.Guild, snap: list) -> str:
     players = [row for row in snap if row[0] != ai_coins.HOUSE_ID]
     if not players:
@@ -196,7 +178,6 @@ def server_embed(guild: discord.Guild, bot_user=None) -> discord.Embed:
         value=f"{guild.member_count or humans + bots} \u00b7 {humans} people \u00b7 {bots} bots",
         inline=False,
     )
-    embed.add_field(name="Presence", value=_presence_line(guild), inline=False)
     embed.add_field(name="Boosts", value=f"Tier {tier} \u00b7 {boosts}", inline=True)
     embed.add_field(
         name="Channels",
