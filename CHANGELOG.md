@@ -15,6 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Changed
 
+- **TTS leftover errors are English:** generate-audio replies in `audio_handler.py` (missing credential, empty text, rate limit, empty audio, attach failure, network, retries) plus the empty `/audio` help embed and spoken placeholders (`[code omitted]`, `[link]`, truncated note). Handler default language is `en`.
 - **English-only surface:** setup prompts, TTS errors, Grok error replies, dashboard titles, and the default TTS language (`en`) are English. Intent detectors still recognize Spanish phrases so old messages still fire the right tools. Package path `src/groksito_discord` is unchanged.
 
 ### Removed
@@ -65,34 +66,9 @@ _Nothing waiting. New work is dated the day it ships._
 
 - **Ori messenger override:** when Ori tells Aetherion to tell / say / pass a message to someone else, Aetherion delivers it (ping + Ori's words), including vulgar or insulting lines. No more "not passing that along" to the creator. Non-Ori users can still be refused as messengers.
 
-- **Hunt slash condensation (Ori only):** 19 Hunt slashes folded to **7** roots so the loop stays one tap. Kept `/hunt` `/zoo` `/team` `/battle` `/raid` `/inv` `/weapon`. `/zoo` actions cover sell / sacrifice / rename / checklist / bestiary. `/inv` actions cover use / equip / salvage; **Lootbox** and **Crate** buttons sit on the inventory embed. `/weapons` and `/dex` dropped (`/weapon` already showed the board; bestiary is a `/zoo` action). Removed leaf commands stay available through those options. `/help` and the README match. Game/voice slashes unchanged.
-
-### Fixed
-
-- **`/daily` Hunt supplies (Ori):** claiming the coin drip now also grants the Hunt daily pack that already existed in save code — **5** lootboxes, **5** weapon crates, and **1** raid ticket, once per day. Running `/daily` again after coins were already claimed still delivers Hunt supplies if they were missed. Non-Ori wallets stay coins-only. `/help` Coins + Hunt pages and the README match.
-
 ## [2026-09-16]
 
-### Changed
-
-- **Hunt `/zoo` + `/weapons` app-emoji wiring (Ori only):** `/zoo`, catch strips, team settings slot labels, `/checklist`, `/weapons` board (incl. holder labels), `/inv` weapon rows, `/weapon` detail, and owned-weapon labels resolve through `animal_mark` / `weapon_mark` with unicode fallback — so pasted `HUNT_EMOJI_ANIMAL_*` / `HUNT_EMOJI_WEAPON_*` app emojis show without regenerating PNGs.
-
-### Added
-
-- **Hunt richer emoji art packs (Ori only):** `scripts/generate_hunt_emojis.py` regenerates richer 128×128 PNGs — rank badges (bevel/glow letter tiles anchored to `RANK_FILL_HEX`), bordered HUD chips, silhouette animal pack (`hunt_animal_emojis/{id}.png`, all 62), weapon glyphs (`hunt_weapon_emojis/{kind}.png`, all 42). `upload_hunt_emojis.py` now uploads animal+weapon packs (`--animals` / `--weapons` / `--all`) and prints `HUNT_EMOJI_ANIMAL_*` / `HUNT_EMOJI_WEAPON_*` env lines; `--force` refreshes images. Paste env block + restart bot required. Zoo/team still show unicode until animal keys are set.
-- **Hunt app-emoji upload script (Ori only):** `scripts/upload_hunt_emojis.py` bulk-uploads the fixed 13 HUD + rank PNGs as Discord Application Emojis (stdlib/urllib, idempotent, `--write-env` / `--dry-run` / `--force`); prints `HUNT_EMOJI_*` / `HUNT_RANK_EMOJI_*` `.env` lines. Animal portraits out of scope.
-- **Hunt Astral + Primordial tiers (Ori only):** two Aetherion-original ranks above Mythic (`a` / `p`). Catalog **+12** animals (6 Astral sky-words, 6 Primordial origin-words; 62 total).
-- **Hunt custom icon pipeline (Ori only):** optional Discord custom emojis for `/team` HUD stats, animal avatars, and weapon-row glyphs.
-
-### Fixed
-
-- **Hunt team settings animal picker truncation (Ori only):** Team Settings slot Select is paginated so every owned animal is reachable.
-- **Hunt `/equip` animal autocomplete (Ori only):** suggestions are team members only.
-- **Hunt cost vs wallet tens:** hunt cost is **10** Aether Coins so it matches wallet steps of 10.
-
-### Added
-
-- Hunt raid tiers, `/weapons` board, team UX polish, passives, unique weapon passives, Team Settings cog, gem durability, and the rest of the dated Hunt history through Test 3 remain recorded in git history from earlier 2026-09-16 commits.
+Older Hunt-dated notes remain in git history.
 
 ## [2026-09-15]
 
@@ -100,14 +76,6 @@ _Nothing waiting. New work is dated the day it ships._
 
 - **Aetherion Hunt WIP (Test 1, Ori only):** `/hunt`, `/zoo`, `/sell`, `/team`, `/battle`.
 - `/poker` **Hands** button next to My cards.
-
-### Changed
-
-- Command embeds use the gold cosmos look. New players start with **5,000** Aether Coins. `/daily` grants **2,000**. House wallet starts at **1,000,000**.
-
-### Fixed
-
-- Poker / blackjack / Connect Four result copy and animation fixes from this date remain in git history.
 
 ## [2026-09-14]
 
