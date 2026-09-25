@@ -20,6 +20,8 @@ _Nothing waiting. New work is dated the day it ships._
 ### Changed
 
 - **`/top` names:** prints the server nick or username as plain text instead of a mention, so the board does not show raw `<@id>` when Discord cannot resolve it. People who left fall back to their Discord username.
+- **Activity levels match MEE6:** XP to the next level is `5 * level² + 50 * level + 100`. Stored XP is unchanged, so displayed levels are recalculated on the next `/profile` or `/top`.
+- **Voice XP only with company:** sitting alone in a voice channel still counts voice time, but grants no XP. XP starts when a second person is in the channel and stops when you are the last one left.
 
 ## [2026-09-23]
 

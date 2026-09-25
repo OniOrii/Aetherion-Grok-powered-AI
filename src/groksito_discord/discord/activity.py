@@ -19,6 +19,7 @@ VOICE_XP_PER_MIN = 10
 
 _lock = threading.Lock()
 _voice_started: dict[tuple[int, int], float] = {}
+_voice_xp_started: dict[tuple[int, int], float] = {}
 _msg_xp_at: dict[tuple[int, int], float] = {}
 
 
@@ -95,7 +96,8 @@ def _user(guild_row: dict, user_id: int) -> dict:
 
 
 def xp_need(level: int) -> int:
-    return 100 + 50 * max(0, int(level))
+    n = max(0, int(level))
+    return 5 * n * n + 50 * n + 100
 
 
 def level_from_xp(xp: int) -> tuple[int, int, int]:
@@ -267,6 +269,52 @@ def record_message(guild_id: int, user_id: int, channel_id: int | None = None) -
         _save(store)
 
 
+def _humans(channel) -> list:
+    if channel is None:
+        return []
+    people = []
+    for member in getattr(channel, "members", []) or []:
+        if member is None or getattr(member, "bot", False):
+            continue
+        people.append(member)
+    return people
+
+
+def _xp_arm(guild_id: int, user_id: int) -> None:
+    key = (int(guild_id), int(user_id))
+    if key not in _voice_xp_started:
+        _voice_xp_started[key] = time.time()
+
+
+def _xp_credit(store: dict, guild_id: int, user_id: int) -> bool:
+    key = (int(guild_id), int(user_id))
+    started = _voice_xp_started.pop(key, None)
+    if not started:
+        return False
+    mins = max(0, int(time.time() - started)) // 60
+    if mins <= 0:
+        return False
+    row = _user(_guild(store, guild_id), user_id)
+    row["xp"] += mins * VOICE_XP_PER_MIN
+    return True
+
+
+def _sync_voice_xp(channel, guild_id: int) -> None:
+    humans = _humans(channel)
+    if len(humans) >= 2:
+        for member in humans:
+            _xp_arm(guild_id, member.id)
+        return
+    with _lock:
+        store = _load()
+        changed = False
+        for member in humans:
+            if _xp_credit(store, guild_id, member.id):
+                changed = True
+        if changed:
+            _save(store)
+
+
 def voice_join(guild_id: int, user_id: int) -> None:
     _voice_started[(int(guild_id), int(user_id))] = time.time()
 
@@ -274,19 +322,19 @@ def voice_join(guild_id: int, user_id: int) -> None:
 def voice_leave(guild_id: int, user_id: int) -> None:
     key = (int(guild_id), int(user_id))
     started = _voice_started.pop(key, None)
-    if not started:
-        return
-    gained = max(0, int(time.time() - started))
-    if gained <= 0:
-        return
     with _lock:
         store = _load()
-        row = _user(_guild(store, guild_id), user_id)
-        row["voice_seconds"] += gained
-        mins = gained // 60
-        if mins:
-            row["xp"] += mins * VOICE_XP_PER_MIN
-        _save(store)
+        changed = False
+        if started:
+            gained = max(0, int(time.time() - started))
+            if gained:
+                row = _user(_guild(store, guild_id), user_id)
+                row["voice_seconds"] += gained
+                changed = True
+        if _xp_credit(store, guild_id, user_id):
+            changed = True
+        if changed:
+            _save(store)
 
 
 def seed_open_voice(guild_id: int, user_id: int) -> None:
@@ -337,13 +385,18 @@ async def on_voice_state_update(member, before, after) -> None:
         return
     old = getattr(before, "channel", None)
     new = getattr(after, "channel", None)
+    gid = member.guild.id
     if old is None and new is not None:
-        voice_join(member.guild.id, member.id)
+        voice_join(gid, member.id)
+        _sync_voice_xp(new, gid)
     elif old is not None and new is None:
-        voice_leave(member.guild.id, member.id)
+        voice_leave(gid, member.id)
+        _sync_voice_xp(old, gid)
     elif old is not None and new is not None and old.id != new.id:
-        voice_leave(member.guild.id, member.id)
-        voice_join(member.guild.id, member.id)
+        voice_leave(gid, member.id)
+        voice_join(gid, member.id)
+        _sync_voice_xp(old, gid)
+        _sync_voice_xp(new, gid)
 
 
 def attach_listeners(client) -> None:
@@ -355,10 +408,15 @@ def attach_listeners(client) -> None:
         try:
             for guild in list(getattr(client, "guilds", []) or []):
                 for channel in getattr(guild, "voice_channels", []) or []:
+                    humans = []
                     for member in getattr(channel, "members", []) or []:
                         if getattr(member, "bot", False):
                             continue
                         seed_open_voice(guild.id, member.id)
+                        humans.append(member)
+                    if len(humans) >= 2:
+                        for member in humans:
+                            _xp_arm(guild.id, member.id)
         except Exception:
             logger.exception("activity voice seed failed")
 
