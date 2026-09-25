@@ -17,11 +17,51 @@ SORT_LABELS = {
 }
 
 
-def _who(guild: discord.Guild, user_id: int) -> str:
-    member = guild.get_member(user_id)
+def _label(person) -> str:
+    name = (
+        getattr(person, "display_name", None)
+        or getattr(person, "global_name", None)
+        or getattr(person, "name", None)
+        or ""
+    )
+    name = " ".join(str(name).split())
+    if name.startswith("@"):
+        name = name[1:].lstrip()
+    return name[:32]
+
+
+async def _who(guild: discord.Guild, user_id: int, client=None) -> str:
+    member = guild.get_member(int(user_id))
+    if member is None:
+        try:
+            member = await guild.fetch_member(int(user_id))
+        except (discord.NotFound, discord.HTTPException):
+            member = None
+        except Exception:
+            logger.exception("top fetch_member failed")
+            member = None
     if member is not None:
-        return member.mention
-    return f"`{user_id}`"
+        name = _label(member)
+        if name:
+            return name
+    user = None
+    if client is not None:
+        getter = getattr(client, "get_user", None)
+        if callable(getter):
+            user = getter(int(user_id))
+        if user is None:
+            try:
+                user = await client.fetch_user(int(user_id))
+            except (discord.NotFound, discord.HTTPException):
+                user = None
+            except Exception:
+                logger.exception("top fetch_user failed")
+                user = None
+    if user is not None:
+        name = _label(user)
+        if name:
+            return name
+    return f"Unknown {user_id}"
 
 
 def _score(row: dict, sort: str) -> str:
@@ -32,7 +72,7 @@ def _score(row: dict, sort: str) -> str:
     return f"{int(row.get('messages') or 0):,}"
 
 
-def top_embed(guild: discord.Guild, board: dict, bot_user=None) -> discord.Embed:
+async def top_embed(guild: discord.Guild, board: dict, bot_user=None, client=None) -> discord.Embed:
     sort = board.get("sort") or "messages"
     label = SORT_LABELS.get(sort, "messages")
     rows = board.get("rows") or []
@@ -54,7 +94,8 @@ def top_embed(guild: discord.Guild, board: dict, bot_user=None) -> discord.Embed
         lines = []
         for i, row in enumerate(rows, start=1):
             mark = medals.get(i, f"`{i}.`")
-            lines.append(f"{mark} {_who(guild, int(row['user_id']))} \u00b7 **{_score(row, sort)}**")
+            name = await _who(guild, int(row["user_id"]), client)
+            lines.append(f"{mark} **{name}** \u00b7 {_score(row, sort)}")
         embed.add_field(name="Top 10", value="\n".join(lines)[:1024], inline=False)
     if viewer_rank:
         embed.add_field(name="You", value=f"#{viewer_rank} of {total}", inline=True)
@@ -93,5 +134,7 @@ def register_top(tree, is_guild_allowed) -> None:
             limit=10,
             viewer_id=interaction.user.id,
         )
-        bot_user = getattr(interaction.client, "user", None)
-        await interaction.response.send_message(embed=top_embed(interaction.guild, board, bot_user))
+        client = interaction.client
+        bot_user = getattr(client, "user", None)
+        embed = await top_embed(interaction.guild, board, bot_user, client)
+        await interaction.response.send_message(embed=embed)

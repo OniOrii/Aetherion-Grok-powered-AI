@@ -17,6 +17,10 @@ _Nothing waiting. New work is dated the day it ships._
 
 - **`/top`:** lifetime activity board for this server. Sort by messages, voice, or level. Uses the same store as the `/profile` Activity page. Shows the top 10 and your rank. Command is registered next to `/profile`.
 
+### Changed
+
+- **`/top` names:** prints the server nick or username as plain text instead of a mention, so the board does not show raw `<@id>` when Discord cannot resolve it. People who left fall back to their Discord username.
+
 ## [2026-09-23]
 
 ### Changed
