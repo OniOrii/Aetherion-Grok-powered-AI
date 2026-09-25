@@ -15,7 +15,7 @@ _Nothing waiting. New work is dated the day it ships._
 
 ### Added
 
-- **`/top`:** lifetime activity board for this server. Sort by messages, voice, or level. Uses the same store as the `/profile` Activity page. Shows the top 10 and your rank.
+- **`/top`:** lifetime activity board for this server. Sort by messages, voice, or level. Uses the same store as the `/profile` Activity page. Shows the top 10 and your rank. Command is registered next to `/profile`.
 
 ## [2026-09-23]
 
