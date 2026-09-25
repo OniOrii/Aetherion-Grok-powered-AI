@@ -91,6 +91,7 @@ def _embed(page: str, bot_user=None) -> discord.Embed:
             "`/purge` \u2014 delete up to 100 recent messages in this channel.\n\n"
             "Anyone:\n"
             "`/profile` \u2014 member card (account, join, roles, wallet, daily). Activity page is lifetime on this server.\n"
+            "`/top` \u2014 activity ranks on this server. Sort by messages, voice, or level.\n"
             "`/server` \u2014 member count, boosts, channels, Aetherion welcome / logs / date dock / autorole, richest wallet.\n\n"
             "Ori only: `/givecoins`, `/edit`, `/status`.\n"
             "`/status` with text pins one line. `/status rotate:True` resumes the 90s cycle."
@@ -122,7 +123,7 @@ def _embed(page: str, bot_user=None) -> discord.Embed:
     embed.add_field(
         name="\U0001F6E1\ufe0f  Server",
         value=(
-            "`/profile` `/server`\n"
+            "`/profile` `/server` `/top`\n"
             "`/reactionrole` color roles\n"
             "`/welcome` `/autorole` `/datechannel` `/logs` `/purge`"
         ),
