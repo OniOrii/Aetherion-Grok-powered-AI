@@ -35,6 +35,7 @@ REQUIRED = (
     "leave",
     "profile",
     "server",
+    "top",
 )
 REMOVED_HUNT = (
     "hunt",
