@@ -192,6 +192,55 @@ def snapshot(guild_id: int, user_id: int, guild=None) -> dict:
         }
 
 
+def leaderboard(guild_id: int, sort: str = "messages", limit: int = 10, viewer_id: int | None = None) -> dict:
+    key = (sort or "messages").lower()
+    if key not in {"messages", "voice", "level"}:
+        key = "messages"
+    cap = max(1, min(int(limit or 10), 25))
+    with _lock:
+        store = _load()
+        grow = _guild(store, guild_id)
+        now = time.time()
+        rows = []
+        for uid, data in (grow.get("users") or {}).items():
+            if not isinstance(data, dict):
+                continue
+            try:
+                mid = int(uid)
+                msgs = int(data.get("messages") or 0)
+                vs = int(data.get("voice_seconds") or 0)
+                xp = int(data.get("xp") or 0)
+            except (TypeError, ValueError):
+                continue
+            extra = _voice_started.get((int(guild_id), mid))
+            if extra:
+                vs += max(0, int(now - extra))
+            if msgs <= 0 and vs <= 0 and xp <= 0:
+                continue
+            level, _, _ = level_from_xp(xp)
+            rows.append({"user_id": mid, "messages": msgs, "voice_seconds": vs, "xp": xp, "level": level})
+        if key == "voice":
+            rows.sort(key=lambda r: (r["voice_seconds"], r["xp"]), reverse=True)
+        elif key == "level":
+            rows.sort(key=lambda r: (r["level"], r["xp"], r["messages"]), reverse=True)
+        else:
+            rows.sort(key=lambda r: (r["messages"], r["xp"]), reverse=True)
+        viewer_rank = None
+        if viewer_id is not None:
+            vid = int(viewer_id)
+            for i, row in enumerate(rows, start=1):
+                if row["user_id"] == vid:
+                    viewer_rank = i
+                    break
+        return {
+            "started": str(grow.get("started") or _today()),
+            "sort": key,
+            "rows": rows[:cap],
+            "total": len(rows),
+            "viewer_rank": viewer_rank,
+        }
+
+
 def record_message(guild_id: int, user_id: int, channel_id: int | None = None) -> None:
     key = (int(guild_id), int(user_id))
     now = time.time()
