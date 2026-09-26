@@ -16,6 +16,7 @@ _Nothing waiting. New work is dated the day it ships._
 ### Added
 
 - **`/highlow`:** Higher or Lower on a 13-rank Aether card. Bet **10–10,000**. The shown card prices Higher and Lower separately (safe calls pay small, thin calls pay more). Same rank misses. Cash out after a hit, or climb up to six calls. Play Again / Change Bet stay on the table. Uses the same Aether Coin hold/settle path as blackjack.
+- **`/trivia`:** Easy general knowledge. Four answers on buttons. Bet **10–10,000**. Right answer pays **3x**. Live Open Trivia DB (easy General Knowledge) with a house bank if the feed is down or the question is too wordy. Timeout returns the stake. Play Again / Change Bet stay on the card.
 
 ## [2026-09-25]
 
