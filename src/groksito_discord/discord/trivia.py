@@ -12,9 +12,10 @@ TRIVIA_MIN_BET = 10
 TRIVIA_DEFAULT_BET = 100
 TRIVIA_MAX_BET = 10_000
 WIN_MULTI = 3.0
-OPENTDB = "https://opentdb.com/api.php?amount=1&difficulty=easy&type=multiple"
+# Category 9 = General Knowledge. Easy multiple choice only.
+OPENTDB = "https://opentdb.com/api.php?amount=1&category=9&difficulty=easy&type=multiple"
 
-# Easy, mixed general knowledge. Used when the live feed is down.
+# Easy, mixed general knowledge. Used when the live feed is down or too wordy.
 LOCAL_BANK: tuple[tuple[str, str, tuple[str, str, str], str], ...] = (
     ("What color do you get when you mix red and white?", "Pink", ("Purple", "Orange", "Brown"), "General"),
     ("How many days are in a leap year?", "366", ("365", "364", "360"), "General"),
@@ -76,6 +77,14 @@ def _clean(text: str) -> str:
     return unescape(str(text or "")).strip()
 
 
+def _too_wordy(prompt: str, answers: list[str]) -> bool:
+    if len(prompt) > 140:
+        return True
+    if any(len(item) > 42 for item in answers):
+        return True
+    return False
+
+
 def _from_local() -> TriviaQuestion:
     prompt, correct, wrongs, category = secrets.choice(LOCAL_BANK)
     answers = [correct, *wrongs]
@@ -103,12 +112,15 @@ async def fetch_question() -> TriviaQuestion:
         row = rows[0]
         correct = _clean(row.get("correct_answer"))
         wrongs = [_clean(item) for item in (row.get("incorrect_answers") or [])]
-        if not correct or len(wrongs) != 3:
+        prompt = _clean(row.get("question"))
+        if not prompt or not correct or len(wrongs) != 3:
             raise ValueError("bad opentdb shape")
         answers = [correct, *wrongs]
+        if _too_wordy(prompt, answers):
+            raise ValueError("live question too wordy")
         secrets.SystemRandom().shuffle(answers)
         return TriviaQuestion(
-            prompt=_clean(row.get("question")),
+            prompt=prompt,
             answers=answers,
             correct_index=answers.index(correct),
             category=_clean(row.get("category")) or "General",
