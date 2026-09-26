@@ -25,6 +25,7 @@ REQUIRED = (
     "givecoins",
     "slots",
     "cointoss",
+    "highlow",
     "connect4",
     "poker",
     "ping",
