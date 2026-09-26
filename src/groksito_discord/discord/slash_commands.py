@@ -26,6 +26,7 @@ from .slash_blackjack import register_blackjack
 from .slash_slots import register_slots
 from .slash_cointoss import register_cointoss
 from .slash_higherlower import register_highlow
+from .slash_trivia import register_trivia
 from .slash_connect4 import register_connect4
 from .slash_poker import register_poker
 from .slash_help import register_help
@@ -73,6 +74,7 @@ def register(tree, client) -> None:
     register_slots(tree, is_guild_allowed)
     register_cointoss(tree, is_guild_allowed)
     register_highlow(tree, is_guild_allowed)
+    register_trivia(tree, is_guild_allowed)
     register_connect4(tree, is_guild_allowed)
     register_poker(tree, is_guild_allowed)
 
