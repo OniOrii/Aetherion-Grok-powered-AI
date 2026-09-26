@@ -47,6 +47,10 @@ Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/d
   - Bet **100–10,000**. Corner cabinet thumbnail. Spin Again / Change Bet.
 - `/cointoss` — Heads or Tails, falling coin animation.
   - Odds **48% / 48% / 2% side**. Side pays **2.5x**. Bet **10–10,000**.
+- `/highlow` — Higher or Lower on a 13-rank card. Odds follow the card.
+  - Cash out after a hit, or climb up to six calls. Same rank misses. Bet **10–10,000**.
+- `/trivia` — easy general knowledge, four answers.
+  - Right answer pays **3x**. Bet **10–10,000**. Live easy questions with a house bank fallback.
 - `/connect4` — two players or vs Aetherion, shared Aether Coin pot.
   - Challenge a member or leave opponent empty to play the house. Bet **10–1,000** each. Winner takes both stakes.
 - `/poker` — Texas Hold'em, 2–4 seats. Friends Join, or Seat Aetherion.
@@ -77,6 +81,8 @@ Play-money wallet in `data/ai_coins.json`. New players start with **5,000**. `/d
 | `/blackjack` | anyone | Cards vs Aetherion |
 | `/slots` | anyone | Three machines |
 | `/cointoss` | anyone | Coin flip |
+| `/highlow` | anyone | Higher or Lower |
+| `/trivia` | anyone | Easy general knowledge |
 | `/connect4` | anyone | Two-player or vs Aetherion |
 | `/poker` | anyone | Texas Hold'em |
 | `/balance` `/daily` `/leaderboard` | anyone | Wallet |
@@ -127,7 +133,7 @@ Point the service at this repo. Set `DISCORD_BOT_TOKEN` and `XAI_API_KEY`. After
 - Mention `@Aetherion` or reply to it in text.
 - Voice: join a VC, `/join`, say **Aetherion** then the question.
 - Music: `/play query: song or soundcloud url`. Do not paste a YouTube link.
-- Games: `/blackjack`, `/slots`, `/cointoss`, `/connect4`, `/poker`. Claim `/daily` once a day.
+- Games: `/blackjack`, `/slots`, `/cointoss`, `/highlow`, `/trivia`, `/connect4`, `/poker`. Claim `/daily` once a day.
 - Cards: `/profile`, `/server`.
 - Admins: `/welcome`, `/autorole`, `/datechannel`, `/reactionrole colors`, `/purge`, `/logs`.
 - `/help` for the in-Discord command guide.
@@ -140,7 +146,7 @@ High-level pieces under `src/groksito_discord/`:
 - `discord/slash_commands.py` — wires every slash module.
 - `discord/slash_help.py` — `/help` pages.
 - `discord/slash_profile.py` — `/profile` and `/server`.
-- `discord/slash_blackjack.py`, `slash_slots.py`, `slash_cointoss.py`, `slash_connect4.py`, `slash_poker.py` — games.
+- `discord/slash_blackjack.py`, `slash_slots.py`, `slash_cointoss.py`, `slash_higherlower.py`, `slash_trivia.py`, `slash_connect4.py`, `slash_poker.py` — games.
 - `discord/ai_coins.py` — wallets, daily drip, house wallet, grants.
 - `discord/slash_music.py` + `media/voice_music.py` — SoundCloud only.
 - `media/voice_session.py` — DAVE decrypt, wake word, STT, TTS.
@@ -160,4 +166,4 @@ More internals: [ARCHITECTURE.md](./ARCHITECTURE.md). OAuth: [GROK_OAUTH.md](./G
 - Started from [lupintic/groksito-discord-bot](https://github.com/lupintic/groksito-discord-bot).
 - Grok models and APIs by xAI.
 
-**Status:** Active. Self-hostable with Docker or Railway. Talks in voice, plays SoundCloud on that same connection, runs blackjack / slots / coin toss / Connect Four / poker on Aether Coins.
+**Status:** Active. Self-hostable with Docker or Railway. Talks in voice, plays SoundCloud on that same connection, runs blackjack / slots / coin toss / higher-or-lower / trivia / Connect Four / poker on Aether Coins.
